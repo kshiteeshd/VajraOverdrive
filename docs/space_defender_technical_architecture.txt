@@ -1,0 +1,364 @@
+
+SPACE DEFENDER
+TECHNICAL ARCHITECTURE DOCUMENT (TAD)
+Version: 1.0
+Language: Java
+Architecture Style: Modular Layered Architecture
+
+------------------------------------------------------------
+1. PURPOSE
+------------------------------------------------------------
+
+This document defines the technical architecture required to implement the
+Space Defender game. It specifies the software structure, core engine systems,
+data flow, and module responsibilities required for a scalable and modular
+Java-based arcade game.
+
+All systems defined in this document are mandatory for implementation.
+
+------------------------------------------------------------
+2. TECHNOLOGY STACK
+------------------------------------------------------------
+
+Primary Language
+Java (JDK 17 or higher)
+
+Graphics Rendering
+Java AWT / Swing with custom rendering loop
+
+Audio System
+Java Sound API
+
+Build Tool
+Gradle or Maven
+
+Version Control
+Git
+
+Repository Platform
+GitHub
+
+Testing Framework
+JUnit 5
+
+------------------------------------------------------------
+3. HIGH LEVEL ARCHITECTURE
+------------------------------------------------------------
+
+The application SHALL follow a modular layered architecture.
+
+Core Layers
+
+Application Layer
+Game Logic Layer
+Engine Systems Layer
+Rendering Layer
+Platform Layer
+
+Architecture Flow
+
+Input -> Game Logic -> Physics -> Rendering -> Audio
+
+------------------------------------------------------------
+4. CORE ENGINE SYSTEMS
+------------------------------------------------------------
+
+The following systems SHALL exist as independent modules.
+
+Game Loop System
+Input System
+Rendering System
+Entity System
+Physics and Collision System
+Enemy AI System
+Weapon System
+Upgrade System
+Event System
+Audio System
+Resource Manager
+Game State Manager
+Configuration Manager
+
+Each system SHALL be implemented as a modular subsystem.
+
+------------------------------------------------------------
+5. GAME LOOP DESIGN
+------------------------------------------------------------
+
+The system SHALL implement a fixed time step game loop.
+
+Game Loop Responsibilities
+
+1. Capture input
+2. Update game state
+3. Update entities
+4. Process enemy AI
+5. Perform physics and collision checks
+6. Render frame
+7. Play audio events
+
+Target Frame Rate
+60 frames per second
+
+Example Game Loop Structure
+
+while(gameRunning)
+    processInput()
+    updateGame()
+    updateEntities()
+    detectCollisions()
+    renderFrame()
+    updateAudio()
+
+------------------------------------------------------------
+6. ENTITY SYSTEM
+------------------------------------------------------------
+
+All interactive game objects SHALL be implemented as entities.
+
+Entity Categories
+
+Player Entity
+Enemy Entities
+Boss Entities
+Projectile Entities
+Drop Entities
+Visual Effect Entities
+
+Entity Base Structure
+
+Each entity SHALL contain
+
+position
+velocity
+health
+sprite
+update method
+render method
+collision bounds
+
+------------------------------------------------------------
+7. ENEMY AI SYSTEM
+------------------------------------------------------------
+
+Enemy behavior SHALL be controlled by a behavior strategy system.
+
+Enemy AI Types
+
+Straight Movement
+ZigZag Movement
+Swarm Movement
+Chase Behavior
+Boss Phase Behaviors
+
+Each enemy SHALL reference a behavior strategy object.
+
+This allows modular enemy behavior definitions.
+
+------------------------------------------------------------
+8. PHYSICS AND COLLISION SYSTEM
+------------------------------------------------------------
+
+The physics system SHALL detect interactions between entities.
+
+Collision Types
+
+Player vs Enemy
+Player vs Enemy Projectile
+Player Projectile vs Enemy
+Player vs Powerup
+
+Collision detection SHALL use bounding boxes.
+
+Collision system SHALL operate every game loop cycle.
+
+------------------------------------------------------------
+9. WEAPON SYSTEM ARCHITECTURE
+------------------------------------------------------------
+
+The weapon system SHALL manage projectile creation and firing patterns.
+
+Weapon Attributes
+
+damage
+fire rate
+projectile count
+spread angle
+cooldown
+
+Weapons SHALL be interchangeable through upgrade tiers.
+
+------------------------------------------------------------
+10. UPGRADE SYSTEM
+------------------------------------------------------------
+
+The upgrade system SHALL manage player progression.
+
+Upgrade Types
+
+Ship Tier Upgrades
+Weapon Upgrades
+Shield Enhancements
+
+Upgrade events SHALL be triggered through item pickups or score milestones.
+
+------------------------------------------------------------
+11. EVENT SYSTEM
+------------------------------------------------------------
+
+The system SHALL implement an event dispatch system.
+
+Event Examples
+
+EnemyDestroyedEvent
+PlayerHitEvent
+PowerupCollectedEvent
+BossSpawnEvent
+
+Events SHALL decouple gameplay logic from system responses.
+
+------------------------------------------------------------
+12. AUDIO SYSTEM
+------------------------------------------------------------
+
+The audio system SHALL manage sound playback.
+
+Audio Types
+
+Sound Effects
+Background Music
+Event-triggered audio
+
+Audio playback SHALL be asynchronous to avoid blocking the game loop.
+
+------------------------------------------------------------
+13. RESOURCE MANAGEMENT
+------------------------------------------------------------
+
+All assets SHALL be managed through a resource manager.
+
+Resource Types
+
+Sprites
+Audio files
+Fonts
+Configuration files
+
+The resource manager SHALL cache loaded assets to prevent redundant loading.
+
+------------------------------------------------------------
+14. GAME STATE MANAGEMENT
+------------------------------------------------------------
+
+The game SHALL implement a state management system.
+
+Game States
+
+Main Menu
+Playing
+Paused
+Game Over
+Victory
+
+Each state SHALL control its own update and render logic.
+
+------------------------------------------------------------
+15. UI RENDERING ARCHITECTURE
+------------------------------------------------------------
+
+The UI system SHALL render interface elements separately from gameplay.
+
+UI Components
+
+Score display
+Lives display
+Level display
+Weapon level
+Ship tier
+
+UI SHALL update every frame.
+
+------------------------------------------------------------
+16. CONFIGURATION MANAGEMENT
+------------------------------------------------------------
+
+Game parameters SHALL be stored in configuration files.
+
+Configurable Parameters
+
+Enemy spawn rates
+Weapon damage values
+Upgrade thresholds
+Drop probabilities
+
+Configuration files SHALL be stored in JSON or properties format.
+
+------------------------------------------------------------
+17. DIRECTORY STRUCTURE
+------------------------------------------------------------
+
+The project SHALL follow the following package structure.
+
+com.spacedefender
+
+core
+engine
+render
+physics
+input
+audio
+entity
+enemy
+player
+weapons
+powerups
+ui
+levels
+config
+events
+utils
+
+------------------------------------------------------------
+18. PERFORMANCE STRATEGY
+------------------------------------------------------------
+
+The following optimization techniques SHALL be implemented.
+
+Object Pooling for bullets and particles
+Sprite batching
+Minimized memory allocation in game loop
+Efficient collision checks
+
+The system SHALL maintain stable performance during high enemy density.
+
+------------------------------------------------------------
+19. ERROR HANDLING
+------------------------------------------------------------
+
+The system SHALL implement centralized error logging.
+
+Error Types
+
+Resource loading failures
+Invalid configuration values
+Runtime gameplay exceptions
+
+All critical errors SHALL be logged.
+
+------------------------------------------------------------
+20. LOGGING SYSTEM
+------------------------------------------------------------
+
+The system SHALL implement a structured logging framework.
+
+Logging Levels
+
+INFO
+DEBUG
+WARNING
+ERROR
+
+Logs SHALL assist debugging and issue tracking.
+
+------------------------------------------------------------
+END OF DOCUMENT

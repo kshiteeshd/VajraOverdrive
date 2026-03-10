@@ -1,0 +1,268 @@
+
+SPACE DEFENDER
+CODING STANDARDS & DEVELOPMENT GUIDELINES
+Version: 1.0
+Language: Java
+Purpose: Ensure maintainable, modular, and high-quality open-source code.
+
+------------------------------------------------------------
+1. PURPOSE
+------------------------------------------------------------
+
+This document defines the coding standards, architectural rules, and
+development guidelines that MUST be followed when contributing to the
+Space Defender project.
+
+All contributors MUST follow these rules to ensure code quality,
+readability, maintainability, and modular architecture.
+
+------------------------------------------------------------
+2. GENERAL PRINCIPLES
+------------------------------------------------------------
+
+Rule 1
+All code MUST be written in clean, readable Java.
+
+Rule 2
+Game logic MUST be separated from rendering logic.
+
+Rule 3
+All systems MUST follow modular design principles.
+
+Rule 4
+Hardcoded values MUST be avoided. Configuration files MUST be used.
+
+Rule 5
+All public classes and methods MUST include documentation comments.
+
+Rule 6
+Code duplication MUST be avoided.
+
+Rule 7
+Reusable components MUST be designed as standalone modules.
+
+------------------------------------------------------------
+3. NAMING CONVENTIONS
+------------------------------------------------------------
+
+Classes
+PascalCase
+
+Examples
+PlayerShip
+EnemySpawner
+WeaponSystem
+
+Methods
+camelCase
+
+Examples
+spawnEnemy()
+updatePlayer()
+calculateDamage()
+
+Variables
+camelCase
+
+Examples
+playerHealth
+enemySpeed
+currentScore
+
+Constants
+UPPER_CASE_WITH_UNDERSCORES
+
+Examples
+MAX_PLAYER_SPEED
+DEFAULT_FIRE_RATE
+BOSS_HEALTH_MULTIPLIER
+
+Packages
+lowercase
+
+Examples
+com.spacedefender.player
+com.spacedefender.enemy
+com.spacedefender.engine
+
+------------------------------------------------------------
+4. PACKAGE STRUCTURE
+------------------------------------------------------------
+
+The project SHALL follow this package structure.
+
+com.spacedefender
+
+core
+engine
+render
+physics
+input
+audio
+entity
+enemy
+player
+weapons
+powerups
+ui
+levels
+events
+config
+utils
+
+Each package SHALL have a clearly defined responsibility.
+
+------------------------------------------------------------
+5. CLASS DESIGN RULES
+------------------------------------------------------------
+
+Rule 1
+A class SHOULD NOT exceed 500 lines of code.
+
+Rule 2
+A method SHOULD NOT exceed 50 lines of code.
+
+Rule 3
+Each class SHOULD have a single responsibility.
+
+Rule 4
+Interfaces SHOULD be used for system abstraction.
+
+Rule 5
+Inheritance SHOULD be used carefully to avoid deep hierarchies.
+
+------------------------------------------------------------
+6. REQUIRED DESIGN PATTERNS
+------------------------------------------------------------
+
+The following patterns SHALL be used where appropriate.
+
+Factory Pattern
+Used for enemy and entity creation.
+
+Singleton Pattern
+Used for resource manager and configuration manager.
+
+Observer Pattern
+Used for event system.
+
+State Pattern
+Used for game states.
+
+Strategy Pattern
+Used for enemy AI behavior.
+
+Object Pool Pattern
+Used for projectiles and particle effects.
+
+------------------------------------------------------------
+7. GAME LOOP RULES
+------------------------------------------------------------
+
+The game loop MUST NOT allocate new objects during each frame where avoidable.
+
+Heavy computations MUST NOT block the game loop.
+
+Rendering MUST be separated from update logic.
+
+------------------------------------------------------------
+8. RESOURCE MANAGEMENT RULES
+------------------------------------------------------------
+
+All assets MUST be loaded through the resource manager.
+
+Assets MUST NOT be loaded directly inside gameplay classes.
+
+Resources MUST be cached after loading.
+
+------------------------------------------------------------
+9. ERROR HANDLING
+------------------------------------------------------------
+
+All recoverable errors MUST be logged.
+
+Exceptions MUST NOT crash the game loop.
+
+Critical failures MUST generate clear error logs.
+
+------------------------------------------------------------
+10. LOGGING GUIDELINES
+------------------------------------------------------------
+
+Logging levels SHALL include:
+
+INFO
+DEBUG
+WARNING
+ERROR
+
+Logs MUST include timestamps and system context.
+
+------------------------------------------------------------
+11. DOCUMENTATION STANDARDS
+------------------------------------------------------------
+
+Each class MUST include a description header.
+
+Each public method MUST include:
+
+Purpose
+Parameters
+Return values
+
+Example documentation style
+
+/**
+ * Updates the player position.
+ * @param deltaTime time elapsed since last frame
+ */
+
+------------------------------------------------------------
+12. VERSION CONTROL RULES
+------------------------------------------------------------
+
+Git SHALL be used for version control.
+
+Branch Structure
+
+main
+development
+feature branches
+
+Commit Messages MUST follow structure:
+
+type: short description
+
+Examples
+
+feat: add enemy spawn system
+fix: resolve collision detection bug
+refactor: improve weapon system structure
+
+------------------------------------------------------------
+13. CODE REVIEW POLICY
+------------------------------------------------------------
+
+All contributions MUST go through pull request review.
+
+Pull requests MUST include:
+
+Description of changes
+Related issue reference
+Testing verification
+
+Code MUST pass style checks before merging.
+
+------------------------------------------------------------
+14. OPEN SOURCE CONTRIBUTION GUIDELINES
+------------------------------------------------------------
+
+Contributors MUST:
+
+Follow coding standards
+Write documentation
+Avoid breaking existing functionality
+Provide meaningful commit messages
+
+------------------------------------------------------------
+END OF DOCUMENT

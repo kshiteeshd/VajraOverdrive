@@ -1,0 +1,174 @@
+
+SPACE DEFENDER
+TESTING & QUALITY ASSURANCE PLAN
+Version: 1.0
+Purpose: Ensure reliability, performance, and stability of the Space Defender game.
+
+------------------------------------------------------------
+1. PURPOSE
+------------------------------------------------------------
+
+This document defines the testing strategy and quality assurance procedures
+for the Space Defender project. The objective is to guarantee that the game
+functions correctly, performs reliably, and maintains a stable user experience
+before public release.
+
+All core systems must be tested before the production release.
+
+------------------------------------------------------------
+2. TESTING OBJECTIVES
+------------------------------------------------------------
+
+The testing process SHALL ensure:
+
+Correct gameplay behavior
+Stable performance at target frame rate
+Accurate collision detection
+Reliable weapon and upgrade systems
+Stable enemy AI behavior
+Correct scoring system
+No game crashes during long play sessions
+
+------------------------------------------------------------
+3. TESTING TYPES
+------------------------------------------------------------
+
+The project SHALL include the following testing categories.
+
+Unit Testing
+Integration Testing
+Gameplay Testing
+Performance Testing
+Regression Testing
+
+------------------------------------------------------------
+4. UNIT TESTING
+------------------------------------------------------------
+
+Unit tests SHALL validate individual components.
+
+Examples of unit tests include:
+
+Weapon damage calculation
+Enemy health reduction logic
+Score calculation logic
+Player movement boundaries
+Projectile trajectory calculation
+Upgrade tier logic
+
+Unit tests SHALL be written using JUnit 5.
+
+All critical game logic must be covered by unit tests.
+
+------------------------------------------------------------
+5. INTEGRATION TESTING
+------------------------------------------------------------
+
+Integration tests SHALL validate interactions between multiple systems.
+
+Examples include:
+
+Player projectile colliding with enemies
+Enemy projectiles damaging the player
+Powerup collection affecting player state
+Upgrade system modifying weapon behavior
+Enemy spawning interacting with wave system
+
+Integration testing ensures systems operate correctly when combined.
+
+------------------------------------------------------------
+6. GAMEPLAY TESTING
+------------------------------------------------------------
+
+Gameplay testing SHALL validate overall player experience.
+
+Testing areas include:
+
+Enemy difficulty progression
+Wave balance
+Weapon effectiveness
+Boss fight mechanics
+Powerup usefulness
+
+Gameplay tests SHALL ensure that the game remains challenging but fair.
+
+------------------------------------------------------------
+7. PERFORMANCE TESTING
+------------------------------------------------------------
+
+Performance testing SHALL ensure stable system behavior.
+
+Performance targets
+
+Maintain stable 60 FPS
+Support high enemy density without frame drops
+Avoid excessive memory allocation
+
+Stress test scenarios
+
+Large enemy wave spawning
+Multiple projectile interactions
+Extended play sessions
+
+------------------------------------------------------------
+8. REGRESSION TESTING
+------------------------------------------------------------
+
+Regression testing SHALL ensure new updates do not break existing features.
+
+Every new feature or bug fix MUST be followed by regression testing of:
+
+Player mechanics
+Enemy behavior
+Weapon systems
+UI systems
+
+------------------------------------------------------------
+9. BUG TRACKING
+------------------------------------------------------------
+
+All defects SHALL be recorded using an issue tracking system.
+
+Bug reports MUST include
+
+Description of issue
+Steps to reproduce
+Expected result
+Actual result
+Environment details
+
+Severity Levels
+
+Critical
+Major
+Minor
+Cosmetic
+
+------------------------------------------------------------
+10. TEST ENVIRONMENTS
+------------------------------------------------------------
+
+Testing SHALL be performed on multiple systems where possible.
+
+Recommended environments
+
+Windows Desktop
+Linux Desktop
+macOS Desktop
+
+Testing SHALL verify compatibility across supported platforms.
+
+------------------------------------------------------------
+11. RELEASE CRITERIA
+------------------------------------------------------------
+
+The game SHALL be eligible for release when:
+
+All critical bugs are resolved
+Performance targets are achieved
+Core gameplay systems are stable
+Documentation is complete
+Code passes review standards
+
+------------------------------------------------------------
+END OF DOCUMENT

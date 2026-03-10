@@ -1,0 +1,420 @@
+
+SPACE DEFENDER
+GAME REQUIREMENTS SPECIFICATION (GRS)
+Version: 1.0
+Status: Draft
+Author: Project Owner
+Language: Java
+License: MIT (to be defined in separate license document)
+
+------------------------------------------------------------
+1. PROJECT OVERVIEW
+------------------------------------------------------------
+
+Project Name:
+Space Defender
+
+Project Type:
+Retro Arcade Shooter Game
+
+Target Platform:
+Desktop (Windows / Linux / macOS)
+
+Primary Language:
+Java
+
+Objective:
+Develop a modular, high‑performance, retro‑style arcade shooter inspired by classic space shooters while incorporating modern gameplay mechanics such as upgrades, AI behaviors, powerups, and boss encounters.
+
+The game must maintain a stable 60 FPS and follow a highly modular architecture that enables maintainability, scalability, and open‑source collaboration.
+
+------------------------------------------------------------
+2. GENERAL GAME REQUIREMENTS
+------------------------------------------------------------
+
+REQ-GEN-001
+The system SHALL implement a retro arcade shooter gameplay experience.
+
+REQ-GEN-002
+The system SHALL maintain a consistent frame rate target of 60 FPS.
+
+REQ-GEN-003
+The system SHALL be developed using pure Java without external game engines.
+
+REQ-GEN-004
+The codebase SHALL follow a modular architecture separating core engine systems from gameplay logic.
+
+REQ-GEN-005
+The project SHALL be structured to support open-source collaboration.
+
+REQ-GEN-006
+All game logic SHALL be deterministic and reproducible for testing purposes.
+
+REQ-GEN-007
+The game SHALL run in both windowed and fullscreen display modes.
+
+------------------------------------------------------------
+3. GAMEPLAY LOOP REQUIREMENTS
+------------------------------------------------------------
+
+REQ-GAME-001
+The game SHALL operate using a continuous game loop.
+
+REQ-GAME-002
+Each game loop iteration SHALL process the following stages:
+
+1. Input processing
+2. Entity updates
+3. Enemy AI updates
+4. Physics and collision detection
+5. Game state updates
+6. Rendering
+7. Audio updates
+
+REQ-GAME-003
+Enemy waves SHALL spawn sequentially.
+
+REQ-GAME-004
+Completion of a wave SHALL trigger the next wave.
+
+REQ-GAME-005
+Game progression SHALL increase difficulty over time.
+
+------------------------------------------------------------
+4. PLAYER SYSTEM REQUIREMENTS
+------------------------------------------------------------
+
+REQ-PLAYER-001
+The system SHALL implement a player-controlled spaceship.
+
+REQ-PLAYER-002
+The player SHALL be able to move in four directions within a defined combat boundary.
+
+REQ-PLAYER-003
+The player SHALL not be able to exit the combat boundary.
+
+REQ-PLAYER-004
+The player SHALL be able to fire weapons.
+
+REQ-PLAYER-005
+The player SHALL have a life system.
+
+REQ-PLAYER-006
+Each life SHALL contain a health bar.
+
+REQ-PLAYER-007
+When the health bar reaches zero, one life SHALL be removed.
+
+REQ-PLAYER-008
+The player SHALL start with three lives.
+
+REQ-PLAYER-009
+The player SHALL be able to collect additional life fragments.
+
+REQ-PLAYER-010
+The player SHALL have a shield mechanic that absorbs incoming damage.
+
+------------------------------------------------------------
+5. PLAYER UPGRADE SYSTEM
+------------------------------------------------------------
+
+REQ-UPGRADE-001
+The system SHALL implement five spaceship upgrade tiers.
+
+REQ-UPGRADE-002
+Each upgrade tier SHALL increase player capabilities.
+
+REQ-UPGRADE-003
+Upgrade tiers SHALL improve the following attributes:
+
+- ship speed
+- weapon power
+- firing rate
+- missile capabilities
+- durability
+
+REQ-UPGRADE-004
+Upgrade tiers SHALL unlock progressively during gameplay.
+
+------------------------------------------------------------
+6. WEAPON SYSTEM REQUIREMENTS
+------------------------------------------------------------
+
+REQ-WEAPON-001
+The system SHALL implement multiple weapon types.
+
+REQ-WEAPON-002
+Weapons SHALL unlock progressively through ship upgrades.
+
+REQ-WEAPON-003
+Weapons SHALL support different firing behaviors.
+
+REQ-WEAPON-004
+Weapon systems SHALL support multiple simultaneous projectiles.
+
+REQ-WEAPON-005
+Weapon fire rate SHALL be configurable.
+
+REQ-WEAPON-006
+Weapons SHALL support projectile collision detection.
+
+------------------------------------------------------------
+7. ENEMY SYSTEM REQUIREMENTS
+------------------------------------------------------------
+
+REQ-ENEMY-001
+The system SHALL support multiple enemy categories.
+
+REQ-ENEMY-002
+Enemy entities SHALL have independent health values.
+
+REQ-ENEMY-003
+Enemy entities SHALL support multiple movement patterns.
+
+REQ-ENEMY-004
+Enemy entities SHALL support independent attack systems.
+
+REQ-ENEMY-005
+Enemy difficulty SHALL scale as levels progress.
+
+REQ-ENEMY-006
+Enemy entities SHALL be capable of spawning sub-entities when destroyed if configured.
+
+------------------------------------------------------------
+8. ENEMY MOVEMENT REQUIREMENTS
+------------------------------------------------------------
+
+REQ-MOVE-001
+Enemies SHALL spawn from the upper region of the combat area.
+
+REQ-MOVE-002
+Enemy movement SHALL support configurable movement patterns.
+
+REQ-MOVE-003
+Movement patterns SHALL include predictable and randomized behaviors.
+
+REQ-MOVE-004
+Movement logic SHALL be processed through an AI behavior system.
+
+------------------------------------------------------------
+9. ENEMY ATTACK REQUIREMENTS
+------------------------------------------------------------
+
+REQ-ATTACK-001
+Enemies SHALL be capable of firing projectiles.
+
+REQ-ATTACK-002
+Enemy projectiles SHALL damage the player.
+
+REQ-ATTACK-003
+Enemy attack patterns SHALL be configurable.
+
+REQ-ATTACK-004
+Enemy attack frequency SHALL scale with game difficulty.
+
+------------------------------------------------------------
+10. BOSS SYSTEM REQUIREMENTS
+------------------------------------------------------------
+
+REQ-BOSS-001
+The system SHALL include boss encounters.
+
+REQ-BOSS-002
+Boss encounters SHALL occur periodically during gameplay.
+
+REQ-BOSS-003
+Boss entities SHALL have significantly higher health than standard enemies.
+
+REQ-BOSS-004
+Boss entities SHALL have multiple attack phases.
+
+REQ-BOSS-005
+Boss attacks SHALL include high-damage abilities.
+
+------------------------------------------------------------
+11. DROP SYSTEM REQUIREMENTS
+------------------------------------------------------------
+
+REQ-DROP-001
+Enemies SHALL have a probability of dropping rewards.
+
+REQ-DROP-002
+The drop system SHALL support multiple drop categories.
+
+REQ-DROP-003
+Collectible items SHALL be automatically collected when touched by the player.
+
+REQ-DROP-004
+Life fragments SHALL combine to form additional player lives.
+
+------------------------------------------------------------
+12. LEVEL SYSTEM REQUIREMENTS
+------------------------------------------------------------
+
+REQ-LEVEL-001
+The game SHALL include 100 levels.
+
+REQ-LEVEL-002
+Each level SHALL contain one or more enemy waves.
+
+REQ-LEVEL-003
+Wave difficulty SHALL increase progressively.
+
+REQ-LEVEL-004
+Level progression SHALL unlock new gameplay elements.
+
+------------------------------------------------------------
+13. REGION SYSTEM REQUIREMENTS
+------------------------------------------------------------
+
+REQ-REGION-001
+The game SHALL include multiple space regions.
+
+REQ-REGION-002
+Regions SHALL change every 10 levels.
+
+REQ-REGION-003
+Each region SHALL introduce new visual environments.
+
+REQ-REGION-004
+Regions SHALL introduce new enemy types.
+
+------------------------------------------------------------
+14. SCORING SYSTEM REQUIREMENTS
+------------------------------------------------------------
+
+REQ-SCORE-001
+The system SHALL track the player's score.
+
+REQ-SCORE-002
+Enemies SHALL award points when destroyed.
+
+REQ-SCORE-003
+Score values SHALL vary by enemy type.
+
+REQ-SCORE-004
+Boss enemies SHALL award significantly higher score values.
+
+------------------------------------------------------------
+15. USER INTERFACE REQUIREMENTS
+------------------------------------------------------------
+
+REQ-UI-001
+The game SHALL display a gameplay panel.
+
+REQ-UI-002
+The game SHALL include a side information panel.
+
+REQ-UI-003
+The UI SHALL display:
+
+- score
+- lives
+- level
+- wave
+- weapon level
+- ship tier
+
+REQ-UI-004
+UI updates SHALL occur in real time.
+
+------------------------------------------------------------
+16. AUDIO REQUIREMENTS
+------------------------------------------------------------
+
+REQ-AUDIO-001
+The system SHALL support sound effects.
+
+REQ-AUDIO-002
+The system SHALL support background music.
+
+REQ-AUDIO-003
+Audio SHALL include event-triggered sounds for gameplay actions.
+
+------------------------------------------------------------
+17. PERFORMANCE REQUIREMENTS
+------------------------------------------------------------
+
+REQ-PERF-001
+The game SHALL maintain a stable 60 FPS.
+
+REQ-PERF-002
+The system SHALL support large enemy counts without frame drops.
+
+REQ-PERF-003
+Memory usage SHALL remain stable during long play sessions.
+
+------------------------------------------------------------
+18. SCREEN MODE REQUIREMENTS
+------------------------------------------------------------
+
+REQ-SCREEN-001
+The game SHALL support windowed mode.
+
+REQ-SCREEN-002
+The game SHALL support fullscreen mode.
+
+REQ-SCREEN-003
+Switching screen modes SHALL not interrupt gameplay.
+
+------------------------------------------------------------
+19. SAVE GAME SYSTEM REQUIREMENTS
+------------------------------------------------------------
+
+REQ-SAVE-001
+The system SHALL allow players to start a new game profile.
+
+REQ-SAVE-002
+When starting a new game, the player SHALL be prompted to enter a player name.
+
+REQ-SAVE-003
+The entered player name SHALL be used as a unique save profile identifier.
+
+REQ-SAVE-004
+The system SHALL store save data for each player profile.
+
+REQ-SAVE-005
+The game SHALL provide a "Load Game" option from the main menu.
+
+REQ-SAVE-006
+The Load Game menu SHALL display a list of available player profiles.
+
+REQ-SAVE-007
+Selecting a player profile SHALL load the saved game state.
+
+REQ-SAVE-008
+The save system SHALL store the following data:
+
+- player name
+- current level
+- current region
+- player score
+- player lives
+- ship upgrade tier
+- weapon upgrade level
+
+REQ-SAVE-009
+Save files SHALL be stored locally on the user's system.
+
+REQ-SAVE-010
+The save system SHALL use a structured file format such as JSON.
+
+REQ-SAVE-011
+The system SHALL automatically update the save file after major game events:
+
+- level completion
+- upgrade acquisition
+- player death
+- game exit
+
+REQ-SAVE-012
+The system SHALL support multiple player save profiles.
+
+REQ-SAVE-013
+The system SHALL prevent duplicate profile names.
+
+REQ-SAVE-014
+Corrupted save files SHALL be detected and safely ignored by the system.
+
+------------------------------------------------------------
+END OF DOCUMENT

@@ -1,0 +1,180 @@
+
+SPACE DEFENDER
+OPEN SOURCE LICENSE & CONTRIBUTION GUIDE
+Version: 1.0
+
+------------------------------------------------------------
+1. OPEN SOURCE LICENSE
+------------------------------------------------------------
+
+This project is licensed under the MIT License.
+
+MIT License
+
+Copyright (c) 2026 Space Defender Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+------------------------------------------------------------
+2. USAGE RIGHTS
+------------------------------------------------------------
+
+Users of the Space Defender source code are permitted to:
+
+Use the software for personal or commercial purposes
+Modify the source code
+Create derivative works
+Distribute copies of the software
+Include the software within larger projects
+
+The only requirement is that the original license and copyright notice
+must remain included in distributed copies of the software.
+
+------------------------------------------------------------
+3. RESTRICTIONS
+------------------------------------------------------------
+
+The following restrictions apply:
+
+The license text must not be removed from the project.
+Contributors must not claim ownership of the original project.
+Misrepresentation of authorship is prohibited.
+
+------------------------------------------------------------
+4. CONTRIBUTION GUIDELINES
+------------------------------------------------------------
+
+Contributions are welcome from the open source community.
+
+Before contributing:
+
+1. Fork the repository
+2. Create a new feature branch
+3. Implement the feature or bug fix
+4. Test your changes
+5. Submit a pull request
+
+------------------------------------------------------------
+5. BRANCH STRUCTURE
+------------------------------------------------------------
+
+The project SHALL use the following Git branch structure.
+
+main
+Contains stable release versions of the project.
+
+development
+Contains integration of completed features before release.
+
+feature branches
+Created for specific features or bug fixes.
+
+Example feature branch names:
+
+feature/enemy-ai
+feature/boss-system
+fix/collision-bug
+
+------------------------------------------------------------
+6. COMMIT MESSAGE FORMAT
+------------------------------------------------------------
+
+All commits MUST follow a structured format.
+
+Format:
+
+type: short description
+
+Examples:
+
+feat: add enemy spawning system
+fix: resolve collision detection issue
+refactor: improve weapon architecture
+docs: update project documentation
+
+Commit Types:
+
+feat
+fix
+refactor
+docs
+test
+chore
+
+------------------------------------------------------------
+7. PULL REQUEST RULES
+------------------------------------------------------------
+
+Pull requests MUST include:
+
+Clear description of changes
+Reference to related issues
+Testing confirmation
+Code following project coding standards
+
+Pull requests will be reviewed before merging.
+
+------------------------------------------------------------
+8. CODE OWNERSHIP
+------------------------------------------------------------
+
+The project maintainer has final authority over:
+
+Pull request approvals
+Architecture decisions
+Release versions
+
+Major architectural changes require discussion before implementation.
+
+------------------------------------------------------------
+9. VERSIONING STRATEGY
+------------------------------------------------------------
+
+The project SHALL follow Semantic Versioning.
+
+Version format:
+
+MAJOR.MINOR.PATCH
+
+Examples:
+
+1.0.0 Initial release
+1.1.0 New gameplay features
+1.1.1 Bug fixes
+
+Version increments:
+
+MAJOR: incompatible changes
+MINOR: new features
+PATCH: bug fixes
+
+------------------------------------------------------------
+10. RELEASE PROCESS
+------------------------------------------------------------
+
+The release process SHALL include:
+
+Completion of development milestones
+Successful testing phase
+Code review completion
+Tagging release version
+Publishing release notes
+
+------------------------------------------------------------
+END OF DOCUMENT
