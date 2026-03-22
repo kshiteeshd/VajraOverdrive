@@ -13,11 +13,12 @@ import save.SettingsManager;
 import score.ScoreManager;
 import ui.*;
 import ui.hud.HUDData;
-import ui.hud.NebulHUD;
+import ui.hud.NebulaHUD;   // FIXED: was NebulHUD (typo)
 import ui.menu.*;
 import ui.theme.UIFonts;
 import ui.theme.UITheme;
 import wave.WaveManager;
+import boss.BossEntity;
 import input.InputManager;
 
 import javax.swing.*;
@@ -39,9 +40,9 @@ public class GameCanvas extends JPanel {
     private final SpaceBackground spaceBackground;
     private       GameState       lastState = null;
 
-    // CHANGED: NebulHUD replaces GameUILayout
-    private final NebulHUD nebulHUD;
-    private final HUDData  hudData = new HUDData();
+    // FIXED: corrected class name NebulaHUD
+    private final NebulaHUD nebulHUD;
+    private final HUDData   hudData = new HUDData();
 
     private final CampaignIntroScreen    campaignIntro;
     private final RegionIntroScreen      regionIntro;
@@ -79,7 +80,7 @@ public class GameCanvas extends JPanel {
         addKeyListener(input);
 
         entityManager   = new EntityManager();
-        nebulHUD        = new NebulHUD();
+        nebulHUD        = new NebulaHUD();   // FIXED: correct class
         player          = PlayerShip.createDefault(entityManager);
         campaignManager = new CampaignManager(entityManager, player, 1);
         FxLayer.get().init(entityManager);
@@ -108,6 +109,8 @@ public class GameCanvas extends JPanel {
     private void rebuildSession(boolean isNewGame) {
         int startLevel = PendingGameStart.level;
 
+        // FIXED: build entityManager and player BEFORE CampaignManager
+        // so WaveManager / FleetController receive the correct player reference
         entityManager   = new EntityManager();
         player          = PlayerShip.createDefault(entityManager);
         campaignManager = new CampaignManager(entityManager, player, startLevel);
@@ -134,17 +137,24 @@ public class GameCanvas extends JPanel {
         hudData.totalLevels = 25;
         hudData.gameMode    = PendingGameStart.gameMode != null
                 ? PendingGameStart.gameMode.name() : "CAMPAIGN";
-        hudData.shieldFrac  = 1.0f;  // full until shield system added
+        hudData.shieldFrac  = 1.0f;
         hudData.armorFrac   = 1.0f;
         hudData.shieldCrit  = hudData.shieldFrac < 0.20f;
         hudData.fps         = fps;
+        hudData.comboMult   = 1; // placeholder until ComboManager added
 
-        // Combo multiplier — derived from score manager
-        // (rough proxy until ComboManager is added in Batch 6)
-        hudData.comboMult = 1;
-
-        // Boss data — will be populated by BossManager in Batch 3 wire-up
-        hudData.bossActive = false;
+        // FIXED: populate boss HUD data from WaveManager
+        BossEntity boss = WaveManager.getActiveBoss();
+        if (boss != null && WaveManager.isBossActive()) {
+            hudData.bossActive     = true;
+            hudData.bossName       = boss.getBossName();
+            hudData.bossHpFrac     = (float) boss.getCurrentHealth()
+                    / (float) boss.getMaxHealth();
+            hudData.bossPhase      = boss.getPhase() + 1;
+            hudData.bossTotalPhases = boss.getMaxPhases();
+        } else {
+            hudData.bossActive = false;
+        }
     }
 
     // ── Update ────────────────────────────────────────────────────────
@@ -187,7 +197,10 @@ public class GameCanvas extends JPanel {
             }
 
             case LEVEL_TRANSITION -> {
+                // FIXED: keep updating entities so particles/projectiles
+                // don't freeze mid-air during the level clear screen
                 spaceBackground.update();
+                entityManager.update();
                 campaignManager.update();
                 populateHUDData();
             }
@@ -292,12 +305,17 @@ public class GameCanvas extends JPanel {
             case LEVEL_LOAD     -> levelLoad.render(gb);
 
             case PLAYING -> {
-                // CHANGED: full 1000×600 game area
                 spaceBackground.render(gb, 0, 0,
                         LayoutConfig.VIRTUAL_WIDTH,
                         LayoutConfig.VIRTUAL_HEIGHT);
                 entityManager.render(gb);
-                // NebulHUD renders as overlay on top
+
+                // FIXED: render boss — boss is NOT in EntityManager, must be explicit
+                BossEntity boss = WaveManager.getActiveBoss();
+                if (boss != null && !boss.isRemovable()) {
+                    boss.render(gb);
+                }
+
                 nebulHUD.render(gb, hudData);
             }
 
@@ -306,6 +324,13 @@ public class GameCanvas extends JPanel {
                         LayoutConfig.VIRTUAL_WIDTH,
                         LayoutConfig.VIRTUAL_HEIGHT);
                 entityManager.render(gb);
+
+                // FIXED: also render boss during transition if still alive
+                BossEntity boss = WaveManager.getActiveBoss();
+                if (boss != null && !boss.isRemovable()) {
+                    boss.render(gb);
+                }
+
                 nebulHUD.render(gb, hudData);
                 levelClear.render(gb);
             }

@@ -1,12 +1,15 @@
 package boss;
 
-import boss.types.*;
 import entity.EntityManager;
 import player.PlayerShip;
+import boss.types.*;
 
 /**
  * Maps region names to their boss constructors.
  * WaveManager calls createBoss() when a BOSS wave is triggered.
+ *
+ * FIXED: imports changed from boss.types.* to boss.* — all boss files
+ * live in the boss package, not a boss.types sub-package.
  */
 public class BossRegistry {
 

@@ -18,7 +18,6 @@ public class SettingsMenuScreen {
     private static final int H  = LayoutConfig.WINDOW_HEIGHT;
     private static final int CX = W / 2;
 
-    // Row indices
     private static final int ROW_CONTROLS   = 0;
     private static final int ROW_SOUND      = 1;
     private static final int ROW_MUSIC      = 2;
@@ -47,27 +46,26 @@ public class SettingsMenuScreen {
             return;
         }
 
-        // LEFT / RIGHT adjust values
         boolean left  = InputManager.isKeyPressed(KeyEvent.VK_LEFT);
         boolean right = InputManager.isKeyPressed(KeyEvent.VK_RIGHT);
         boolean enter = InputManager.isKeyPressed(KeyEvent.VK_ENTER);
 
         switch (selected) {
             case ROW_CONTROLS -> {
-                if (enter) GameStateManager.setState(GameState.SETTINGS_MENU); // shows controls inline
-                // Handled below in render — controls are drawn in-screen
+                // FIXED: was setState(SETTINGS_MENU) which re-entered settings.
+                // Now correctly navigates to the dedicated controls screen.
+                if (enter) {
+                    SettingsManager.save();
+                    GameStateManager.setState(GameState.CONTROL_MENU);
+                }
             }
             case ROW_SOUND -> {
-                if (enter || left || right) {
-                    s.soundEnabled = !s.soundEnabled;
-                }
+                if (enter) s.soundEnabled = !s.soundEnabled;
                 if (left  && s.soundVolume > 0)   s.soundVolume -= 10;
                 if (right && s.soundVolume < 100)  s.soundVolume += 10;
             }
             case ROW_MUSIC -> {
-                if (enter || left || right) {
-                    if (enter) s.musicEnabled = !s.musicEnabled;
-                }
+                if (enter) s.musicEnabled = !s.musicEnabled;
                 if (left  && s.musicVolume > 0)   s.musicVolume -= 10;
                 if (right && s.musicVolume < 100)  s.musicVolume += 10;
             }
@@ -81,8 +79,10 @@ public class SettingsMenuScreen {
                             % SettingsProfile.RESOLUTION_LABELS.length;
             }
             case ROW_BRIGHTNESS -> {
-                if (left  && s.brightness > 0.5f) s.brightness = Math.round((s.brightness - 0.1f) * 10) / 10f;
-                if (right && s.brightness < 1.5f) s.brightness = Math.round((s.brightness + 0.1f) * 10) / 10f;
+                if (left  && s.brightness > 0.5f)
+                    s.brightness = Math.round((s.brightness - 0.1f) * 10) / 10f;
+                if (right && s.brightness < 1.5f)
+                    s.brightness = Math.round((s.brightness + 0.1f) * 10) / 10f;
             }
         }
     }
@@ -91,7 +91,6 @@ public class SettingsMenuScreen {
         MenuButton.renderBackground(g);
         SettingsProfile s = SettingsManager.get();
 
-        // ── Title ─────────────────────────────────────────────────────
         g.setFont(UIFonts.TITLE);
         FontMetrics fmT = g.getFontMetrics();
         String title = "SETTINGS";
@@ -100,19 +99,17 @@ public class SettingsMenuScreen {
         g.setColor(new Color(0, 255, 255, 40));
         g.fillRect(CX - 90, 74, 180, 1);
 
-        // ── Rows ──────────────────────────────────────────────────────
         int rowH   = 62;
         int startY = 110;
         int tableW = 640;
         int tableX = CX - tableW / 2;
 
-        // Controls row
+        // FIXED: subtitle updated to reflect correct navigation behaviour
         drawRow(g, ROW_CONTROLS, tableX, startY, tableW, rowH,
                 "VIEW CONTROLS",
-                "ENTER to view key bindings",
+                "ENTER to open controls screen",
                 selected == ROW_CONTROLS);
 
-        // Sound row
         drawToggleRow(g, ROW_SOUND, tableX, startY + rowH, tableW, rowH,
                 "SOUND EFFECTS",
                 s.soundEnabled,
@@ -120,7 +117,6 @@ public class SettingsMenuScreen {
                 "volume",
                 selected == ROW_SOUND);
 
-        // Music row
         drawToggleRow(g, ROW_MUSIC, tableX, startY + rowH * 2, tableW, rowH,
                 "MUSIC",
                 s.musicEnabled,
@@ -128,21 +124,18 @@ public class SettingsMenuScreen {
                 "volume  (coming soon)",
                 selected == ROW_MUSIC);
 
-        // Resolution row
         drawCycleRow(g, ROW_RESOLUTION,
                 tableX, startY + rowH * 3, tableW, rowH,
                 "RESOLUTION",
                 SettingsProfile.RESOLUTION_LABELS[s.resolutionIdx],
                 selected == ROW_RESOLUTION);
 
-        // Brightness row
         drawSliderRow(g, ROW_BRIGHTNESS,
                 tableX, startY + rowH * 4, tableW, rowH,
                 "BRIGHTNESS",
                 s.brightness, 0.5f, 1.5f,
                 selected == ROW_BRIGHTNESS);
 
-        // Back row
         int backY = startY + rowH * 5 + 8;
         g.setFont(UIFonts.MENU);
         FontMetrics fmM = g.getFontMetrics();
@@ -150,15 +143,13 @@ public class SettingsMenuScreen {
         g.setColor(selected == ROW_BACK ? UITheme.ACCENT : UITheme.TEXT_DIM);
         g.drawString(back, CX - fmM.stringWidth(back) / 2, backY + 20);
 
-        // ── Footer ────────────────────────────────────────────────────
         g.setFont(UIFonts.SMALL);
         FontMetrics fmS = g.getFontMetrics();
         String footer = "UP/DOWN  navigate    LEFT/RIGHT  adjust    ESC  back";
         g.setColor(UITheme.TEXT_FAINT);
         g.drawString(footer, CX - fmS.stringWidth(footer) / 2, H - 16);
 
-        // ── Controls sub-panel (inline, shown when ROW_CONTROLS selected) ──
-        if (selected == ROW_CONTROLS) drawControlsPanel(g);
+        // NOTE: inline controls panel removed — now a dedicated screen (CONTROL_MENU)
     }
 
     // ── Row helpers ───────────────────────────────────────────────────
@@ -183,7 +174,6 @@ public class SettingsMenuScreen {
         g.setColor(sel ? UITheme.ACCENT : UITheme.PRIMARY);
         g.drawString(label, x + 16, y + 28);
 
-        // ON/OFF badge
         String toggle = enabled ? "ON" : "OFF";
         Color  togCol = enabled ? UITheme.HIGHLIGHT : UITheme.DANGER;
         g.setFont(UIFonts.SMALL);
@@ -191,7 +181,6 @@ public class SettingsMenuScreen {
         g.setColor(togCol);
         g.drawString(toggle, x + w - fmS.stringWidth(toggle) - 16, y + 22);
 
-        // Volume bar
         int barW  = 120;
         int barX  = x + w - barW - 16;
         int barY  = y + 36;
@@ -232,7 +221,6 @@ public class SettingsMenuScreen {
         g.setColor(sel ? UITheme.ACCENT : UITheme.PRIMARY);
         g.drawString(label, x + 16, y + 28);
 
-        // Slider bar
         int barW  = 160;
         int barX  = x + w - barW - 16;
         int barY  = y + 20;
@@ -244,11 +232,9 @@ public class SettingsMenuScreen {
         g.setColor(sel ? UITheme.ACCENT : UITheme.PRIMARY);
         g.fillRect(barX, barY, fillW, 6);
 
-        // Thumb
         g.setColor(UITheme.ACCENT);
         g.fillRect(barX + fillW - 2, barY - 3, 4, 12);
 
-        // Value label
         g.setFont(UIFonts.SMALL);
         FontMetrics fmS = g.getFontMetrics();
         String valStr = String.format("%.1f", value);
@@ -266,67 +252,7 @@ public class SettingsMenuScreen {
         g.setColor(sel ? UITheme.ACCENT : new Color(0, 255, 255, 20));
         g.fillRect(x, y, w, 1);
         g.fillRect(x, y + h - 1, w, 1);
-        // Left accent
         g.setColor(sel ? UITheme.ACCENT : UITheme.TEXT_FAINT);
         g.fillRect(x, y, 4, h);
-    }
-
-    // ── Inline controls reference panel ──────────────────────────────
-    private void drawControlsPanel(Graphics2D g) {
-        int pw = 500, ph = 260;
-        int px = CX - pw / 2, py = H / 2 - ph / 2;
-
-        // Overlay
-        g.setColor(new Color(0, 0, 0, 200));
-        g.fillRect(0, 0, W, H);
-
-        // Panel
-        g.setColor(new Color(6, 12, 18));
-        g.fillRect(px, py, pw, ph);
-        g.setColor(UITheme.PRIMARY);
-        g.fillRect(px, py, pw, 2);
-        g.fillRect(px, py + ph - 1, pw, 1);
-        g.fillRect(px, py, 1, ph);
-        g.fillRect(px + pw - 1, py, 1, ph);
-
-        g.setFont(UIFonts.MENU);
-        FontMetrics fmM = g.getFontMetrics();
-        String head = "CONTROLS";
-        g.setColor(UITheme.PRIMARY);
-        g.drawString(head, CX - fmM.stringWidth(head) / 2, py + 28);
-
-        g.setColor(new Color(0, 255, 255, 35));
-        g.fillRect(px + 20, py + 36, pw - 40, 1);
-
-        String[][] binds = {
-                { "ARROWS",  "MOVE SHIP"     },
-                { "SPACE",   "FIRE"           },
-                { "Z",       "FIRE (alt)"     },
-                { "F",       "FULLSCREEN"     },
-                { "ESC",     "BACK / PAUSE"   },
-                { "ENTER",   "CONFIRM"        },
-        };
-
-        int bx    = px + 30;
-        int right = px + pw - 30;
-        int by    = py + 60;
-        int blineH = 28;
-
-        g.setFont(UIFonts.SMALL);
-        FontMetrics fmS = g.getFontMetrics();
-
-        for (String[] bind : binds) {
-            g.setColor(UITheme.ACCENT);
-            g.drawString(bind[0], bx, by);
-            g.setColor(UITheme.TEXT_DIM);
-            g.drawString("|", CX - 4, by);
-            g.setColor(UITheme.PRIMARY);
-            g.drawString(bind[1], CX + 12, by);
-            by += blineH;
-        }
-
-        g.setColor(UITheme.TEXT_FAINT);
-        String close = "UP / DOWN to close this panel";
-        g.drawString(close, CX - fmS.stringWidth(close) / 2, py + ph - 14);
     }
 }

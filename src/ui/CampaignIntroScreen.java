@@ -48,6 +48,7 @@ public class CampaignIntroScreen {
     }
 
     public void update() {
+        bg.update();
         long now = System.currentTimeMillis();
 
         // Blink

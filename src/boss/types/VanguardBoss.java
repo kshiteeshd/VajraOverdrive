@@ -7,7 +7,6 @@ import boss.BossEntity;
 import boss.BossStats;
 import entity.EntityManager;
 import gfx.FxLayer;
-import gfx.ScreenShake;
 import player.PlayerShip;
 
 import java.awt.*;

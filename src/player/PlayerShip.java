@@ -124,8 +124,10 @@ public class PlayerShip extends Entity {
             anim.play("thrust", "idle");
 
         // Shooting
-        if (InputManager.isKeyPresent(KeyEvent.VK_Z) ||
-                InputManager.isKeyPresent(KeyEvent.VK_SPACE)) {
+        // Replace the shooting block in update() with a single shared check:
+        boolean fireKey = InputManager.isKeyPresent(KeyEvent.VK_Z) ||
+                InputManager.isKeyPresent(KeyEvent.VK_SPACE);
+        if (fireKey) {
             if (now - lastShotTime > fireDelay) {
                 lastShotTime = now;
                 entityManager.add(new ProjectileEntity(

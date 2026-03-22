@@ -8,7 +8,6 @@ import boss.BossStats;
 import enemy.data.EnemyRegistry;
 import enemy.data.EnemyType;
 import entity.EntityManager;
-import entity.ProjectileEntity;
 import gfx.FxLayer;
 import player.PlayerShip;
 
