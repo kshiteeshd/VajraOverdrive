@@ -1,0 +1,56 @@
+VAJRA OVERDRIVE ENGINE REPORT
+=================================
+
+Generated: 2026-03-10T21:49:14.441079400
+
+PROJECT STRUCTURE
+-------------------
+[PACKAGE] audio
+[PACKAGE] config
+  - CombatArea.java
+  - LayoutConfig.java
+[PACKAGE] core
+  - GameCanvas.java
+  - GameLauncher.java
+  - GameLoop.java
+  - GameWindow.java
+[PACKAGE] enemy
+[PACKAGE] engine
+[PACKAGE] entity
+  - Entity.java
+  - EntityManager.java
+  - ProjectileEntity.java
+[PACKAGE] events
+[PACKAGE] input
+  - InputManager.java
+[PACKAGE] levels
+[PACKAGE] physics
+[PACKAGE] player
+  - PlayerShip.java
+[PACKAGE] powerups
+[PACKAGE] render
+[PACKAGE] spawn
+  - SpawnManager.java
+[PACKAGE] ui
+  - GameUILayout.java
+[PACKAGE] utils
+  - DevelopmentReportGenerator.java
+[PACKAGE] weapons
+
+PROJECT STATISTICS
+-------------------
+Packages: 17
+Java Files: 14
+Lines of Code: 737
+
+SYSTEM DETECTION
+-------------------
+Entity Classes: 3
+Config Classes: 1
+UI Classes: 1
+
+ASSET REPORT
+-------------------
+Total Assets: 2
+
+END OF REPORT

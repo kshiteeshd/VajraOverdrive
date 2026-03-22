@@ -1,34 +1,67 @@
 package entity;
 
+import enemy.EnemyEntity;
+
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Central list that stores and updates all entities.
+ *
+ * FIXED:
+ *  - ConcurrentModificationException: render() now iterates over a
+ *    snapshot copy of the entities list. The game loop (update thread)
+ *    and Swing's AWT-EventQueue (render thread) run concurrently.
+ *    Without a snapshot, render() iterating while update() removes
+ *    entities causes ConcurrentModificationException.
+ *  - pending list prevents mid-update-iteration adds (from Batch 3).
+ */
 public class EntityManager {
 
-    private List<Entity> entities;
+    private final List<Entity> entities = new ArrayList<>();
+    private final List<Entity> pending  = new ArrayList<>();
 
-    public EntityManager(){
-        entities = new ArrayList<>();
+    public void add(Entity e) {
+        pending.add(e);
     }
 
-    public void addEntities(Entity entity){
-        entities.add(entity);
+    public List<Entity> getEntities() {
+        return entities;
     }
 
-    public void removeEntity(Entity entity){
-        entities.remove(entity);
-    }
+    public void update() {
+        // Merge pending entities queued during last frame
+        if (!pending.isEmpty()) {
+            entities.addAll(pending);
+            pending.clear();
+        }
 
-    public void update(){
-        for(Entity entity: entities){
-            entity.update();
+        for (int i = 0; i < entities.size(); i++) {
+            Entity e = entities.get(i);
+            e.update();
+
+            if (e.isRemovable()) {
+                entities.remove(i);
+                i--;
+            }
         }
     }
 
-    public void render(Graphics g){
-        for(Entity entity: entities){
-            entity.render(g);
+    public void render(Graphics g) {
+        // FIXED: iterate a snapshot so the AWT render thread never sees
+        // a structural modification made by the game loop update thread.
+        List<Entity> snapshot = new ArrayList<>(entities);
+        for (Entity e : snapshot) {
+            e.render(g);
         }
+    }
+
+    public int countEnemies() {
+        int count = 0;
+        for (Entity e : entities) {
+            if (e instanceof EnemyEntity) count++;
+        }
+        return count;
     }
 }

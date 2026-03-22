@@ -1,5 +1,9 @@
+
 package core;
 
+/**
+ * Fixed timestep game loop.
+ */
 public class GameLoop implements Runnable {
 
     private Thread gameThread;
@@ -15,11 +19,9 @@ public class GameLoop implements Runnable {
     }
 
     public void start() {
-
         running = true;
         gameThread = new Thread(this);
         gameThread.start();
-
     }
 
     @Override
@@ -29,7 +31,6 @@ public class GameLoop implements Runnable {
         double delta = 0;
 
         int frames = 0;
-        int updates = 0;
         long timer = System.currentTimeMillis();
 
         while (running) {
@@ -39,42 +40,22 @@ public class GameLoop implements Runnable {
             lastTime = now;
 
             while (delta >= 1) {
-                update();
-                updates++;
+                canvas.update();
                 delta--;
             }
 
-            render();
+            canvas.repaint();
             frames++;
 
-            // FPS / UPS counter
             if (System.currentTimeMillis() - timer >= 1000) {
                 canvas.setFPS(frames);
-
-                System.out.println("FPS: " + frames + " | UPS: " + updates);
-
                 frames = 0;
-                updates = 0;
                 timer += 1000;
             }
 
             try {
                 Thread.sleep(1);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            } catch (InterruptedException ignored) {}
         }
-    }
-
-    private void update() {
-
-        // Game logic updates
-        canvas.update();
-    }
-
-    private void render() {
-
-        canvas.repaint();
-
     }
 }

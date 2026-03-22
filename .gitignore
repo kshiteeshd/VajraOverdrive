@@ -1,3 +1,6 @@
 .idea/
 out/
 *.class
+Vajra Overdrive.iml
+gradle/
+config/
