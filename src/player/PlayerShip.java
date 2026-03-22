@@ -14,12 +14,19 @@ import java.awt.event.KeyEvent;
 
 public class PlayerShip extends Entity {
 
-    private double speed      = 5;
+    // ── Stats ─────────────────────────────────────────────────────────
+    private double speed        = 5;
     private long   lastShotTime = 0;
     private long   fireDelay    = 200;
 
+    // ── Health ────────────────────────────────────────────────────────
+    private int maxHealth     = 100;
+    private int currentHealth = 100;
+
+    // ── References ────────────────────────────────────────────────────
     private EntityManager entityManager;
 
+    // ── Respawn / invincibility ───────────────────────────────────────
     private boolean respawning      = false;
     private long    respawnStart    = 0;
     private boolean invincible      = false;
@@ -28,28 +35,43 @@ public class PlayerShip extends Entity {
     private static final long INVINCIBLE_TIME = 3000;
     private static final long RESPAWN_TIME    = 2000;
 
-    // ── Animation — now uses ImageSequenceSet ─────────────────────────
+    // ── Animation ─────────────────────────────────────────────────────
     private ImageSequenceSet anim;
     private int              shipTier = 1;
 
+    // ── Constructor ───────────────────────────────────────────────────
     public PlayerShip(double x, double y, EntityManager em) {
         super(x, y, 32, 32);
         this.entityManager = em;
         this.anim          = ShipRegistry.buildShipSet(shipTier);
+        this.health        = maxHealth;
+        this.currentHealth = maxHealth;
     }
 
-    /** Call when the player upgrades their ship tier (1–5). */
+    // ── Health accessors ──────────────────────────────────────────────
+    public int getCurrentHealth() { return currentHealth; }
+    public int getMaxHealth()     { return maxHealth;     }
+
+    // ── Ship tier upgrade ─────────────────────────────────────────────
     public void upgradeTier(int newTier) {
         this.shipTier = Math.max(1, Math.min(newTier, 5));
-        String currentAnim = anim.getCurrentName();
+        String current = anim.getCurrentName();
         this.anim = ShipRegistry.buildShipSet(shipTier);
-        // Resume the same animation state on the new set
-        anim.play(currentAnim);
+        anim.play(current);
     }
 
     public int getShipTier() { return shipTier; }
 
-    // ── Damage / respawn ──────────────────────────────────────────────
+    // ── Factory ───────────────────────────────────────────────────────
+    public static PlayerShip createDefault(EntityManager em) {
+        int x = CombatArea.WIDTH / 2 - 16;
+        int y = CombatArea.BOTTOM_BOUND - 80;
+        PlayerShip p = new PlayerShip(x, y, em);
+        em.add(p);
+        return p;
+    }
+
+    // ── Damage ────────────────────────────────────────────────────────
     public void takeDamage(int dmg) {
         if (respawning || invincible) return;
 
@@ -59,20 +81,14 @@ public class PlayerShip extends Entity {
 
         if (anim.has("hit")) anim.play("hit", "idle");
 
+        // Reduce health — each hit is treated as a life lost
+        // with health resetting on respawn, so each life = full health.
+        // Damage chips the shield display before triggering respawn.
+        currentHealth = Math.max(0, currentHealth - dmg);
+
         respawning   = true;
         respawnStart = System.currentTimeMillis();
         WaveManager.loseLife();
-    }
-
-    // Replace createDefault() in PlayerShip.java
-
-    public static PlayerShip createDefault(EntityManager em) {
-        // CHANGED: center of full 1000px width, not offset by panel
-        int x = CombatArea.WIDTH / 2 - 16;   // 500 - 16 = 484
-        int y = CombatArea.BOTTOM_BOUND - 80; // 520
-        PlayerShip p = new PlayerShip(x, y, em);
-        em.add(p);
-        return p;
     }
 
     // ── Update ────────────────────────────────────────────────────────
@@ -82,24 +98,32 @@ public class PlayerShip extends Entity {
 
         anim.update();
 
-        // Respawn
+        // ── Respawn sequence ──────────────────────────────────────────
         if (respawning) {
             if (now - respawnStart > RESPAWN_TIME) {
                 respawning      = false;
                 invincible      = true;
                 invincibleStart = now;
-                x = CombatArea.LEFT_BOUND + CombatArea.WIDTH / 2 - width / 2.0;
+
+                // Full health restored on respawn
+                currentHealth = maxHealth;
+
+                x = CombatArea.LEFT_BOUND
+                        + CombatArea.WIDTH / 2 - width / 2.0;
                 y = CombatArea.BOTTOM_BOUND - 80;
+
                 if (anim.has("idle")) anim.play("idle");
             }
             return;
         }
 
+        // ── Invincibility timer ───────────────────────────────────────
         if (invincible) {
-            if (now - invincibleStart > INVINCIBLE_TIME) invincible = false;
+            if (now - invincibleStart > INVINCIBLE_TIME)
+                invincible = false;
         }
 
-        // Movement
+        // ── Movement ──────────────────────────────────────────────────
         velocityX = 0;
         velocityY = 0;
         if (InputManager.isKeyPresent(KeyEvent.VK_LEFT))  velocityX = -speed;
@@ -111,30 +135,33 @@ public class PlayerShip extends Entity {
         y += velocityY;
 
         // Clamp to combat area
-        if (x < CombatArea.LEFT_BOUND)              x = CombatArea.LEFT_BOUND;
-        if (x > CombatArea.RIGHT_BOUND - width)     x = CombatArea.RIGHT_BOUND - width;
-        if (y < CombatArea.TOP_BOUND)               y = CombatArea.TOP_BOUND;
-        if (y > CombatArea.BOTTOM_BOUND - height)   y = CombatArea.BOTTOM_BOUND - height;
+        if (x < CombatArea.LEFT_BOUND)
+            x = CombatArea.LEFT_BOUND;
+        if (x > CombatArea.RIGHT_BOUND - width)
+            x = CombatArea.RIGHT_BOUND - width;
+        if (y < CombatArea.TOP_BOUND)
+            y = CombatArea.TOP_BOUND;
+        if (y > CombatArea.BOTTOM_BOUND - height)
+            y = CombatArea.BOTTOM_BOUND - height;
 
-        // Thrust animation
+        // ── Thrust animation ──────────────────────────────────────────
         boolean moving = (velocityX != 0 || velocityY != 0);
         if (moving
                 && anim.has("thrust")
-                && "idle".equals(anim.getCurrentName()))
+                && "idle".equals(anim.getCurrentName())) {
             anim.play("thrust", "idle");
+        }
 
-        // Shooting
-        // Replace the shooting block in update() with a single shared check:
-        boolean fireKey = InputManager.isKeyPresent(KeyEvent.VK_Z) ||
-                InputManager.isKeyPresent(KeyEvent.VK_SPACE);
-        if (fireKey) {
-            if (now - lastShotTime > fireDelay) {
-                lastShotTime = now;
-                entityManager.add(new ProjectileEntity(
-                        x + width / 2.0 - 3, y,
-                        0, -8, 6, 12, 5, true
-                ));
-            }
+        // ── Shooting ──────────────────────────────────────────────────
+        boolean fireKey = InputManager.isKeyPresent(KeyEvent.VK_Z)
+                || InputManager.isKeyPresent(KeyEvent.VK_SPACE);
+
+        if (fireKey && now - lastShotTime > fireDelay) {
+            lastShotTime = now;
+            entityManager.add(new ProjectileEntity(
+                    x + width / 2.0 - 3, y,
+                    0, -8, 6, 12, 5, true
+            ));
         }
     }
 
@@ -145,30 +172,47 @@ public class PlayerShip extends Entity {
         if ((respawning || invincible)
                 && System.currentTimeMillis() % 300 < 150) return;
 
-        // Sprite
+        // Sprite — use if loaded
         BufferedImage frame = anim.getFrame();
         if (frame != null) {
             g.drawImage(frame, (int) x, (int) y, width, height, null);
             return;
         }
 
-        // Fallback: cyan triangle
+        // ── Fallback: cyan triangle ───────────────────────────────────
         Graphics2D g2 = (Graphics2D) g;
         int cx = (int) x + width / 2;
 
+        // Main body
         g2.setColor(new Color(0, 220, 255));
-        int[] bx = { cx,         (int)x,          (int)x + width };
-        int[] by = { (int)y,     (int)y + height,  (int)y + height };
+        int[] bx = { cx,       (int)x,           (int)x + width };
+        int[] by = { (int)y,   (int)y + height,   (int)y + height };
         g2.fillPolygon(bx, by, 3);
 
+        // Inner highlight
         g2.setColor(new Color(180, 255, 255));
-        int[] cx2 = { cx,      cx - 4,      cx + 4      };
+        int[] cx2 = { cx,       cx - 4,      cx + 4     };
         int[] cy2 = { (int)y+4, (int)y+14,   (int)y+14  };
         g2.fillPolygon(cx2, cy2, 3);
 
-        if (velocityY != 0 || velocityX != 0) {
+        // Engine glow when moving
+        if (velocityX != 0 || velocityY != 0) {
             g2.setColor(new Color(255, 140, 0, 180));
             g2.fillOval(cx - 4, (int)y + height - 4, 8, 8);
+        }
+
+        // Invincible shimmer — thin cyan ring
+        if (invincible) {
+            long now = System.currentTimeMillis();
+            float shimmer = 0.3f + 0.4f
+                    * (float) Math.abs(Math.sin(now * 0.01));
+            g2.setComposite(AlphaComposite.getInstance(
+                    AlphaComposite.SRC_OVER, shimmer));
+            g2.setColor(new Color(0, 255, 255));
+            g2.drawOval((int)x - 4, (int)y - 4,
+                    width + 8, height + 8);
+            g2.setComposite(AlphaComposite.getInstance(
+                    AlphaComposite.SRC_OVER, 1f));
         }
     }
 }

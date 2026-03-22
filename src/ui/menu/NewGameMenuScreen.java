@@ -11,6 +11,17 @@ import ui.theme.UITheme;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 
+/**
+ * New game menu — choose Campaign or Endless.
+ *
+ * CHANGED:
+ *  - All fonts UIFonts (Press Start 2P).
+ *  - Card sub-label uses UIFonts.SMALL (8px) so it fits on one line
+ *    at Press Start 2P's wider glyph width.
+ *  - Card height increased to 88px to accommodate the taller font.
+ *  - Arrow indicator on selected card uses "> " with proper spacing.
+ *  - Footer uses double-space between key and action.
+ */
 public class NewGameMenuScreen {
 
     private static final int W  = LayoutConfig.WINDOW_WIDTH;
@@ -20,15 +31,21 @@ public class NewGameMenuScreen {
     // 0 = CAMPAIGN, 1 = ENDLESS, 2 = BACK
     private int selected = 0;
 
-    private static final String[] LABELS = { "CAMPAIGN", "ENDLESS", "BACK" };
-    private static final String[] SUBS   = {
+    private static final String[] LABELS = {
+            "CAMPAIGN",
+            "ENDLESS",
+            "BACK"
+    };
+    private static final String[] SUBS = {
             "25 levels  |  story  |  auto-save",
-            "infinite waves  |  score attack  |  auto-save",
+            "infinite waves  |  score attack",
             ""
     };
 
+    // ── Enter ─────────────────────────────────────────────────────────
     public void enter() { selected = 0; }
 
+    // ── Update ────────────────────────────────────────────────────────
     public void update() {
         if (InputManager.isKeyPressed(KeyEvent.VK_UP))   selected--;
         if (InputManager.isKeyPressed(KeyEvent.VK_DOWN)) selected++;
@@ -55,44 +72,58 @@ public class NewGameMenuScreen {
         }
     }
 
+    // ── Render ────────────────────────────────────────────────────────
     public void render(Graphics2D g) {
         MenuButton.renderBackground(g);
 
         // ── Title ─────────────────────────────────────────────────────
         g.setFont(UIFonts.TITLE);
         FontMetrics fmT = g.getFontMetrics();
-        String title = "NEW GAME";
+        String title = "NEW  GAME";
         g.setColor(UITheme.PRIMARY);
-        g.drawString(title, CX - fmT.stringWidth(title) / 2, H / 4);
+        g.drawString(title,
+                CX - fmT.stringWidth(title) / 2,
+                H / 4);
 
-        g.setColor(new Color(0, 255, 255, 40));
-        g.fillRect(CX - 100, H / 4 + 14, 200, 1);
+        g.setColor(new Color(0, 255, 255, 35));
+        g.fillRect(CX - 110, H / 4 + 14, 220, 1);
 
         // ── Mode cards ────────────────────────────────────────────────
-        int cardW = 420;
-        int cardH = 80;
-        int cardX = CX - cardW / 2;
-        int startY = H / 2 - cardH - 16;
-        int gap    = 20;
+        int cardW  = 440;
+        int cardH  = 88;
+        int cardX  = CX - cardW / 2;
+        int startY = H / 2 - cardH - 20;
+        int gap    = 18;
 
-        // Only 2 game mode cards + back
         for (int i = 0; i < LABELS.length; i++) {
             boolean sel = (i == selected);
-            int cy = startY + i * (cardH + gap);
+            int     cy  = startY + i * (cardH + gap);
 
             if (i < 2) {
-                // Mode card
-                g.setColor(sel ? new Color(0, 40, 40) : new Color(8, 8, 16));
+                // ── Mode card ─────────────────────────────────────────
+
+                // Card body
+                g.setColor(sel
+                        ? new Color(0, 36, 36)
+                        : new Color(8, 8, 16));
                 g.fillRect(cardX, cy, cardW, cardH);
 
-                // Border
-                g.setColor(sel ? UITheme.ACCENT : new Color(0, 255, 255, 30));
-                g.fillRect(cardX,              cy,          cardW, 1);
-                g.fillRect(cardX,              cy + cardH - 1, cardW, 1);
-                g.fillRect(cardX,              cy,          1, cardH);
-                g.fillRect(cardX + cardW - 1,  cy,          1, cardH);
+                // Border — top
+                g.setColor(sel
+                        ? UITheme.ACCENT
+                        : new Color(0, 255, 255, 25));
+                g.fillRect(cardX, cy, cardW, 1);
 
-                // Left accent
+                // Border — bottom
+                g.fillRect(cardX, cy + cardH - 1, cardW, 1);
+
+                // Border — left
+                g.fillRect(cardX, cy, 1, cardH);
+
+                // Border — right
+                g.fillRect(cardX + cardW - 1, cy, 1, cardH);
+
+                // Left accent stripe
                 g.setColor(sel ? UITheme.ACCENT : UITheme.TEXT_FAINT);
                 g.fillRect(cardX, cy, 4, cardH);
 
@@ -100,37 +131,47 @@ public class NewGameMenuScreen {
                 g.setFont(UIFonts.MENU);
                 FontMetrics fmM = g.getFontMetrics();
                 g.setColor(sel ? UITheme.ACCENT : UITheme.PRIMARY);
-                g.drawString(LABELS[i], cardX + 20, cy + 30);
+                g.drawString(LABELS[i], cardX + 20, cy + 32);
 
                 // Sub-label
                 g.setFont(UIFonts.SMALL);
                 FontMetrics fmS = g.getFontMetrics();
                 g.setColor(sel ? UITheme.TEXT_DIM : UITheme.TEXT_FAINT);
-                g.drawString(SUBS[i], cardX + 20, cy + 56);
+                g.drawString(SUBS[i], cardX + 20, cy + 58);
 
-                // Arrow indicator
+                // Thin divider between label and sub-label
+                g.setColor(new Color(255, 255, 255, 10));
+                g.fillRect(cardX + 16, cy + 40, cardW - 32, 1);
+
+                // Arrow indicator on selected card
                 if (sel) {
                     g.setFont(UIFonts.MENU);
+                    fmM = g.getFontMetrics();
                     g.setColor(UITheme.ACCENT);
-                    g.drawString(">", cardX + cardW - 28, cy + 30);
+                    g.drawString(">",
+                            cardX + cardW - fmM.stringWidth(">") - 16,
+                            cy + 32);
                 }
 
             } else {
-                // Back option
+                // ── Back row ──────────────────────────────────────────
                 g.setFont(UIFonts.MENU);
                 FontMetrics fmM = g.getFontMetrics();
-                String back = (sel ? "> " : "  ") + "BACK";
+                String back = (sel ? ">  " : "   ") + "BACK";
                 g.setColor(sel ? UITheme.ACCENT : UITheme.TEXT_DIM);
-                g.drawString(back, CX - fmM.stringWidth(back) / 2,
-                        cy + cardH / 2);
+                g.drawString(back,
+                        CX - fmM.stringWidth(back) / 2,
+                        cy + cardH / 2 + 8);
             }
         }
 
         // ── Footer ────────────────────────────────────────────────────
         g.setFont(UIFonts.SMALL);
         FontMetrics fmS = g.getFontMetrics();
-        String footer = "UP / DOWN   navigate      ENTER   select      ESC   back";
+        String footer = "UP/DOWN  navigate    ENTER  select    ESC  back";
         g.setColor(UITheme.TEXT_FAINT);
-        g.drawString(footer, CX - fmS.stringWidth(footer) / 2, H - 16);
+        g.drawString(footer,
+                CX - fmS.stringWidth(footer) / 2,
+                H - 16);
     }
 }

@@ -15,7 +15,7 @@ public abstract class Entity {
     protected double velocityY;
 
     public int width;
-    protected int height;
+    public int height;
 
     public boolean removable = false;
     public int health;

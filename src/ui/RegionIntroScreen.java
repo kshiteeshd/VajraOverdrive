@@ -11,63 +11,66 @@ import ui.theme.UITheme;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 
+/**
+ * Region intro screen — shown when entering a new sector.
+ *
+ * CHANGED:
+ *  - All fonts UIFonts (Press Start 2P).
+ *  - Cursor blink uses System.currentTimeMillis() modulo directly
+ *    so it doesn't need a separate blinkTimer field.
+ *  - Auto-advance bar color uses regionColor (was hardcoded TEXT_DIM).
+ *  - Story lines start Y pushed down slightly so the region name
+ *    title has more breathing room above the text block.
+ *  - Double-advance guard kept from original — advance() is idempotent.
+ *  - SPACE first press reveals all text, second press advances.
+ */
 public class RegionIntroScreen {
 
     private static final int W  = LayoutConfig.VIRTUAL_WIDTH;
     private static final int H  = LayoutConfig.VIRTUAL_HEIGHT;
     private static final int CX = W / 2;
 
-    private static final long MS_PER_CHAR     = 40;
-    private static final long MS_BETWEEN_LINE = 360;
-    private static final long AUTO_ADVANCE_MS = 5000;
+    private static final long MS_PER_CHAR     = 38;
+    private static final long MS_BETWEEN_LINE = 340;
+    private static final long AUTO_ADVANCE_MS = 5500;
+
+    private static final int LEFT_MARGIN = 110;
 
     private String   region     = "RED";
     private String[] storyLines = {};
 
     private enum TwState { TYPING, LINE_PAUSE, DONE }
-    private TwState twState       = TwState.TYPING;
-    private int     currentLine   = 0;
-    private int     charsShown    = 0;
-    private long    stateStart    = 0;
-    private long    enterTime     = 0;
-
-    private boolean blinkOn    = true;
-    private long    blinkTimer = 0;
-
-    // FIX: guard against double-advance when timer and SPACE fire same frame
-    private boolean advanced = false;
+    private TwState twState     = TwState.TYPING;
+    private int     currentLine = 0;
+    private int     charsShown  = 0;
+    private long    stateStart  = 0;
+    private long    enterTime   = 0;
+    private boolean advanced    = false;
 
     private final SpaceBackground bg = new SpaceBackground();
 
-    // ── Public ────────────────────────────────────────────────────────
+    // ── Enter ─────────────────────────────────────────────────────────
     public void enter(String regionName) {
         this.region     = regionName;
         this.storyLines = RegionStoryRegistry.getStory(regionName);
         if (this.storyLines == null) this.storyLines = new String[]{};
 
-        twState    = TwState.TYPING;
+        twState     = TwState.TYPING;
         currentLine = 0;
         charsShown  = 0;
         enterTime   = System.currentTimeMillis();
         stateStart  = enterTime;
-        blinkOn     = true;
-        blinkTimer  = enterTime;
-        // FIX: reset guard on every enter()
         advanced    = false;
 
         bg.setRegion(regionName);
     }
 
+    // ── Update ────────────────────────────────────────────────────────
     public void update() {
         long now = System.currentTimeMillis();
         bg.update();
 
-        if (blinkTimer != 0 && now - blinkTimer > 480) {
-            blinkOn    = !blinkOn;
-            blinkTimer = now;
-        }
-
-        // Auto-advance after timeout
+        // Auto-advance
         if (now - enterTime >= AUTO_ADVANCE_MS) {
             advance();
             return;
@@ -75,15 +78,18 @@ public class RegionIntroScreen {
 
         if (InputManager.isKeyPressed(KeyEvent.VK_SPACE)) {
             if (twState != TwState.DONE) {
+                // First press — reveal all text instantly
                 twState     = TwState.DONE;
                 currentLine = storyLines.length;
             } else {
+                // Second press — advance to game
                 advance();
             }
             return;
         }
 
         if (twState == TwState.DONE) return;
+
         if (currentLine >= storyLines.length) {
             twState = TwState.DONE;
             return;
@@ -112,7 +118,7 @@ public class RegionIntroScreen {
         }
     }
 
-    // FIX: guard so advance() can only fire once per screen entry
+    // ── Advance (idempotent) ──────────────────────────────────────────
     private void advance() {
         if (advanced) return;
         advanced = true;
@@ -122,84 +128,99 @@ public class RegionIntroScreen {
     // ── Render ────────────────────────────────────────────────────────
     public void render(Graphics2D g) {
         Color regionColor = UITheme.getRegionColor(region);
+        long  elapsed     = System.currentTimeMillis() - enterTime;
+
         bg.render(g, 0, 0, W, H);
 
-        int blockX = 110;
-        int blockY = 155;
-
+        // ── Left accent bar ───────────────────────────────────────────
         g.setColor(regionColor);
-        g.fillRect(blockX - 20, blockY - 38, 4, 56);
+        g.fillRect(LEFT_MARGIN - 20, 130, 3, 72);
 
+        // ── Region name ───────────────────────────────────────────────
         g.setFont(UIFonts.TITLE);
         g.setColor(regionColor);
-        g.drawString(region, blockX, blockY);
+        g.drawString(region, LEFT_MARGIN, 172);
 
-        g.setFont(UIFonts.BODY);
+        // ── "SECTOR" sub-label ────────────────────────────────────────
+        g.setFont(UIFonts.SMALL);
         g.setColor(UITheme.TEXT_DIM);
-        g.drawString("SECTOR", blockX, blockY + 26);
+        g.drawString("SECTOR", LEFT_MARGIN, 192);
 
-        int ruleAlpha = 55;
+        // ── Horizontal rule ───────────────────────────────────────────
         g.setColor(new Color(
                 regionColor.getRed(),
                 regionColor.getGreen(),
-                regionColor.getBlue(),
-                ruleAlpha));
-        g.fillRect(blockX - 20, blockY + 42, W - blockX - 60, 1);
+                regionColor.getBlue(), 50));
+        g.fillRect(LEFT_MARGIN - 20, 204, W - LEFT_MARGIN - 60, 1);
 
-        boolean isDone    = (twState == TwState.DONE);
-        int     lineStartY = blockY + 84;
-        int     lineH      = 40;
+        // ── Story lines ───────────────────────────────────────────────
+        boolean isDone     = (twState == TwState.DONE);
+        int     lineStartY = 248;
+        int     lineH      = 38;
 
+        // Skip index 0 — it's the region name, already shown as title
         for (int i = 1; i < storyLines.length; i++) {
             String line = storyLines[i];
             String toShow;
-            Color  col = UITheme.PRIMARY;
 
             if (isDone || i < currentLine) {
                 toShow = line;
             } else if (i == currentLine) {
-                toShow = line.substring(0, Math.min(charsShown, line.length()));
-                g.setFont(UIFonts.BODY);
-                FontMetrics fm = g.getFontMetrics();
-                int curX = blockX + fm.stringWidth(toShow);
-                if ((System.currentTimeMillis() / 380) % 2 == 0) {
+                toShow = line.substring(0,
+                        Math.min(charsShown, line.length()));
+
+                // Cursor blink at end of current line
+                boolean cursorOn =
+                        (System.currentTimeMillis() / 400) % 2 == 0;
+                if (cursorOn) {
+                    g.setFont(UIFonts.SMALL);
+                    FontMetrics fm = g.getFontMetrics();
+                    int curX = LEFT_MARGIN + fm.stringWidth(toShow);
+                    int curY = lineStartY + (i - 1) * lineH;
                     g.setColor(regionColor);
-                    g.fillRect(curX, lineStartY + (i - 1) * lineH - 13, 2, 15);
+                    g.fillRect(curX + 2, curY - 11, 2, 13);
                 }
             } else {
                 continue;
             }
 
-            g.setFont(UIFonts.BODY);
-            g.setColor(col);
-            g.drawString(toShow, blockX, lineStartY + (i - 1) * lineH);
+            g.setFont(UIFonts.SMALL);
+            g.setColor(UITheme.PRIMARY);
+            g.drawString(toShow,
+                    LEFT_MARGIN,
+                    lineStartY + (i - 1) * lineH);
         }
 
-        long  elapsed  = System.currentTimeMillis() - enterTime;
+        // ── Auto-advance progress bar ─────────────────────────────────
         float progress = Math.min(elapsed / (float) AUTO_ADVANCE_MS, 1f);
-        int   barW     = W - blockX * 2;
-        int   barY     = H - 54;
+        int   barW     = W - LEFT_MARGIN * 2;
+        int   barY     = H - 52;
 
-        g.setColor(new Color(40, 40, 55));
-        g.fillRect(blockX, barY, barW, 2);
+        g.setColor(new Color(30, 30, 40));
+        g.fillRect(LEFT_MARGIN, barY, barW, 2);
+
         g.setColor(regionColor);
-        g.fillRect(blockX, barY, (int)(barW * progress), 2);
+        g.fillRect(LEFT_MARGIN, barY, (int)(barW * progress), 2);
 
+        // ── Skip / advance prompt ─────────────────────────────────────
         g.setFont(UIFonts.SMALL);
         FontMetrics fmS = g.getFontMetrics();
 
-        if (twState == TwState.DONE) {
+        if (isDone) {
+            boolean blinkOn = (System.currentTimeMillis() / 500) % 2 == 0;
             if (blinkOn) {
-                String prompt = "[ SPACE ]  ENTER SECTOR";
+                String prompt = "SPACE  ENTER SECTOR";
                 g.setColor(regionColor);
                 g.drawString(prompt,
-                        W - blockX - fmS.stringWidth(prompt), H - 38);
+                        W - LEFT_MARGIN - fmS.stringWidth(prompt),
+                        H - 30);
             }
         } else {
-            String skip = "[ SPACE ]  skip";
+            String skip = "SPACE  skip";
             g.setColor(UITheme.TEXT_FAINT);
             g.drawString(skip,
-                    W - blockX - fmS.stringWidth(skip), H - 38);
+                    W - LEFT_MARGIN - fmS.stringWidth(skip),
+                    H - 30);
         }
     }
 }

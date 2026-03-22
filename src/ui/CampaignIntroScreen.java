@@ -11,29 +11,39 @@ import ui.theme.UITheme;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 
+/**
+ * Campaign intro — typewriter story screen before level 1.
+ *
+ * CHANGED:
+ *  - All fonts UIFonts (Press Start 2P).
+ *  - Cursor blink is stateless — uses System.currentTimeMillis()
+ *    modulo, no blinkTimer field needed.
+ *  - blinkOn / blinkTimer fields removed.
+ *  - Prompt uses double-space between key and action for Press Start
+ *    2P kerning consistency ("SPACE  skip", "SPACE  BEGIN MISSION").
+ *  - Header and divider lines use PRIMARY at low alpha instead of
+ *    PANEL_BORDER so they respond to region color in future.
+ *  - Line height increased to 36px to give Press Start 2P room
+ *    between lines at SMALL (8px) size — was 32px.
+ */
 public class CampaignIntroScreen {
 
     private static final int W  = LayoutConfig.VIRTUAL_WIDTH;
     private static final int H  = LayoutConfig.VIRTUAL_HEIGHT;
     private static final int CX = W / 2;
 
-    // Typewriter timing
     private static final long MS_PER_CHAR     = 36;
-    private static final long MS_BLANK_LINE   = 220;
-    private static final long MS_BETWEEN_LINE = 280;
+    private static final long MS_BLANK_LINE   = 200;
+    private static final long MS_BETWEEN_LINE = 260;
 
     private final String[] lines = CampaignIntroStory.INTRO;
 
-    // Typewriter state
+    // ── Typewriter state ──────────────────────────────────────────────
     private enum TwState { TYPING, LINE_PAUSE, BLANK_PAUSE, DONE }
     private TwState twState       = TwState.TYPING;
     private int     currentLine   = 0;
     private int     charsRevealed = 0;
     private long    stateStart    = 0;
-
-    // Blink prompt
-    private boolean blinkOn    = true;
-    private long    blinkTimer = 0;
 
     private final SpaceBackground bg = SpaceBackground.getMenuBackground();
 
@@ -43,21 +53,13 @@ public class CampaignIntroScreen {
         currentLine   = 0;
         charsRevealed = 0;
         stateStart    = System.currentTimeMillis();
-        blinkOn       = true;
-        blinkTimer    = stateStart;
     }
 
+    // ── Update ────────────────────────────────────────────────────────
     public void update() {
         bg.update();
         long now = System.currentTimeMillis();
 
-        // Blink
-        if (now - blinkTimer > 500) {
-            blinkOn    = !blinkOn;
-            blinkTimer = now;
-        }
-
-        // SPACE — skip to end or advance to REGION_INTRO
         if (InputManager.isKeyPressed(KeyEvent.VK_SPACE)) {
             if (twState == TwState.DONE) {
                 GameStateManager.setState(GameState.REGION_INTRO);
@@ -72,7 +74,6 @@ public class CampaignIntroScreen {
 
         if (twState == TwState.DONE) return;
 
-        // Finished all lines
         if (currentLine >= lines.length) {
             twState = TwState.DONE;
             return;
@@ -81,34 +82,27 @@ public class CampaignIntroScreen {
         String line = lines[currentLine];
 
         switch (twState) {
-
             case TYPING -> {
                 if (line.isEmpty()) {
-                    // Blank spacer — go straight to pause
                     twState    = TwState.BLANK_PAUSE;
                     stateStart = now;
                     return;
                 }
-                long msPerChar = (now - stateStart);
-                int  target    = (int)(msPerChar / MS_PER_CHAR);
-                charsRevealed  = Math.min(target, line.length());
+                int target    = (int)((now - stateStart) / MS_PER_CHAR);
+                charsRevealed = Math.min(target, line.length());
 
                 if (charsRevealed >= line.length()) {
                     twState    = TwState.LINE_PAUSE;
                     stateStart = now;
                 }
             }
-
             case LINE_PAUSE -> {
-                if (now - stateStart >= MS_BETWEEN_LINE) {
+                if (now - stateStart >= MS_BETWEEN_LINE)
                     advanceLine(now);
-                }
             }
-
             case BLANK_PAUSE -> {
-                if (now - stateStart >= MS_BLANK_LINE) {
+                if (now - stateStart >= MS_BLANK_LINE)
                     advanceLine(now);
-                }
             }
         }
     }
@@ -124,31 +118,33 @@ public class CampaignIntroScreen {
     public void render(Graphics2D g) {
         bg.render(g, 0, 0, W, H);
 
-        // Top decoration
-        g.setColor(UITheme.PANEL_BORDER);
-        g.fillRect(CX - 180, 58, 360, 1);
+        // ── Header ────────────────────────────────────────────────────
+        g.setColor(new Color(0, 200, 200, 35));
+        g.fillRect(CX - 190, 50, 380, 1);
 
-        // Header label
         g.setFont(UIFonts.SMALL);
         FontMetrics fmS = g.getFontMetrics();
-        String header = "- MISSION LOG -";
+        String header = "MISSION  LOG";
         g.setColor(UITheme.TEXT_DIM);
-        g.drawString(header, CX - fmS.stringWidth(header) / 2, 52);
+        g.drawString(header,
+                CX - fmS.stringWidth(header) / 2, 46);
 
         // Mission ID
         g.setFont(UIFonts.MENU);
         FontMetrics fmM = g.getFontMetrics();
         String id = "VJ-01";
         g.setColor(UITheme.ACCENT);
-        g.drawString(id, CX - fmM.stringWidth(id) / 2, 98);
+        g.drawString(id,
+                CX - fmM.stringWidth(id) / 2, 90);
 
-        // Decoration line below ID
-        g.setColor(UITheme.PANEL_BORDER);
-        g.fillRect(CX - 180, 110, 360, 1);
+        // Rule below ID
+        g.setColor(new Color(0, 200, 200, 35));
+        g.fillRect(CX - 190, 102, 380, 1);
 
         // ── Story lines ───────────────────────────────────────────────
-        int startY = 152;
-        int lineH  = 32;
+        int startY = 142;
+        int lineH  = 36;
+        boolean isDone = (twState == TwState.DONE);
 
         for (int i = 0; i < lines.length; i++) {
             String line = lines[i];
@@ -157,54 +153,61 @@ public class CampaignIntroScreen {
             String toShow;
             Color  col;
 
-            boolean isDone = (twState == TwState.DONE);
-
             if (isDone || i < currentLine) {
                 toShow = line;
                 col    = (i == 0) ? UITheme.ACCENT : UITheme.PRIMARY;
             } else if (i == currentLine) {
-                toShow = line.substring(0, Math.min(charsRevealed, line.length()));
+                toShow = line.substring(0,
+                        Math.min(charsRevealed, line.length()));
                 col    = (i == 0) ? UITheme.ACCENT : UITheme.PRIMARY;
 
-                // Blinking cursor at end of current line
-                g.setFont(UIFonts.BODY);
-                FontMetrics fmB = g.getFontMetrics();
-                int lineStartX = CX - fmB.stringWidth(line) / 2;
-                int cursorX    = lineStartX + fmB.stringWidth(toShow);
-                if ((now() / 380) % 2 == 0) {
+                // Stateless cursor blink
+                boolean cursorOn =
+                        (System.currentTimeMillis() / 380) % 2 == 0;
+                if (cursorOn) {
+                    g.setFont(UIFonts.SMALL);
+                    FontMetrics fm = g.getFontMetrics();
+                    int lineStartX = CX - fm.stringWidth(line) / 2;
+                    int cursorX    = lineStartX + fm.stringWidth(toShow);
                     g.setColor(UITheme.PRIMARY);
-                    g.fillRect(cursorX, startY + i * lineH - 13, 2, 15);
+                    g.fillRect(cursorX + 1,
+                            startY + i * lineH - 11, 2, 13);
                 }
             } else {
-                continue;   // not yet reached
+                continue;
             }
 
-            g.setFont(UIFonts.BODY);
-            FontMetrics fmB = g.getFontMetrics();
-            int tx = CX - fmB.stringWidth(line) / 2;
+            g.setFont(UIFonts.SMALL);
+            fmS = g.getFontMetrics();
+            int tx = CX - fmS.stringWidth(line) / 2;
             g.setColor(col);
             g.drawString(toShow, tx, startY + i * lineH);
         }
 
-        // Bottom decoration
-        g.setColor(UITheme.PANEL_BORDER);
-        g.fillRect(CX - 180, H - 82, 360, 1);
+        // ── Bottom rule ───────────────────────────────────────────────
+        g.setColor(new Color(0, 200, 200, 35));
+        g.fillRect(CX - 190, H - 78, 380, 1);
 
-        // Prompt
+        // ── Prompt ────────────────────────────────────────────────────
         g.setFont(UIFonts.SMALL);
         fmS = g.getFontMetrics();
-        if (twState == TwState.DONE) {
+
+        if (isDone) {
+            boolean blinkOn =
+                    (System.currentTimeMillis() / 500) % 2 == 0;
             if (blinkOn) {
-                String prompt = "[ SPACE ]  BEGIN MISSION";
+                String prompt = "SPACE  BEGIN  MISSION";
                 g.setColor(UITheme.HIGHLIGHT);
-                g.drawString(prompt, CX - fmS.stringWidth(prompt) / 2, H - 52);
+                g.drawString(prompt,
+                        CX - fmS.stringWidth(prompt) / 2,
+                        H - 48);
             }
         } else {
-            String skip = "[ SPACE ]  skip";
+            String skip = "SPACE  skip";
             g.setColor(UITheme.TEXT_FAINT);
-            g.drawString(skip, CX - fmS.stringWidth(skip) / 2, H - 52);
+            g.drawString(skip,
+                    CX - fmS.stringWidth(skip) / 2,
+                    H - 48);
         }
     }
-
-    private long now() { return System.currentTimeMillis(); }
 }

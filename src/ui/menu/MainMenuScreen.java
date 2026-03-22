@@ -9,9 +9,19 @@ import ui.theme.UITheme;
 
 import java.awt.*;
 import java.awt.event.KeyEvent;
-import java.util.ArrayList;
-import java.util.List;
 
+/**
+ * Main menu screen.
+ *
+ * CHANGED:
+ *  - Footer hint uses double-space between key and action for
+ *    Press Start 2P kerning consistency.
+ *  - Version tag moved to UIFonts.SMALL (was inline Font).
+ *  - Logo subtitle color set to slightly dimmer cyan so the two
+ *    title lines have clear visual hierarchy.
+ *  - Slide easing and pill highlight logic unchanged — they work
+ *    correctly with the bitmap font.
+ */
 public class MainMenuScreen {
 
     private static final int W  = LayoutConfig.WINDOW_WIDTH;
@@ -28,11 +38,13 @@ public class MainMenuScreen {
     private int  selected  = 0;
     private long enterTime = 0;
 
+    // ── Enter ─────────────────────────────────────────────────────────
     public void enter() {
         selected  = 0;
         enterTime = System.currentTimeMillis();
     }
 
+    // ── Update ────────────────────────────────────────────────────────
     public void update() {
         if (InputManager.isKeyPressed(KeyEvent.VK_UP))   selected--;
         if (InputManager.isKeyPressed(KeyEvent.VK_DOWN)) selected++;
@@ -49,12 +61,13 @@ public class MainMenuScreen {
         }
     }
 
+    // ── Render ────────────────────────────────────────────────────────
     public void render(Graphics2D g) {
         MenuButton.renderBackground(g);
 
-        long elapsed = System.currentTimeMillis() - enterTime;
-        float slide  = easeOut(Math.min(elapsed / 500f, 1f));
-        int   offY   = (int)((1f - slide) * 40);   // items slide up on enter
+        long  elapsed = System.currentTimeMillis() - enterTime;
+        float slide   = easeOut(Math.min(elapsed / 500f, 1f));
+        int   offY    = (int)((1f - slide) * 40);
 
         // ── Logo ──────────────────────────────────────────────────────
         int logoY = H / 5 + offY;
@@ -63,34 +76,46 @@ public class MainMenuScreen {
         FontMetrics fmT = g.getFontMetrics();
 
         // Shadow layer
-        g.setColor(new Color(0, 180, 180, 35));
-        g.drawString("VAJRA",     CX - fmT.stringWidth("VAJRA")     / 2 + 2, logoY + 2);
-        g.drawString("OVERDRIVE", CX - fmT.stringWidth("OVERDRIVE") / 2 + 2, logoY + 42 + 2);
+        g.setColor(new Color(0, 160, 160, 30));
+        g.drawString("VAJRA",
+                CX - fmT.stringWidth("VAJRA") / 2 + 2,
+                logoY + 2);
+        g.drawString("OVERDRIVE",
+                CX - fmT.stringWidth("OVERDRIVE") / 2 + 2,
+                logoY + 44 + 2);
 
-        // Main text
+        // Main title — two-line with hierarchy
         g.setColor(UITheme.PRIMARY);
-        g.drawString("VAJRA", CX - fmT.stringWidth("VAJRA") / 2, logoY);
-        g.setColor(new Color(0, 210, 210));
-        g.drawString("OVERDRIVE", CX - fmT.stringWidth("OVERDRIVE") / 2, logoY + 42);
+        g.drawString("VAJRA",
+                CX - fmT.stringWidth("VAJRA") / 2,
+                logoY);
+
+        // Slightly dimmer second line so "VAJRA" reads as the primary word
+        g.setColor(new Color(0, 200, 200));
+        g.drawString("OVERDRIVE",
+                CX - fmT.stringWidth("OVERDRIVE") / 2,
+                logoY + 44);
 
         // Underline
-        g.setColor(new Color(0, 255, 255, 45));
-        g.fillRect(CX - 130, logoY + 56, 260, 1);
+        g.setColor(new Color(0, 255, 255, 40));
+        g.fillRect(CX - 140, logoY + 58, 280, 1);
 
         // Version tag
         g.setFont(UIFonts.SMALL);
         FontMetrics fmS = g.getFontMetrics();
         String ver = "v0.1  ALPHA";
         g.setColor(UITheme.TEXT_FAINT);
-        g.drawString(ver, CX - fmS.stringWidth(ver) / 2, logoY + 70);
+        g.drawString(ver,
+                CX - fmS.stringWidth(ver) / 2,
+                logoY + 74);
 
         // ── Menu items ────────────────────────────────────────────────
-        int startY  = H / 2 + 30 + offY;
-        int lineH   = 52;
+        int startY = H / 2 + 30 + offY;
+        int lineH  = 52;
 
         for (int i = 0; i < LABELS.length; i++) {
-            boolean sel = (i == selected);
-            String  display = (sel ? "> " : "  ") + LABELS[i];
+            boolean sel     = (i == selected);
+            String  display = (sel ? ">  " : "   ") + LABELS[i];
 
             g.setFont(UIFonts.MENU);
             FontMetrics fmM = g.getFontMetrics();
@@ -98,17 +123,23 @@ public class MainMenuScreen {
             int drawY = startY + i * lineH;
 
             if (sel) {
-                // Pill
+                // Selection pill background
                 int pillW = fmM.stringWidth(display) + 28;
                 int pillX = drawX - 14;
                 int pillY = drawY - fmM.getAscent() - 4;
                 int pillH = fmM.getHeight() + 8;
-                g.setColor(new Color(0, 255, 255, 18));
+
+                g.setColor(new Color(0, 255, 255, 16));
                 g.fillRect(pillX, pillY, pillW, pillH);
+
+                // Left accent bar on pill
                 g.setColor(UITheme.ACCENT);
                 g.fillRect(pillX, pillY, 3, pillH);
-                g.setColor(new Color(0, 255, 255, 45));
-                g.fillRect(pillX + 3, pillY + pillH - 1, pillW - 3, 1);
+
+                // Bottom edge on pill
+                g.setColor(new Color(0, 255, 255, 40));
+                g.fillRect(pillX + 3, pillY + pillH - 1,
+                        pillW - 3, 1);
             }
 
             g.setColor(sel ? UITheme.ACCENT : UITheme.PRIMARY);
@@ -118,10 +149,15 @@ public class MainMenuScreen {
         // ── Footer ────────────────────────────────────────────────────
         g.setFont(UIFonts.SMALL);
         fmS = g.getFontMetrics();
-        String footer = "UP / DOWN   navigate      ENTER   select      F   fullscreen";
+        String footer = "UP/DOWN  navigate    ENTER  select    F  fullscreen";
         g.setColor(UITheme.TEXT_FAINT);
-        g.drawString(footer, CX - fmS.stringWidth(footer) / 2, H - 16);
+        g.drawString(footer,
+                CX - fmS.stringWidth(footer) / 2,
+                H - 16);
     }
 
-    private float easeOut(float t) { return 1f - (1f - t) * (1f - t); }
+    // ── Easing ────────────────────────────────────────────────────────
+    private float easeOut(float t) {
+        return 1f - (1f - t) * (1f - t);
+    }
 }

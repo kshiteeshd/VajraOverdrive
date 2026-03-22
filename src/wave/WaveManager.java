@@ -16,18 +16,31 @@ import java.util.List;
 
 public class WaveManager {
 
-    // ── Session state (static) ────────────────────────────────────────
-    private static int     playerLives   = 3;
-    private static int     maxLives      = 3;
-    private static int     currentWaveUI = 0;
+    // ── Session state (static — genuinely global per session) ─────────
+    // These are reset by resetSession() at the start of every game.
+    private static int     playerLives      = 3;
+    private static int     maxLives         = 3;
+    private static int     currentWaveUI    = 0;
+    private static String  currentFormation = "";
+    private static int     enemiesRemaining = 0;
+    private static BossEntity activeBoss    = null;
+    private static boolean bossWaveActive   = false;
 
+    /**
+     * Call before constructing a new WaveManager for a fresh session.
+     * Clears all static state so nothing bleeds in from a previous run.
+     */
     public static void resetSession(int startLives) {
         playerLives      = startLives;
         maxLives         = startLives;
         currentWaveUI    = 0;
         currentFormation = "";
         enemiesRemaining = 0;
+        // Hard-null the boss so no stale reference survives a session
+        // rebuild. BossEntity from the old EntityManager would otherwise
+        // keep updating via WaveManager.update() in the new session.
         activeBoss       = null;
+        bossWaveActive   = false;
     }
 
     // ── Instance state ────────────────────────────────────────────────
@@ -37,19 +50,12 @@ public class WaveManager {
 
     private static final long FLEET_ENTRY_DELAY = 1400;
 
-    private int  currentWaveIndex  = 0;
-    private int  fleetIndex        = 0;
+    private int  currentWaveIndex   = 0;
+    private int  fleetIndex         = 0;
     private long lastFleetClearTime;
 
     private WaveDefinition        activeWave;
     private List<FleetController> fleets = new ArrayList<>();
-
-    // ── Boss tracking ─────────────────────────────────────────────────
-    private static BossEntity activeBoss       = null;
-    private static boolean    bossWaveActive   = false;
-
-    private static String currentFormation  = "";
-    private static int    enemiesRemaining  = 0;
 
     // ── Constructor ───────────────────────────────────────────────────
     public WaveManager(EntityManager em, PlayerShip player,
@@ -67,24 +73,29 @@ public class WaveManager {
 
         // ── Boss wave path ────────────────────────────────────────────
         if (bossWaveActive) {
-            if (activeBoss != null) {
-                activeBoss.update();
+            if (activeBoss == null) {
+                // Boss was never spawned or already cleared — move on
+                bossWaveActive   = false;
+                enemiesRemaining = 0;
+                startNextWave();
+                return;
+            }
 
-                // Check collision with player bullets
-                // (boss is not in EntityManager's enemy list — handle here)
-                CollisionSystem.checkBossCollisions(
-                        activeBoss, entityManager.getEntities());
+            activeBoss.update();
 
-                if (activeBoss.isRemovable()) {
-                    ScoreManager.get().enemyKilledWithValue(
-                            activeBoss.getScoreValue());
-                    activeBoss    = null;
-                    bossWaveActive = false;
-                    enemiesRemaining = 0;
-                    startNextWave();
-                } else {
-                    enemiesRemaining = 1; // boss counts as 1
-                }
+            // Check player bullet collisions — boss is outside EntityManager
+            CollisionSystem.checkBossCollisions(
+                    activeBoss, entityManager.getEntities());
+
+            if (activeBoss.isRemovable()) {
+                ScoreManager.get().enemyKilledWithValue(
+                        activeBoss.getScoreValue());
+                activeBoss       = null;
+                bossWaveActive   = false;
+                enemiesRemaining = 0;
+                startNextWave();
+            } else {
+                enemiesRemaining = 1;
             }
             return;
         }
@@ -100,13 +111,15 @@ public class WaveManager {
             }
             return false;
         });
+
         if (hadFleets && fleets.isEmpty()) {
             lastFleetClearTime = System.currentTimeMillis();
             currentFormation   = "";
         }
 
-        // Spawn next fleet
-        if (fleets.isEmpty() && fleetIndex < activeWave.fleets.size()) {
+        // Spawn next fleet after delay
+        if (fleets.isEmpty()
+                && fleetIndex < activeWave.fleets.size()) {
             long now = System.currentTimeMillis();
             if (now - lastFleetClearTime < FLEET_ENTRY_DELAY) return;
 
@@ -125,8 +138,9 @@ public class WaveManager {
             fleetIndex++;
         }
 
-        // Wave complete
-        if (fleets.isEmpty() && fleetIndex >= activeWave.fleets.size()) {
+        // Wave complete when all fleets done
+        if (fleets.isEmpty()
+                && fleetIndex >= activeWave.fleets.size()) {
             ScoreManager.get().waveCompleted();
             startNextWave();
         }
@@ -134,7 +148,7 @@ public class WaveManager {
         enemiesRemaining = entityManager.countEnemies();
     }
 
-    // ── Start next wave ───────────────────────────────────────────────
+    // ── Wave sequencing ───────────────────────────────────────────────
     private void startNextWave() {
         if (currentWaveIndex >= levelDefinition.waves.size()) {
             activeWave       = null;
@@ -157,18 +171,25 @@ public class WaveManager {
     private void spawnBoss(String region) {
         double spawnX = CombatArea.LEFT_BOUND
                 + CombatArea.WIDTH / 2.0
-                - 40;   // approximate center (boss w ~80px)
-        double spawnY = -80;  // starts above the screen
+                - 40;
+        double spawnY = -80;
 
-        activeBoss = BossRegistry.createBoss(
+        BossEntity boss = BossRegistry.createBoss(
                 region, spawnX, spawnY, entityManager, player);
 
-        if (activeBoss != null) {
-            activeBoss.setFormationY(60);  // hold at y=60 after entry
-            bossWaveActive   = true;
-            currentFormation = "BOSS";
-            enemiesRemaining = 1;
+        if (boss == null) {
+            // No boss registered for this region — skip boss wave
+            bossWaveActive   = false;
+            enemiesRemaining = 0;
+            startNextWave();
+            return;
         }
+
+        activeBoss = boss;
+        activeBoss.setFormationY(60);
+        bossWaveActive   = true;
+        currentFormation = "BOSS";
+        enemiesRemaining = 1;
     }
 
     // ── Lives ─────────────────────────────────────────────────────────
@@ -176,11 +197,15 @@ public class WaveManager {
         playerLives = Math.max(0, playerLives - 1);
     }
 
-    public static boolean isGameOver() { return playerLives <= 0; }
+    public static boolean isGameOver() {
+        return playerLives <= 0;
+    }
 
-    // ── Level finished ────────────────────────────────────────────────
+    // ── Level finished check ──────────────────────────────────────────
     public boolean isLevelFinished() {
-        return activeWave == null && fleets.isEmpty() && !bossWaveActive;
+        return activeWave == null
+                && fleets.isEmpty()
+                && !bossWaveActive;
     }
 
     // ── HUD getters ───────────────────────────────────────────────────
