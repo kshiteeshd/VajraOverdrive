@@ -3,34 +3,36 @@ package ui.theme;
 import java.awt.*;
 
 /**
- * Central font registry for the entire game.
+ * Central font registry.
  *
- * Press Start 2P is a bitmap pixel font — it only renders crisply
- * at multiples of its base grid (8px). All sizes here are strictly
- * multiples of 8 to avoid blurry fractional scaling.
+ * CHANGED:
+ *  - SMALL bumped from 8px → 10px for readability.
+ *  - MENU bumped from 16px → 18px for better legibility.
+ *  - HUD_LARGE bumped from 24px → 26px.
+ *  - HUD alias kept pointing at SMALL.
+ *  - TITLE stays at 32px — it's already prominent enough.
  *
- *   TITLE     32px — screen headings, level names
- *   MENU      16px — menu items, primary HUD values
- *   BODY      16px — story / intro text (same size, different usage)
- *   SMALL      8px — HUD labels, footers, sub-labels
- *   HUD        8px — alias for SMALL, used in HUD panels
- *   HUD_LARGE 24px — large accent values (enemy count, boss phase)
+ * Press Start 2P is a bitmap font — crisply designed for 8px multiples.
+ * Going to 10px (non-multiple) introduces slight interpolation blur at
+ * native resolution, but at game scale (1000×600) it reads far better
+ * than straining to read 8px glyphs. The visual "pixel-art" feel is
+ * preserved because the font itself is bitmap — just scaled up more.
  */
 public class UIFonts {
 
-    public static Font TITLE;      // 32px
-    public static Font MENU;       // 16px
-    public static Font BODY;       // 16px
-    public static Font SMALL;      //  8px
-    public static Font HUD;        //  8px  (alias for SMALL)
-    public static Font HUD_LARGE;  // 24px  (enemy count, large accents)
+    public static Font TITLE;      // 32px — screen headings
+    public static Font MENU;       // 18px — menu items, primary HUD values  (was 16)
+    public static Font BODY;       // 18px — story / intro text               (was 16)
+    public static Font SMALL;      // 10px — HUD labels, footers              (was 8)
+    public static Font HUD;        // 10px — alias for SMALL
+    public static Font HUD_LARGE;  // 26px — large accent values              (was 24)
 
     public static void load() {
         TITLE     = FontLoader.loadFont("fonts/press_start.ttf", 32f);
-        MENU      = FontLoader.loadFont("fonts/press_start.ttf", 16f);
-        BODY      = FontLoader.loadFont("fonts/press_start.ttf", 16f);
-        SMALL     = FontLoader.loadFont("fonts/press_start.ttf",  8f);
+        MENU      = FontLoader.loadFont("fonts/press_start.ttf", 18f);
+        BODY      = FontLoader.loadFont("fonts/press_start.ttf", 18f);
+        SMALL     = FontLoader.loadFont("fonts/press_start.ttf", 10f);
         HUD       = SMALL;
-        HUD_LARGE = FontLoader.loadFont("fonts/press_start.ttf", 24f);
+        HUD_LARGE = FontLoader.loadFont("fonts/press_start.ttf", 26f);
     }
 }

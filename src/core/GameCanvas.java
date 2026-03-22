@@ -56,6 +56,7 @@ public class GameCanvas extends JPanel {
     private final LoadGameMenuScreen loadGameMenu;
     private final SettingsMenuScreen settingsMenu;
     private final ControlsMenuScreen controlsMenu;
+    private final DebugMenuScreen    debugMenu;      // NEW
 
     public GameCanvas(GameWindow window) {
         this.window = window;
@@ -84,7 +85,6 @@ public class GameCanvas extends JPanel {
         campaignManager = new CampaignManager(entityManager, player, 1);
         FxLayer.get().init(entityManager);
 
-        // Wire HUD floater callback into ScoreManager
         ScoreManager.get().setHUDRef(nebulHUD);
 
         spaceBackground = new SpaceBackground();
@@ -103,6 +103,7 @@ public class GameCanvas extends JPanel {
         loadGameMenu = new LoadGameMenuScreen();
         settingsMenu = new SettingsMenuScreen();
         controlsMenu = new ControlsMenuScreen();
+        debugMenu    = new DebugMenuScreen();
 
         GameStateManager.setState(GameState.MAIN_MENU);
     }
@@ -118,9 +119,6 @@ public class GameCanvas extends JPanel {
         WaveManager.resetSession(3);
 
         ScoreManager.get().reset();
-
-        // Re-wire HUD callback after reset — reset() does not clear it
-        // but we set it again defensively in case of future refactors
         ScoreManager.get().setHUDRef(nebulHUD);
 
         if (!isNewGame && ProfileManager.getProfile() != null)
@@ -143,22 +141,21 @@ public class GameCanvas extends JPanel {
         hudData.gameMode    = PendingGameStart.gameMode != null
                 ? PendingGameStart.gameMode.name() : "CAMPAIGN";
 
-        // ── Shield wired to player health ─────────────────────────────
+        // HP fraction → shieldFrac field
         if (player != null && player.getMaxHealth() > 0) {
             hudData.shieldFrac = (float) player.getCurrentHealth()
                     / (float) player.getMaxHealth();
         } else {
             hudData.shieldFrac = 1.0f;
         }
+
+        // armorFrac — currently a fixed 1.0 (no separate armor system yet)
+        // When an armor system is added, wire it here.
         hudData.armorFrac  = 1.0f;
         hudData.shieldCrit = hudData.shieldFrac < 0.20f;
+        hudData.comboMult  = ScoreManager.get().getComboMult();
+        hudData.fps        = fps;
 
-        // ── Combo multiplier from ScoreManager ────────────────────────
-        hudData.comboMult = ScoreManager.get().getComboMult();
-
-        hudData.fps = fps;
-
-        // ── Boss HUD data ─────────────────────────────────────────────
         BossEntity boss = WaveManager.getActiveBoss();
         if (boss != null && WaveManager.isBossActive()) {
             hudData.bossActive      = true;
@@ -191,6 +188,7 @@ public class GameCanvas extends JPanel {
             case LOAD_GAME_MENU -> loadGameMenu.update();
             case SETTINGS_MENU  -> settingsMenu.update();
             case CONTROL_MENU   -> controlsMenu.update();
+            case DEBUG_MENU     -> debugMenu.update();
             case CAMPAIGN_INTRO -> campaignIntro.update();
             case REGION_INTRO   -> regionIntro.update();
             case LEVEL_LOAD     -> levelLoad.update();
@@ -216,6 +214,7 @@ public class GameCanvas extends JPanel {
                 spaceBackground.update();
                 entityManager.update();
                 campaignManager.update();
+                levelClear.update();
                 populateHUDData();
             }
 
@@ -241,6 +240,7 @@ public class GameCanvas extends JPanel {
             case NAME_ENTRY     -> nameEntry.enter();
             case LOAD_GAME_MENU -> loadGameMenu.enter();
             case SETTINGS_MENU  -> settingsMenu.enter();
+            case DEBUG_MENU     -> debugMenu.enter();
 
             case CAMPAIGN_INTRO -> {
                 rebuildSession(true);
@@ -314,6 +314,7 @@ public class GameCanvas extends JPanel {
             case LOAD_GAME_MENU -> loadGameMenu.render(gb);
             case SETTINGS_MENU  -> settingsMenu.render(gb);
             case CONTROL_MENU   -> controlsMenu.render(gb);
+            case DEBUG_MENU     -> debugMenu.render(gb);
             case CAMPAIGN_INTRO -> campaignIntro.render(gb);
             case REGION_INTRO   -> regionIntro.render(gb);
             case LEVEL_LOAD     -> levelLoad.render(gb);
