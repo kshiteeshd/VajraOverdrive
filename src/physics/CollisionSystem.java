@@ -1,5 +1,6 @@
 package physics;
 
+import boss.BossEntity;
 import enemy.EnemyEntity;
 import entity.*;
 import gfx.FxLayer;
@@ -62,6 +63,27 @@ public class CollisionSystem {
                         enemy.removable = true;
                     }
                 }
+            }
+        }
+    }
+
+    /**
+     * Checks player bullet collisions against the active boss.
+     * Boss is not in EntityManager's entity list so needs separate handling.
+     */
+    public static void checkBossCollisions(BossEntity boss,
+                                           List<Entity> entities) {
+        if (boss == null || boss.isRemovable()) return;
+
+        for (Entity e : new ArrayList<>(entities)) {
+            if (!(e instanceof ProjectileEntity p)) continue;
+            if (!p.isFromPlayer()) continue;
+            if (p.removable) continue;
+
+            if (p.getBounds().intersects(boss.getBounds())) {
+                boss.takeDamage(p.getDamage());
+                ScoreManager.get().enemyHit();
+                p.removable = true;
             }
         }
     }

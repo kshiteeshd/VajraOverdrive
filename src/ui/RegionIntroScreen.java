@@ -24,7 +24,6 @@ public class RegionIntroScreen {
     private String   region     = "RED";
     private String[] storyLines = {};
 
-    // Typewriter state machine
     private enum TwState { TYPING, LINE_PAUSE, DONE }
     private TwState twState       = TwState.TYPING;
     private int     currentLine   = 0;
@@ -32,9 +31,11 @@ public class RegionIntroScreen {
     private long    stateStart    = 0;
     private long    enterTime     = 0;
 
-    // Blink
     private boolean blinkOn    = true;
     private long    blinkTimer = 0;
+
+    // FIX: guard against double-advance when timer and SPACE fire same frame
+    private boolean advanced = false;
 
     private final SpaceBackground bg = new SpaceBackground();
 
@@ -44,13 +45,15 @@ public class RegionIntroScreen {
         this.storyLines = RegionStoryRegistry.getStory(regionName);
         if (this.storyLines == null) this.storyLines = new String[]{};
 
-        twState       = TwState.TYPING;
-        currentLine   = 0;
-        charsShown    = 0;
-        enterTime     = System.currentTimeMillis();
-        stateStart    = enterTime;
-        blinkOn       = true;
-        blinkTimer    = enterTime;
+        twState    = TwState.TYPING;
+        currentLine = 0;
+        charsShown  = 0;
+        enterTime   = System.currentTimeMillis();
+        stateStart  = enterTime;
+        blinkOn     = true;
+        blinkTimer  = enterTime;
+        // FIX: reset guard on every enter()
+        advanced    = false;
 
         bg.setRegion(regionName);
     }
@@ -59,8 +62,7 @@ public class RegionIntroScreen {
         long now = System.currentTimeMillis();
         bg.update();
 
-        // Blink
-        if (now - blinkTimer > 480) {
+        if (blinkTimer != 0 && now - blinkTimer > 480) {
             blinkOn    = !blinkOn;
             blinkTimer = now;
         }
@@ -71,10 +73,8 @@ public class RegionIntroScreen {
             return;
         }
 
-        // SPACE — skip typewriter first press, advance second press
         if (InputManager.isKeyPressed(KeyEvent.VK_SPACE)) {
             if (twState != TwState.DONE) {
-                // Reveal everything instantly
                 twState     = TwState.DONE;
                 currentLine = storyLines.length;
             } else {
@@ -112,7 +112,10 @@ public class RegionIntroScreen {
         }
     }
 
+    // FIX: guard so advance() can only fire once per screen entry
     private void advance() {
+        if (advanced) return;
+        advanced = true;
         GameStateManager.setState(GameState.PLAYING);
     }
 
@@ -121,25 +124,20 @@ public class RegionIntroScreen {
         Color regionColor = UITheme.getRegionColor(region);
         bg.render(g, 0, 0, W, H);
 
-        // ── Left-aligned content block ────────────────────────────────
         int blockX = 110;
         int blockY = 155;
 
-        // Vertical accent bar
         g.setColor(regionColor);
         g.fillRect(blockX - 20, blockY - 38, 4, 56);
 
-        // Region name (big)
         g.setFont(UIFonts.TITLE);
         g.setColor(regionColor);
         g.drawString(region, blockX, blockY);
 
-        // SECTOR sub-label
         g.setFont(UIFonts.BODY);
         g.setColor(UITheme.TEXT_DIM);
         g.drawString("SECTOR", blockX, blockY + 26);
 
-        // Horizontal rule
         int ruleAlpha = 55;
         g.setColor(new Color(
                 regionColor.getRed(),
@@ -148,8 +146,7 @@ public class RegionIntroScreen {
                 ruleAlpha));
         g.fillRect(blockX - 20, blockY + 42, W - blockX - 60, 1);
 
-        // ── Story lines (skip index 0 — already shown as region name) ─
-        boolean isDone  = (twState == TwState.DONE);
+        boolean isDone    = (twState == TwState.DONE);
         int     lineStartY = blockY + 84;
         int     lineH      = 40;
 
@@ -162,8 +159,6 @@ public class RegionIntroScreen {
                 toShow = line;
             } else if (i == currentLine) {
                 toShow = line.substring(0, Math.min(charsShown, line.length()));
-
-                // Cursor
                 g.setFont(UIFonts.BODY);
                 FontMetrics fm = g.getFontMetrics();
                 int curX = blockX + fm.stringWidth(toShow);
@@ -175,13 +170,11 @@ public class RegionIntroScreen {
                 continue;
             }
 
-            // Fade in completed lines slightly
             g.setFont(UIFonts.BODY);
             g.setColor(col);
             g.drawString(toShow, blockX, lineStartY + (i - 1) * lineH);
         }
 
-        // ── Progress bar — time until auto-advance ────────────────────
         long  elapsed  = System.currentTimeMillis() - enterTime;
         float progress = Math.min(elapsed / (float) AUTO_ADVANCE_MS, 1f);
         int   barW     = W - blockX * 2;
@@ -192,7 +185,6 @@ public class RegionIntroScreen {
         g.setColor(regionColor);
         g.fillRect(blockX, barY, (int)(barW * progress), 2);
 
-        // ── Skip / advance prompt ─────────────────────────────────────
         g.setFont(UIFonts.SMALL);
         FontMetrics fmS = g.getFontMetrics();
 

@@ -3,58 +3,58 @@ package gfx;
 /**
  * Singleton screen shake system.
  *
- * Usage:
- *   ScreenShake.trigger(8, 300);   // intensity 8px, 300ms duration
- *
- * GameCanvas reads getOffsetX() / getOffsetY() each frame and shifts
- * the drawImage call by that amount.
- *
- * Multiple triggers stack — the strongest active shake wins.
+ * FIX: intensity decay was broken — the formula
+ *   (endTime - now) / Max(endTime - now + 1, 1)
+ * always evaluated to ~1.0 because numerator ≈ denominator.
+ * Shake never decayed; it stayed at full intensity then cut to
+ * zero hard. Fixed by recording totalDuration at trigger time
+ * and decaying as remaining/total.
  */
 public class ScreenShake {
 
     private static final ScreenShake instance = new ScreenShake();
     public static ScreenShake get() { return instance; }
 
-    private float intensity  = 0;
-    private long  endTime    = 0;
-    private float offsetX    = 0;
-    private float offsetY    = 0;
+    private float intensity     = 0;
+    private long  endTime       = 0;
+    private long  totalDuration = 0;   // FIX: track duration set at trigger
+    private float offsetX       = 0;
+    private float offsetY       = 0;
 
     private static final java.util.Random RNG = new java.util.Random();
 
     private ScreenShake() {}
 
     // ── Trigger ───────────────────────────────────────────────────────
-    /**
-     * @param intensity  max pixel displacement (4 = subtle, 12 = heavy)
-     * @param durationMs how long the shake lasts in milliseconds
-     */
     public static void trigger(float intensity, long durationMs) {
         ScreenShake s = get();
-        // Stack — take the strongest
         if (intensity > s.intensity) s.intensity = intensity;
         long end = System.currentTimeMillis() + durationMs;
-        if (end > s.endTime) s.endTime = end;
+        if (end > s.endTime) {
+            s.endTime = end;
+            // FIX: record the full duration so decay is calculated correctly
+            s.totalDuration = durationMs;
+        }
     }
 
-    // ── Convenience levels ────────────────────────────────────────────
     public static void small()  { trigger(4,  180); }
     public static void medium() { trigger(7,  260); }
     public static void large()  { trigger(12, 380); }
 
-    // ── Update (call once per frame) ──────────────────────────────────
+    // ── Update ────────────────────────────────────────────────────────
     public void update() {
         long now = System.currentTimeMillis();
-        if (now >= endTime) {
-            intensity = 0;
-            offsetX   = 0;
-            offsetY   = 0;
+        if (now >= endTime || totalDuration == 0) {
+            intensity     = 0;
+            offsetX       = 0;
+            offsetY       = 0;
+            totalDuration = 0;
             return;
         }
 
-        // Decay intensity over time
-        float remaining = (endTime - now) / (float) Math.max(endTime - now + 1, 1);
+        // FIX: decay from full intensity to zero over the duration
+        // remaining/total goes from 1.0 → 0.0 as the shake expires
+        float remaining = (endTime - now) / (float) totalDuration;
         float current   = intensity * remaining;
 
         offsetX = (RNG.nextFloat() * 2 - 1) * current;
@@ -62,9 +62,7 @@ public class ScreenShake {
     }
 
     // ── Read ──────────────────────────────────────────────────────────
-    public int getOffsetX() { return (int) offsetX; }
-    public int getOffsetY() { return (int) offsetY; }
-    public boolean isActive() {
-        return System.currentTimeMillis() < endTime;
-    }
+    public int     getOffsetX()  { return (int) offsetX; }
+    public int     getOffsetY()  { return (int) offsetY; }
+    public boolean isActive()    { return System.currentTimeMillis() < endTime; }
 }

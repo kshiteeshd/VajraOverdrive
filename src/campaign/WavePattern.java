@@ -1,30 +1,53 @@
+// WavePattern.java
 package campaign;
 
 public enum WavePattern {
 
-    // ── Basic patterns ─────────────────────────────────────────────────
-    BASIC,           // single line of BasicEnemy
-    V_ATTACK,        // V formation of BasicEnemy
-    DOUBLE_LINE,     // two lines of BasicEnemy
-    SWARM,           // large line of BasicEnemy
+    // ── Basic T1 ───────────────────────────────────────────────────────
+    BASIC,
+    V_ATTACK,
+    DOUBLE_LINE,
+    SWARM,
+    MIXED,
 
-    // ── Mixed patterns ─────────────────────────────────────────────────
-    MIXED,           // line + V of BasicEnemy
+    // ── Fast T1 ────────────────────────────────────────────────────────
+    FAST_WAVE,
+    FAST_SWARM,
 
-    // ── Fast enemy patterns ────────────────────────────────────────────
-    FAST_WAVE,       // line of FastEnemy
-    FAST_SWARM,      // large line of FastEnemy
+    // ── Tank T1 ────────────────────────────────────────────────────────
+    TANK_LINE,
+    TANK_V,
 
-    // ── Tank patterns ──────────────────────────────────────────────────
-    TANK_LINE,       // small line of TankEnemy
-    TANK_V,          // V of TankEnemy
+    // ── Sniper T1 ──────────────────────────────────────────────────────
+    SNIPER_LINE,
 
-    // ── Sniper patterns ────────────────────────────────────────────────
-    SNIPER_LINE,     // line of SniperEnemy
+    // ── Mixed T1 ───────────────────────────────────────────────────────
+    ASSAULT,     // basic line + fast V
+    SIEGE,       // tank line + sniper line
+    BLITZ,       // fast swarm + basic V
+    ELITE,       // tank + sniper + basic
 
-    // ── Mixed multi-type ───────────────────────────────────────────────
-    ASSAULT,         // BasicEnemy line + FastEnemy V
-    SIEGE,           // TankEnemy line + SniperEnemy line
-    BLITZ,           // FastEnemy swarm + BasicEnemy V
-    ELITE,           // TankEnemy + SniperEnemy + BasicEnemy
+    // ── Tier-2 patterns (GREEN / WHITE regions) ─────────────────────
+    BASIC_T2_LINE,      // elite basic line
+    BASIC_T2_V,         // elite basic V
+    FAST_T2_WAVE,       // dive-mode fast swarm
+    FAST_T2_V,          // dive-mode fast V
+    TANK_T2_LINE,       // heavy scatter tanks
+    SNIPER_T2_LINE,     // triple-burst snipers
+
+    // ── Mixed T2 ───────────────────────────────────────────────────────
+    ASSAULT_ELITE,      // basic T2 line + fast T2 V
+    SIEGE_ELITE,        // tank T2 + sniper T2
+    BLITZ_ELITE,        // fast T2 swarm + basic T2 V
+    FINAL_PUSH,         // tank T2 + sniper T2 + fast T2 — hardest non-boss wave
+
+
+    // ── Boss waves — one per region ─────────────────────────────────────
+    // These are handled specially in WaveManager:
+    // no FleetDefinition is created — a BossEntity is spawned directly.
+    BOSS_RED,
+    BOSS_YELLOW,
+    BOSS_BLUE,
+    BOSS_GREEN,
+    BOSS_WHITE,
 }

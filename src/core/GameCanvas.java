@@ -10,9 +10,10 @@ import physics.CollisionSystem;
 import player.PlayerShip;
 import save.ProfileManager;
 import save.SettingsManager;
-import save.SettingsProfile;
 import score.ScoreManager;
 import ui.*;
+import ui.hud.HUDData;
+import ui.hud.NebulHUD;
 import ui.menu.*;
 import ui.theme.UIFonts;
 import ui.theme.UITheme;
@@ -26,25 +27,22 @@ import java.awt.image.BufferedImage;
 
 public class GameCanvas extends JPanel {
 
-    // ── Core ──────────────────────────────────────────────────────────
     private final GameWindow    window;
     private       int           fps;
     private final BufferedImage gameBuffer;
     private final InputManager  input;
 
-    // ── Game systems — rebuilt each session ───────────────────────────
     private EntityManager   entityManager;
     private PlayerShip      player;
     private CampaignManager campaignManager;
 
-    // ── Backgrounds ───────────────────────────────────────────────────
     private final SpaceBackground spaceBackground;
     private       GameState       lastState = null;
 
-    // ── HUD ───────────────────────────────────────────────────────────
-    private final GameUILayout uiLayout;
+    // CHANGED: NebulHUD replaces GameUILayout
+    private final NebulHUD nebulHUD;
+    private final HUDData  hudData = new HUDData();
 
-    // ── In-game screens ───────────────────────────────────────────────
     private final CampaignIntroScreen    campaignIntro;
     private final RegionIntroScreen      regionIntro;
     private final LevelLoadScreen        levelLoad;
@@ -52,19 +50,18 @@ public class GameCanvas extends JPanel {
     private final GameOverScreen         gameOver;
     private final CampaignCompleteScreen campaignComplete;
 
-    // ── Menu screens ──────────────────────────────────────────────────
     private final MainMenuScreen     mainMenu;
     private final NewGameMenuScreen  newGameMenu;
     private final NameEntryScreen    nameEntry;
     private final LoadGameMenuScreen loadGameMenu;
     private final SettingsMenuScreen settingsMenu;
-    private final ControlsMenuScreen controlsMenu;   // kept for direct nav if needed
+    private final ControlsMenuScreen controlsMenu;
 
     public GameCanvas(GameWindow window) {
         this.window = window;
 
         SpriteRegistry.load();
-        SettingsManager.get();          // load settings early
+        SettingsManager.get();
 
         gameBuffer = new BufferedImage(
                 LayoutConfig.VIRTUAL_WIDTH,
@@ -81,9 +78,8 @@ public class GameCanvas extends JPanel {
         input = new InputManager();
         addKeyListener(input);
 
-        // Default dummy session — rebuilt on real game start
         entityManager   = new EntityManager();
-        uiLayout        = new GameUILayout();
+        nebulHUD        = new NebulHUD();
         player          = PlayerShip.createDefault(entityManager);
         campaignManager = new CampaignManager(entityManager, player, 1);
         FxLayer.get().init(entityManager);
@@ -91,7 +87,6 @@ public class GameCanvas extends JPanel {
         spaceBackground = new SpaceBackground();
         spaceBackground.setRegion(campaignManager.getCurrentRegion());
 
-        // In-game
         campaignIntro    = new CampaignIntroScreen();
         regionIntro      = new RegionIntroScreen();
         levelLoad        = new LevelLoadScreen();
@@ -99,7 +94,6 @@ public class GameCanvas extends JPanel {
         gameOver         = new GameOverScreen();
         campaignComplete = new CampaignCompleteScreen();
 
-        // Menus
         mainMenu     = new MainMenuScreen();
         newGameMenu  = new NewGameMenuScreen();
         nameEntry    = new NameEntryScreen();
@@ -120,21 +114,41 @@ public class GameCanvas extends JPanel {
         FxLayer.get().init(entityManager);
         WaveManager.resetSession(3);
 
-        if (isNewGame) {
-            ScoreManager.get().reset();
-        } else {
-            ScoreManager.get().reset();
-            if (ProfileManager.getProfile() != null)
-                ScoreManager.get().setScore(ProfileManager.getProfile().score);
-        }
+        ScoreManager.get().reset();
+        if (!isNewGame && ProfileManager.getProfile() != null)
+            ScoreManager.get().setScore(ProfileManager.getProfile().score);
 
         spaceBackground.setRegion(campaignManager.getCurrentRegion());
     }
 
+    // ── HUD data population ───────────────────────────────────────────
+    private void populateHUDData() {
+        hudData.score       = ScoreManager.get().getScore();
+        hudData.wave        = WaveManager.getCurrentWave();
+        hudData.formation   = WaveManager.getCurrentFormation();
+        hudData.enemyCount  = WaveManager.getRemainingEnemies();
+        hudData.lives       = WaveManager.getPlayerLives();
+        hudData.maxLives    = WaveManager.getMaxLives();
+        hudData.region      = campaignManager.getCurrentRegion();
+        hudData.level       = campaignManager.getCurrentLevel();
+        hudData.totalLevels = 25;
+        hudData.gameMode    = PendingGameStart.gameMode != null
+                ? PendingGameStart.gameMode.name() : "CAMPAIGN";
+        hudData.shieldFrac  = 1.0f;  // full until shield system added
+        hudData.armorFrac   = 1.0f;
+        hudData.shieldCrit  = hudData.shieldFrac < 0.20f;
+        hudData.fps         = fps;
+
+        // Combo multiplier — derived from score manager
+        // (rough proxy until ComboManager is added in Batch 6)
+        hudData.comboMult = 1;
+
+        // Boss data — will be populated by BossManager in Batch 3 wire-up
+        hudData.bossActive = false;
+    }
+
     // ── Update ────────────────────────────────────────────────────────
     public void update() {
-
-        // Global fullscreen toggle
         if (InputManager.isKeyPressed(KeyEvent.VK_F))
             window.toggleFullscreen();
 
@@ -146,38 +160,36 @@ public class GameCanvas extends JPanel {
         }
 
         switch (state) {
-
             case MAIN_MENU      -> mainMenu.update();
             case NEW_GAME_MENU  -> newGameMenu.update();
             case NAME_ENTRY     -> nameEntry.update();
             case LOAD_GAME_MENU -> loadGameMenu.update();
             case SETTINGS_MENU  -> settingsMenu.update();
             case CONTROL_MENU   -> controlsMenu.update();
-
-            case CAMPAIGN_INTRO -> {
-                campaignIntro.update();
-                if (InputManager.isKeyPressed(KeyEvent.VK_SPACE))
-                    GameStateManager.setState(GameState.REGION_INTRO);
-            }
-
-            case REGION_INTRO -> regionIntro.update();
-            case LEVEL_LOAD   -> levelLoad.update();
+            case CAMPAIGN_INTRO -> campaignIntro.update();
+            case REGION_INTRO   -> regionIntro.update();
+            case LEVEL_LOAD     -> levelLoad.update();
 
             case PLAYING -> {
                 if (WaveManager.isGameOver()) {
                     GameStateManager.setState(GameState.GAME_OVER);
                     break;
                 }
+                if (InputManager.isKeyPressed(KeyEvent.VK_ESCAPE)) {
+                    GameStateManager.setState(GameState.GAME_OVER);
+                    break;
+                }
                 spaceBackground.update();
-                uiLayout.setRegion(campaignManager.getCurrentRegion());
                 entityManager.update();
                 campaignManager.update();
                 CollisionSystem.checkCollisions(entityManager.getEntities());
+                populateHUDData();
             }
 
             case LEVEL_TRANSITION -> {
                 spaceBackground.update();
                 campaignManager.update();
+                populateHUDData();
             }
 
             case GAME_OVER -> {
@@ -197,7 +209,6 @@ public class GameCanvas extends JPanel {
     // ── State entry hooks ─────────────────────────────────────────────
     private void onStateEntered(GameState state) {
         switch (state) {
-
             case MAIN_MENU      -> mainMenu.enter();
             case NEW_GAME_MENU  -> newGameMenu.enter();
             case NAME_ENTRY     -> nameEntry.enter();
@@ -213,8 +224,7 @@ public class GameCanvas extends JPanel {
                 rebuildSession(false);
                 levelLoad.enter(
                         campaignManager.getCurrentLevel(),
-                        campaignManager.getCurrentRegion()
-                );
+                        campaignManager.getCurrentRegion());
                 spaceBackground.setRegion(campaignManager.getCurrentRegion());
             }
 
@@ -230,8 +240,7 @@ public class GameCanvas extends JPanel {
             case LEVEL_TRANSITION -> {
                 levelClear.enter(
                         campaignManager.getCurrentLevel(),
-                        campaignManager.getCurrentRegion()
-                );
+                        campaignManager.getCurrentRegion());
                 saveProgress();
             }
 
@@ -283,26 +292,21 @@ public class GameCanvas extends JPanel {
             case LEVEL_LOAD     -> levelLoad.render(gb);
 
             case PLAYING -> {
-                spaceBackground.render(gb,
-                        LayoutConfig.GAME_AREA_X, 0,
-                        LayoutConfig.GAME_AREA_WIDTH,
-                        LayoutConfig.GAME_AREA_HEIGHT);
-                uiLayout.render(gb);
+                // CHANGED: full 1000×600 game area
+                spaceBackground.render(gb, 0, 0,
+                        LayoutConfig.VIRTUAL_WIDTH,
+                        LayoutConfig.VIRTUAL_HEIGHT);
                 entityManager.render(gb);
-                gb.setFont(UIFonts.SMALL);
-                gb.setColor(UITheme.TEXT_FAINT);
-                gb.drawString(fps + " fps",
-                        LayoutConfig.GAME_AREA_X + 6,
-                        LayoutConfig.GAME_AREA_HEIGHT - 6);
+                // NebulHUD renders as overlay on top
+                nebulHUD.render(gb, hudData);
             }
 
             case LEVEL_TRANSITION -> {
-                spaceBackground.render(gb,
-                        LayoutConfig.GAME_AREA_X, 0,
-                        LayoutConfig.GAME_AREA_WIDTH,
-                        LayoutConfig.GAME_AREA_HEIGHT);
-                uiLayout.render(gb);
+                spaceBackground.render(gb, 0, 0,
+                        LayoutConfig.VIRTUAL_WIDTH,
+                        LayoutConfig.VIRTUAL_HEIGHT);
                 entityManager.render(gb);
+                nebulHUD.render(gb, hudData);
                 levelClear.render(gb);
             }
 
@@ -310,19 +314,10 @@ public class GameCanvas extends JPanel {
             case CAMPAIGN_COMPLETE -> campaignComplete.render(gb);
         }
 
-        // ── Brightness overlay ────────────────────────────────────────
         applyBrightness(gb);
-
-        gb.dispose();
-
-        // ── Scale to window ───────────────────────────────────────────
-        // Replace the scale + drawImage block at the end of paintComponent():
-
         gb.dispose();
 
         Graphics2D g2 = (Graphics2D) g;
-
-        // Update and apply screen shake
         ScreenShake.get().update();
         int shakeX = ScreenShake.get().getOffsetX();
         int shakeY = ScreenShake.get().getOffsetY();
@@ -339,23 +334,17 @@ public class GameCanvas extends JPanel {
         g2.drawImage(gameBuffer, ox, oy, rw, rh, null);
     }
 
-    // ── Brightness post-pass ──────────────────────────────────────────
     private void applyBrightness(Graphics2D g) {
         float b = SettingsManager.get().brightness;
-        if (b == 1.0f) return;   // no-op at neutral
-
+        if (b == 1.0f) return;
         Composite old = g.getComposite();
         if (b < 1.0f) {
-            // darken — black overlay, alpha = how dark
-            float alpha = 1.0f - b;   // b=0.5 → alpha=0.5
             g.setComposite(AlphaComposite.getInstance(
-                    AlphaComposite.SRC_OVER, alpha));
+                    AlphaComposite.SRC_OVER, 1.0f - b));
             g.setColor(Color.BLACK);
         } else {
-            // lighten — white overlay, alpha = how light
-            float alpha = b - 1.0f;   // b=1.5 → alpha=0.5
             g.setComposite(AlphaComposite.getInstance(
-                    AlphaComposite.SRC_OVER, alpha));
+                    AlphaComposite.SRC_OVER, b - 1.0f));
             g.setColor(Color.WHITE);
         }
         g.fillRect(0, 0, LayoutConfig.VIRTUAL_WIDTH, LayoutConfig.VIRTUAL_HEIGHT);

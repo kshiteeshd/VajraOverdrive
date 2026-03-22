@@ -64,9 +64,12 @@ public class PlayerShip extends Entity {
         WaveManager.loseLife();
     }
 
+    // Replace createDefault() in PlayerShip.java
+
     public static PlayerShip createDefault(EntityManager em) {
-        int x = CombatArea.LEFT_BOUND + CombatArea.WIDTH / 2 - 16;
-        int y = CombatArea.BOTTOM_BOUND - 80;
+        // CHANGED: center of full 1000px width, not offset by panel
+        int x = CombatArea.WIDTH / 2 - 16;   // 500 - 16 = 484
+        int y = CombatArea.BOTTOM_BOUND - 80; // 520
         PlayerShip p = new PlayerShip(x, y, em);
         em.add(p);
         return p;

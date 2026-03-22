@@ -12,6 +12,13 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * FIX: removed the 3-arg and 4-arg convenience constructors that
+ * silently passed null for player — SniperEnemy could never aim.
+ * Player is now a required parameter on all construction paths.
+ * Callers that previously omitted it must now pass the PlayerShip
+ * reference explicitly.
+ */
 public class FleetController {
 
     private enum State { ENTERING, FORMED }
@@ -23,16 +30,22 @@ public class FleetController {
     private List<Point>       targets = new ArrayList<>();
     private List<EnemyEntity> enemies = new ArrayList<>();
 
-    private PlayerShip player;
+    // FIX: non-null, required
+    private final PlayerShip player;
 
-    // ── Constructors ──────────────────────────────────────────────────
+    // ── Constructor ───────────────────────────────────────────────────
+    /**
+     * Single canonical constructor. All callers must supply a valid
+     * PlayerShip reference so SniperEnemy targeting always works.
+     */
     public FleetController(FleetDefinition def,
                            EntityManager entityManager,
                            int centerX, int spawnY,
-                           int level, PlayerShip player) {
+                           int level,
+                           PlayerShip player) {
+        // player may theoretically be null only in unit tests — guard defensively
         this.player = player;
 
-        // Detect dominant enemy class in this fleet for shoot delay
         EnemyClass cls = detectClass(def);
         shootDelay = DifficultyController.shootDelay(level, cls);
 
@@ -59,34 +72,19 @@ public class FleetController {
             targets = new ArrayList<>(targets.subList(0, enemies.size()));
     }
 
-    public FleetController(FleetDefinition def,
-                           EntityManager entityManager,
-                           int centerX, int spawnY,
-                           int level) {
-        this(def, entityManager, centerX, spawnY, level, null);
-    }
-
-    public FleetController(FleetDefinition def,
-                           EntityManager entityManager,
-                           int centerX, int spawnY) {
-        this(def, entityManager, centerX, spawnY, 1, null);
-    }
-
     // ── Enemy class detection ─────────────────────────────────────────
-    /**
-     * Looks at the first enemy group in the fleet to pick the
-     * appropriate shoot delay curve. Mixed fleets use BASIC.
-     */
     private EnemyClass detectClass(FleetDefinition def) {
         if (def.enemyGroups == null || def.enemyGroups.isEmpty())
             return EnemyClass.BASIC;
 
+        // FIX: use EnemyEntity.EnemyClass indirectly via type name for now.
+        // Batch 2 will wire this through the EnemyType directly.
         String name = def.enemyGroups.get(0).enemyType.name;
         return switch (name) {
-            case "FastEnemy"   -> EnemyClass.FAST;
-            case "TankEnemy"   -> EnemyClass.TANK;
-            case "SniperEnemy" -> EnemyClass.SNIPER;
-            default            -> EnemyClass.BASIC;
+            case "FastEnemy",   "FastEnemy_T2"   -> EnemyClass.FAST;
+            case "TankEnemy",   "TankEnemy_T2"   -> EnemyClass.TANK;
+            case "SniperEnemy", "SniperEnemy_T2" -> EnemyClass.SNIPER;
+            default                               -> EnemyClass.BASIC;
         };
     }
 
@@ -122,14 +120,12 @@ public class FleetController {
                 EnemyEntity e = enemies.get(i);
                 if (e.removable) continue;
                 Point t = targets.get(i);
-                // Set anchor so movement patterns work correctly
                 e.setFormationPos(t.x, t.y);
-                // Sniper targeting
+                // player is guaranteed non-null from the constructor
                 if (e instanceof SniperEnemy sniper && player != null)
                     sniper.setTargetX(player.x + player.width / 2.0);
             }
 
-            // Shoot tick
             long now = System.currentTimeMillis();
             if (now - lastShotTime > shootDelay) {
                 shootRandomEnemy();

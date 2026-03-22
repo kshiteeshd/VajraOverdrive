@@ -3,35 +3,46 @@ package enemy;
 import enemy.data.EnemyStats;
 import entity.Entity;
 import entity.EntityManager;
-import entity.ProjectileEntity;
 import gfx.FxLayer;
 import gfx.ImageSequenceSet;
 import gfx.ShipRegistry;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.util.Random;
 
-public class EnemyEntity extends Entity {
+public abstract class EnemyEntity extends Entity {
+
+    /**
+     * FIX: replaces getClass().getSimpleName() usage everywhere.
+     * Each subclass returns its canonical class identity via this enum.
+     * Safe under obfuscation, safe under subclassing, O(1) switch.
+     */
+    public enum EnemyClass { BASIC, FAST, TANK, SNIPER }
+
+    /** Subclasses must declare their type. */
+    public abstract EnemyClass getEnemyClass();
 
     protected EnemyStats    stats;
     protected EntityManager entityManager;
     protected ImageSequenceSet anim;
 
-    // ── Movement state ────────────────────────────────────────────────
     // Formation position — set by FleetController after entering
     protected double formationX;
     protected double formationY;
 
     // Strafe / zigzag
-    private double  moveOffsetX  = 0;
-    private double  moveOffsetY  = 0;
-    private double  moveVelX     = 0.6;
-    private double  moveVelY     = 0.4;
-    private boolean moveDirFlipX = false;
+    private double  moveOffsetX;
+    private double  moveOffsetY;
+    private double  moveVelX = 0.6;
+    private double  moveVelY = 0.4;
     private long    diveStart    = 0;
     private boolean diving       = false;
-    private static final long DIVE_INTERVAL = 4000;  // ms between dives
-    private long lastDiveTime = 0;
+    private static final long DIVE_INTERVAL = 4000;
+    private long lastDiveTime;
+
+    // FIX: shared RNG for phase offsets
+    private static final Random RNG = new Random();
 
     // ── Constructor ───────────────────────────────────────────────────
     public EnemyEntity(double x, double y, EnemyStats stats,
@@ -42,14 +53,21 @@ public class EnemyEntity extends Entity {
         this.health        = stats.health;
         this.velocityY     = stats.speed;
         this.anim          = ShipRegistry.buildEnemySet(animKey);
+
+        // FIX: randomize initial phase so enemies in a fleet
+        // don't all zigzag/dive in lockstep
+        moveOffsetX  = (RNG.nextDouble() * 2 - 1) * 28.0;
+        moveOffsetY  = (RNG.nextDouble() * 2 - 1) * 18.0;
+        // FIX: stagger dive timers so fleet doesn't all dive simultaneously
+        lastDiveTime = System.currentTimeMillis()
+                - (long)(RNG.nextDouble() * DIVE_INTERVAL);
     }
 
-    // Backward-compat — uses "enemy_basic"
     public EnemyEntity(double x, double y, EnemyStats stats, EntityManager em) {
         this(x, y, stats, em, "enemy_basic");
     }
 
-    // ── Formation position (set by FleetController) ───────────────────
+    // ── Formation position ────────────────────────────────────────────
     public void setFormationPos(double fx, double fy) {
         this.formationX = fx;
         this.formationY = fy;
@@ -59,20 +77,15 @@ public class EnemyEntity extends Entity {
     public void takeDamage(int dmg) {
         health -= dmg;
         if (health <= 0) {
-            // Pick death effect based on enemy type
             double cx = x + width  / 2.0;
             double cy = y + height / 2.0;
 
-            String cls = getClass().getSimpleName();
-            switch (cls) {
-                case "TankEnemy" ->
-                        FxLayer.get().deathBurst(cx, cy, new Color(200, 40, 40));
-                case "SniperEnemy" ->
-                        FxLayer.get().deathBurst(cx, cy, new Color(160, 60, 220));
-                case "FastEnemy" ->
-                        FxLayer.get().smallDeath(cx, cy, new Color(255, 160, 20));
-                default ->
-                        FxLayer.get().smallDeath(cx, cy, new Color(220, 80, 80));
+            // FIX: use getEnemyClass() instead of getSimpleName()
+            switch (getEnemyClass()) {
+                case TANK   -> FxLayer.get().deathBurst(cx, cy, new Color(200, 40, 40));
+                case SNIPER -> FxLayer.get().deathBurst(cx, cy, new Color(160, 60, 220));
+                case FAST   -> FxLayer.get().smallDeath(cx, cy, new Color(255, 160, 20));
+                default     -> FxLayer.get().smallDeath(cx, cy, new Color(220, 80, 80));
             }
 
             removable = true;
@@ -91,22 +104,21 @@ public class EnemyEntity extends Entity {
         applyMovePattern();
     }
 
-    /**
-     * Applies movement offset on top of formation position.
-     * FleetController sets x/y to formation position each frame
-     * during ENTERING. Once FORMED, this method drives sub-movement.
-     */
     protected void applyMovePattern() {
         long now = System.currentTimeMillis();
 
         switch (stats.movePattern) {
 
-            case STATIC -> { /* no movement — position held by FleetController */ }
+            case STATIC -> {
+                // position held by FleetController
+            }
 
             case STRAFE -> {
                 moveOffsetX += moveVelX;
                 if (Math.abs(moveOffsetX) > 28) moveVelX = -moveVelX;
                 x = formationX + moveOffsetX;
+                // FIX: strafe never reset Y — tank drifted off row
+                y = formationY;
             }
 
             case ZIGZAG -> {
@@ -120,20 +132,19 @@ public class EnemyEntity extends Entity {
 
             case DIVE -> {
                 if (!diving && now - lastDiveTime > DIVE_INTERVAL) {
-                    diving     = true;
-                    diveStart  = now;
+                    diving       = true;
+                    diveStart    = now;
                     lastDiveTime = now;
                 }
                 if (diving) {
                     long elapsed = now - diveStart;
+                    // FIX: clamp elapsed to prevent lag-spike teleport
+                    elapsed = Math.min(elapsed, 1200);
                     if (elapsed < 600) {
-                        // Dive down
                         y = formationY + (elapsed / 600.0) * 120;
                     } else if (elapsed < 1200) {
-                        // Return up
                         y = formationY + ((1200 - elapsed) / 600.0) * 120;
                     } else {
-                        // Reset
                         y      = formationY;
                         diving = false;
                     }
@@ -145,15 +156,12 @@ public class EnemyEntity extends Entity {
     }
 
     // ── Fire ──────────────────────────────────────────────────────────
-    // Replace the existing fire() method in EnemyEntity with this:
-
     public void fire() {
         if (entityManager == null) return;
 
-        // Determine bullet type from this enemy's class name
+        // FIX: use getEnemyClass() instead of getSimpleName()
         entity.ProjectileEntity.BulletType bt = resolveBulletType();
 
-        // Bullet size per type
         int bw, bh;
         double bvy;
         switch (bt) {
@@ -188,12 +196,12 @@ public class EnemyEntity extends Entity {
     }
 
     private entity.ProjectileEntity.BulletType resolveBulletType() {
-        String cls = getClass().getSimpleName();
-        return switch (cls) {
-            case "TankEnemy"   -> entity.ProjectileEntity.BulletType.TANK;
-            case "FastEnemy"   -> entity.ProjectileEntity.BulletType.FAST;
-            case "SniperEnemy" -> entity.ProjectileEntity.BulletType.SNIPER;
-            default            -> entity.ProjectileEntity.BulletType.BASIC;
+        // FIX: enum switch, not string comparison
+        return switch (getEnemyClass()) {
+            case TANK   -> entity.ProjectileEntity.BulletType.TANK;
+            case FAST   -> entity.ProjectileEntity.BulletType.FAST;
+            case SNIPER -> entity.ProjectileEntity.BulletType.SNIPER;
+            default     -> entity.ProjectileEntity.BulletType.BASIC;
         };
     }
 
@@ -206,7 +214,7 @@ public class EnemyEntity extends Entity {
             return;
         }
 
-        // Fallback: red diamond
+        // Fallback shape — red diamond
         Graphics2D g2 = (Graphics2D) g;
         int cx = (int) x + width / 2;
         int cy = (int) y + height / 2;

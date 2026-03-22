@@ -1,4 +1,3 @@
-
 package wave;
 
 import fleet.FleetDefinition;
@@ -6,15 +5,30 @@ import fleet.FleetDefinition;
 import java.util.List;
 
 /**
- * Defines a scripted wave.
+ * Describes a scripted wave.
+ * FIX: added isBossWave flag and bossRegion string so WaveManager
+ * knows to spawn a BossEntity instead of building a FleetController.
  */
 public class WaveDefinition {
 
-    public int waveNumber;
-    public List<FleetDefinition> fleets;
+    public final int                  waveNumber;
+    public final List<FleetDefinition> fleets;
+    public final boolean              isBossWave;
+    public final String               bossRegion;   // e.g. "RED"
 
-    public WaveDefinition(int waveNumber,List<FleetDefinition> fleets){
-        this.waveNumber = waveNumber;
-        this.fleets = fleets;
+    // Normal wave constructor
+    public WaveDefinition(int waveNumber, List<FleetDefinition> fleets) {
+        this.waveNumber  = waveNumber;
+        this.fleets      = fleets;
+        this.isBossWave  = false;
+        this.bossRegion  = null;
+    }
+
+    // Boss wave constructor
+    public WaveDefinition(int waveNumber, String bossRegion) {
+        this.waveNumber  = waveNumber;
+        this.fleets      = List.of();
+        this.isBossWave  = true;
+        this.bossRegion  = bossRegion;
     }
 }
