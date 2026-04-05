@@ -9,6 +9,7 @@ public class ScoreManager {
     private static final ScoreManager instance = new ScoreManager();
     public static ScoreManager get() { return instance; }
 
+    private static final int MAX_SCORE = 999_999_999; // 9 digits — safe display cap
     private int score                       = 0;
     private int enemyCombo                  = 0;
     private int formationCombo              = 0;
@@ -37,7 +38,11 @@ public class ScoreManager {
     }
 
     public int  getScore()      { return score; }
-    public void setScore(int s) { this.score = s; }
+    public void setScore(int s) { this.score = Math.min(s, MAX_SCORE); }
+
+    private void addScore(int delta) {
+        score = (int) Math.min((long) score + delta, MAX_SCORE);
+    }
 
     /**
      * Returns the current combo multiplier for HUD display.
@@ -57,7 +62,7 @@ public class ScoreManager {
     }
 
     public void enemyHit() {
-        score += 10;
+        addScore(10);
     }
 
     /** Old callers — awards flat 100 + combo. */
@@ -70,10 +75,9 @@ public class ScoreManager {
      * Also spawns a floating label at the last known kill position.
      */
     public void enemyKilledWithValue(int value) {
-        score += value;
         enemyCombo++;
         int bonus = enemyCombo * 5;
-        score += bonus;
+        addScore(value + bonus);
 
         // Spawn floater if HUD reference is set
         if (hudRef != null) {
@@ -97,10 +101,10 @@ public class ScoreManager {
     }
 
     public void formationCompleted() {
-        score += 300;
+        addScore(300);
         if (!tookDamageThisFormation) {
             formationCombo++;
-            score += formationCombo * 100;
+            addScore(formationCombo * 100);
             if (hudRef != null) {
                 hudRef.spawnFloater(
                         "FORMATION +" + (300 + formationCombo * 100),
@@ -115,10 +119,10 @@ public class ScoreManager {
     }
 
     public void waveCompleted() {
-        score += 1000;
+        addScore(1000);
         if (!tookDamageThisWave) {
             waveCombo++;
-            score += waveCombo * 500;
+            addScore(waveCombo * 500);
             if (hudRef != null) {
                 hudRef.spawnFloater(
                         "WAVE CLEAR +" + (1000 + waveCombo * 500),
@@ -133,7 +137,10 @@ public class ScoreManager {
     }
 
     public void playerDamaged() {
-        enemyCombo              = 0;
+        // Degrade combo by half (rounded down) rather than hard-resetting to 0.
+        // This feels less punishing — a single hit doesn't destroy a long streak,
+        // but repeated hits still bring the multiplier down.
+        enemyCombo              = enemyCombo / 2;
         tookDamageThisWave      = true;
         tookDamageThisFormation = true;
     }

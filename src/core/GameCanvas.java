@@ -12,6 +12,7 @@ import save.ProfileManager;
 import save.SettingsManager;
 import score.ScoreManager;
 import ui.*;
+import ui.PauseScreen;
 import ui.hud.HUDData;
 import ui.hud.NebulaHUD;
 import ui.menu.*;
@@ -56,7 +57,8 @@ public class GameCanvas extends JPanel {
     private final LoadGameMenuScreen loadGameMenu;
     private final SettingsMenuScreen settingsMenu;
     private final ControlsMenuScreen controlsMenu;
-    private final DebugMenuScreen    debugMenu;      // NEW
+    private final DebugMenuScreen    debugMenu;
+    private final PauseScreen        pauseScreen;
 
     public GameCanvas(GameWindow window) {
         this.window = window;
@@ -117,6 +119,7 @@ public class GameCanvas extends JPanel {
         settingsMenu = new SettingsMenuScreen();
         controlsMenu = new ControlsMenuScreen();
         debugMenu    = new DebugMenuScreen();
+        pauseScreen  = new PauseScreen();
 
         GameStateManager.setState(GameState.MAIN_MENU);
     }
@@ -212,7 +215,7 @@ public class GameCanvas extends JPanel {
                     break;
                 }
                 if (InputManager.isKeyPressed(KeyEvent.VK_ESCAPE)) {
-                    GameStateManager.setState(GameState.GAME_OVER);
+                    GameStateManager.setState(GameState.PAUSED);
                     break;
                 }
                 spaceBackground.update();
@@ -222,6 +225,8 @@ public class GameCanvas extends JPanel {
                         entityManager.getEntities(), nebulHUD);
                 populateHUDData();
             }
+
+            case PAUSED -> pauseScreen.update();
 
             case LEVEL_TRANSITION -> {
                 spaceBackground.update();
@@ -276,6 +281,8 @@ public class GameCanvas extends JPanel {
 
             case PLAYING ->
                     spaceBackground.setRegion(campaignManager.getCurrentRegion());
+
+            case PAUSED -> pauseScreen.enter();
 
             case LEVEL_TRANSITION -> {
                 levelClear.enter(
@@ -344,6 +351,19 @@ public class GameCanvas extends JPanel {
                 }
 
                 nebulHUD.render(gb, hudData);
+            }
+
+            case PAUSED -> {
+                // Render the frozen game world underneath, then the overlay
+                spaceBackground.render(gb, 0, 0,
+                        LayoutConfig.VIRTUAL_WIDTH,
+                        LayoutConfig.VIRTUAL_HEIGHT);
+                entityManager.render(gb);
+                BossEntity pausedBoss = WaveManager.getActiveBoss();
+                if (pausedBoss != null && !pausedBoss.isRemovable())
+                    pausedBoss.render(gb);
+                nebulHUD.render(gb, hudData);
+                pauseScreen.render(gb);
             }
 
             case LEVEL_TRANSITION -> {
