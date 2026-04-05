@@ -5,8 +5,9 @@ import java.util.List;
 
 public class ProjectilePool {
 
-    // Pre-allocated pool of 200 dormant bullets
-    private static final List<ProjectileEntity> pool = new ArrayList<>(200);
+    // Pre-allocated pool — capped so it doesn't grow unboundedly between waves
+    private static final int MAX_POOL_SIZE = 300;
+    private static final List<ProjectileEntity> pool = new ArrayList<>(MAX_POOL_SIZE);
 
     public static ProjectileEntity get(double x, double y, double vx, double vy, int damage, boolean fromPlayer) {
         ProjectileEntity p;
@@ -22,7 +23,8 @@ public class ProjectilePool {
     }
 
     public static void release(ProjectileEntity p) {
-        p.setRemovable(false); // Make sure it's alive for next time
+        if (pool.size() >= MAX_POOL_SIZE) return; // discard when pool is full
+        p.setRemovable(false); // mark dormant for reuse
         pool.add(p);
     }
 }

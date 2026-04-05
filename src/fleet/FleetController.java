@@ -3,6 +3,7 @@ package fleet;
 import config.CombatArea;
 import difficulty.DifficultyController;
 import difficulty.DifficultyController.EnemyClass;
+import difficulty.DifficultyProfile;
 import enemy.EnemyEntity;
 import enemy.types.SniperEnemy;
 import entity.EntityManager;
@@ -35,6 +36,9 @@ public class FleetController {
     private enum State { ENTERING, FORMED }
     private State state = State.ENTERING;
 
+    /** Pixels per frame enemies descend during entry at 60 FPS. */
+    private static final double ENTRY_SPEED = 2.0;
+
     private long lastShotTime = 0;
     private long shootDelay   = 1800;
 
@@ -57,7 +61,8 @@ public class FleetController {
         // player may theoretically be null only in unit tests — guard defensively
         this.player = player;
 
-        EnemyClass cls = detectClass(def);
+        EnemyClass      cls     = detectClass(def);
+        DifficultyProfile profile = DifficultyController.getDifficulty(level, cls);
         shootDelay = DifficultyController.shootDelay(level, cls);
 
         int totalEnemies = def.getTotalEnemyCount();
@@ -84,6 +89,9 @@ public class FleetController {
                 // enemies offset from the correct column during the ENTERING phase,
                 // not from x=0 (Java default).
                 enemy.setFormationPos(p.x, p.y);
+
+                // Apply difficulty speed scaling so higher levels move faster
+                enemy.applyDifficultyScale(profile.enemySpeedMultiplier);
 
                 entityManager.add(enemy);
                 enemies.add(enemy);
@@ -133,7 +141,7 @@ public class FleetController {
                 e.setFormationPos(target.x, target.y);
 
                 if (e.y < target.y) {
-                    e.y += 2.0;
+                    e.y += ENTRY_SPEED;
                     if (e.y > target.y) e.y = target.y;
                     allArrived = false;
                 }
