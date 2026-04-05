@@ -33,6 +33,7 @@ public class ControlsMenuScreen {
             { "ARROW  KEYS",  "MOVE  SHIP"         },
             { "SPACE",        "FIRE"                },
             { "Z",            "FIRE  (alt)"         },
+            { "X",            "SHIELD"              },
             { "F",            "TOGGLE  FULLSCREEN"  },
             { "ENTER",        "CONFIRM"             },
             { "ESC",          "BACK / PAUSE"        },

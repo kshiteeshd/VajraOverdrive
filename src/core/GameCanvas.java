@@ -157,18 +157,19 @@ public class GameCanvas extends JPanel {
         hudData.gameMode    = PendingGameStart.gameMode != null
                 ? PendingGameStart.gameMode.name() : "CAMPAIGN";
 
-        // HP fraction → shieldFrac field
-        if (player != null && player.getMaxHealth() > 0) {
-            hudData.shieldFrac = (float) player.getCurrentHealth()
-                    / (float) player.getMaxHealth();
+        // shieldFrac → actual shield energy (drives the SHD bar in NebulaHUD)
+        // armorFrac  → player HP fraction (drives the HP bar in NebulaHUD)
+        if (player != null) {
+            hudData.shieldFrac = player.getShieldCharge();
+            hudData.armorFrac  = player.getMaxHealth() > 0
+                    ? player.getCurrentHealth() / (float) player.getMaxHealth()
+                    : 1.0f;
+            hudData.shieldCrit = hudData.shieldFrac < 0.20f;
         } else {
             hudData.shieldFrac = 1.0f;
+            hudData.armorFrac  = 1.0f;
+            hudData.shieldCrit = false;
         }
-
-        // armorFrac — currently a fixed 1.0 (no separate armor system yet)
-        // When an armor system is added, wire it here.
-        hudData.armorFrac  = 1.0f;
-        hudData.shieldCrit = hudData.shieldFrac < 0.20f;
         hudData.comboMult  = ScoreManager.get().getComboMult();
         hudData.fps        = fps;
 

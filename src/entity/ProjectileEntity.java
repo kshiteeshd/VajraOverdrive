@@ -3,10 +3,11 @@ package entity;
 import config.CombatArea;
 import gfx.ImageSequenceAnimation;
 import gfx.ImageSequenceSet;
-import gfx.ShipRegistry;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.util.EnumMap;
+import java.util.Map;
 
 public class ProjectileEntity extends Entity {
 
@@ -26,11 +27,17 @@ public class ProjectileEntity extends Entity {
         WAVE
     }
 
-    private ProjectileModifier modifier = ProjectileModifier.NORMAL;
+    // ── Animation cache ───────────────────────────────────────────────
+    // Shared across all ProjectileEntity instances. buildAnim() allocates
+    // once per BulletType; reset() assigns from cache with no allocation.
+    private static final Map<BulletType, ImageSequenceSet> ANIM_CACHE
+            = new EnumMap<>(BulletType.class);
 
-    // for special behaviors
-    private float waveTime = 0f;
-    private float baseX, baseY;
+    // ── Per-instance state ────────────────────────────────────────────
+    private ProjectileModifier modifier   = ProjectileModifier.NORMAL;
+    private float              waveTime   = 0f;
+    private float              baseX      = 0f;
+    private float              baseY      = 0f;
 
     private int        damage;
     private boolean    fromPlayer;
@@ -65,26 +72,54 @@ public class ProjectileEntity extends Entity {
                 fromPlayer ? BulletType.PLAYER : BulletType.BASIC);
     }
 
-    // ── Anim builder ──────────────────────────────────────────────────
-    private ImageSequenceSet buildAnim(BulletType type) {
-        String key = switch (type) {
-            case PLAYER -> "bullet_player";
-            case TANK   -> "bullet_tank";
-            case SNIPER -> "bullet_sniper";
-            case FAST   -> "bullet_fast";
-            default     -> "bullet_enemy";
-        };
-        // Uses ShipRegistry which falls back gracefully if PNG missing
-        ImageSequenceSet set = new ImageSequenceSet();
-        set.register("default", new ImageSequenceAnimation(
-                "resources/sprites/bullets/", key + "_", "png",
-                2, 80, true
-        ));
-        return set;
+    // ── Anim builder — lazy, cached per type ─────────────────────────
+    private static ImageSequenceSet buildAnim(BulletType type) {
+        return ANIM_CACHE.computeIfAbsent(type, t -> {
+            String key = switch (t) {
+                case PLAYER -> "bullet_player";
+                case TANK   -> "bullet_tank";
+                case SNIPER -> "bullet_sniper";
+                case FAST   -> "bullet_fast";
+                default     -> "bullet_enemy";
+            };
+            ImageSequenceSet set = new ImageSequenceSet();
+            set.register("default", new ImageSequenceAnimation(
+                    "resources/sprites/bullets/", key + "_", "png",
+                    2, 80, true
+            ));
+            return set;
+        });
     }
 
     public boolean isFromPlayer() { return fromPlayer; }
     public int     getDamage()    { return damage;     }
+
+    // ── Reset — called by ProjectilePool on recycle ───────────────────
+    // Clears ALL mutable state so a recycled bullet cannot exhibit
+    // behaviour from its previous life (e.g. WAVE modifier drift).
+    public void reset(double newX, double newY,
+                      double vx, double vy,
+                      int w, int h,
+                      int newDamage, boolean isFromPlayer,
+                      BulletType type) {
+        this.x          = newX;
+        this.y          = newY;
+        this.velocityX  = vx;
+        this.velocityY  = vy;
+        this.width      = w;
+        this.height     = h;
+        this.damage     = newDamage;
+        this.fromPlayer = isFromPlayer;
+        this.bulletType = type;
+        // Stale modifier state cleared — fixes erratic recycled-bullet movement
+        this.modifier   = ProjectileModifier.NORMAL;
+        this.waveTime   = 0f;
+        this.baseX      = 0f;
+        this.baseY      = 0f;
+        this.removable  = false;
+        // Assign from shared cache — no new object allocation per recycle
+        this.anim = buildAnim(type);
+    }
 
     // ── Update ────────────────────────────────────────────────────────
     @Override
@@ -92,10 +127,10 @@ public class ProjectileEntity extends Entity {
         anim.update();
         x += velocityX;
         y += velocityY;
-        if (y < CombatArea.TOP_BOUND - 20
+        if (y < CombatArea.TOP_BOUND  - 20
                 || y > CombatArea.BOTTOM_BOUND + 20
-                || x < CombatArea.LEFT_BOUND  - 20
-                || x > CombatArea.RIGHT_BOUND + 20) {
+                || x < CombatArea.LEFT_BOUND   - 20
+                || x > CombatArea.RIGHT_BOUND  + 20) {
             removable = true;
         }
     }
@@ -103,19 +138,16 @@ public class ProjectileEntity extends Entity {
     // ── Render ────────────────────────────────────────────────────────
     @Override
     public void render(Graphics g) {
-        // Sprite first
         BufferedImage frame = anim.getFrame();
         if (frame != null) {
             g.drawImage(frame, (int) x, (int) y, width, height, null);
             return;
         }
 
-        // Fallback shapes per type
         Graphics2D g2 = (Graphics2D) g;
         switch (bulletType) {
 
             case PLAYER -> {
-                // Cyan energy bolt
                 g2.setColor(new Color(100, 255, 255, 200));
                 g2.fillOval((int)x, (int)y, width, height);
                 g2.setColor(Color.WHITE);
@@ -123,7 +155,6 @@ public class ProjectileEntity extends Entity {
             }
 
             case FAST -> {
-                // Small bright orange dart
                 g2.setColor(new Color(255, 160, 20));
                 g2.fillOval((int)x, (int)y, width, height);
                 g2.setColor(new Color(255, 220, 80));
@@ -131,7 +162,6 @@ public class ProjectileEntity extends Entity {
             }
 
             case TANK -> {
-                // Large dark red ball with inner glow
                 g2.setColor(new Color(180, 20, 20));
                 g2.fillOval((int)x, (int)y, width, height);
                 g2.setColor(new Color(240, 80, 80));
@@ -141,38 +171,20 @@ public class ProjectileEntity extends Entity {
             }
 
             case SNIPER -> {
-                // Thin tall purple needle
                 g2.setColor(new Color(180, 60, 255, 220));
                 g2.fillRect((int)x, (int)y, width, height);
                 g2.setColor(new Color(230, 160, 255));
                 g2.fillRect((int)x + 1, (int)y + 2, width - 2, height - 4);
-                // Glow tip
                 g2.setColor(new Color(255, 200, 255, 180));
                 g2.fillOval((int)x - 1, (int)y, width + 2, 4);
             }
 
             default -> {
-                // Basic enemy bullet — orange/red oval
                 g2.setColor(new Color(255, 100, 20));
                 g2.fillOval((int)x, (int)y, width, height);
                 g2.setColor(new Color(255, 220, 100));
                 g2.fillOval((int)x + 1, (int)y + 2, width - 2, height - 4);
             }
         }
-    }
-    // Add this method to the bottom of the class
-    // Add this to the bottom of ProjectileEntity.java
-    public void reset(double newX, double newY, double vx, double vy, int w, int h, int newDamage, boolean isFromPlayer, BulletType type) {
-        this.x = newX;
-        this.y = newY;
-        this.velocityX = vx;
-        this.velocityY = vy;
-        this.width = w;
-        this.height = h;
-        this.damage = newDamage;
-        this.fromPlayer = isFromPlayer;
-        this.bulletType = type;
-        this.anim = buildAnim(type); // Rebuild the animation for the new bullet type
-        this.removable = false;      // Resurrect the bullet!
     }
 }
