@@ -1,81 +1,91 @@
 package entity;
 
 import enemy.EnemyEntity;
-
-import java.awt.*;
+import java.awt.Graphics;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-/**
- * Central entity list.
- *
- * FIXED:
- *  - Removal is now two-pass: update loop marks removable, then a
- *    single removeIf() clears them. No more index-shift corruption
- *    when multiple entities die in the same frame.
- *  - pending list still used to avoid mid-update-iteration adds.
- *  - render() still snapshots the list to avoid ConcurrentModification
- *    between the game loop thread and the AWT paint thread.
- */
 public class EntityManager {
 
     private final List<Entity> entities = new ArrayList<>();
     private final List<Entity> pending  = new ArrayList<>();
 
-    // ── Add ───────────────────────────────────────────────────────────
+    // ReadWriteLock prevents AWT threading issues without allocating memory
+    private final ReadWriteLock lock = new ReentrantReadWriteLock();
+
     public void add(Entity e) {
-        pending.add(e);
+        lock.writeLock().lock();
+        try {
+            pending.add(e);
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
 
-    // ── Access ────────────────────────────────────────────────────────
     public List<Entity> getEntities() {
         return entities;
     }
 
-    // ── Update ────────────────────────────────────────────────────────
     public void update() {
-        // Merge entities queued during last frame first
-        if (!pending.isEmpty()) {
-            entities.addAll(pending);
-            pending.clear();
-        }
+        lock.writeLock().lock();
+        try {
+            if (!pending.isEmpty()) {
+                entities.addAll(pending);
+                pending.clear();
+            }
 
-        // Update all entities
-        for (Entity e : entities) {
-            e.update();
-        }
+            for (int i = 0; i < entities.size(); i++) {
+                entities.get(i).update();
+            }
 
-        // Two-pass removal — avoids index-shift corruption when multiple
-        // entities die in the same frame (e.g. area explosion)
-        entities.removeIf(Entity::isRemovable);
+            // NEW: Salvage projectiles before they are removed
+            for (int i = 0; i < entities.size(); i++) {
+                Entity e = entities.get(i);
+                if (e.isRemovable() && e instanceof ProjectileEntity) {
+                    ProjectilePool.release((ProjectileEntity) e);
+                }
+            }
+
+            entities.removeIf(Entity::isRemovable);
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
 
-    // ── Render ────────────────────────────────────────────────────────
     public void render(Graphics g) {
-        // Snapshot so the AWT render thread never sees a structural
-        // modification made by the game loop update thread.
-        List<Entity> snapshot = new ArrayList<>(entities);
-        for (Entity e : snapshot) {
-            e.render(g);
+        // We lock the list for reading so AWT doesn't crash if the game loop updates it
+        lock.readLock().lock();
+        try {
+            for (int i = 0; i < entities.size(); i++) {
+                entities.get(i).render(g);
+            }
+        } finally {
+            lock.readLock().unlock();
         }
     }
 
-    // ── Queries ───────────────────────────────────────────────────────
     public int countEnemies() {
-        int count = 0;
-        for (Entity e : entities) {
-            if (e instanceof EnemyEntity) count++;
+        lock.readLock().lock();
+        try {
+            int count = 0;
+            for (int i = 0; i < entities.size(); i++) {
+                if (entities.get(i) instanceof EnemyEntity) count++;
+            }
+            return count;
+        } finally {
+            lock.readLock().unlock();
         }
-        return count;
     }
 
-    /**
-     * Removes all entities immediately — used when rebuilding a session
-     * so stale projectiles and particles from the previous run don't
-     * carry over.
-     */
     public void clear() {
-        entities.clear();
-        pending.clear();
+        lock.writeLock().lock();
+        try {
+            entities.clear();
+            pending.clear();
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
 }

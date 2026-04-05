@@ -15,9 +15,10 @@ import java.awt.event.KeyEvent;
 /**
  * Debug / test level selector screen.
  *
- * Accessible from Main Menu → DEBUG MODE.
- * Lets you jump to any level (1-25) or directly spawn any boss.
- * Creates a temporary profile in slot 5 (always overwritten).
+ * FIX: Tab key replaced with Q for panel switching.
+ * Swing intercepts VK_TAB for focus traversal before it reaches
+ * the KeyListener — Tab events never arrive at InputManager.
+ * Q cycles focus identically to the old Tab behaviour.
  *
  * Layout:
  *   ┌─────────────────────────────────────────────────────┐
@@ -34,8 +35,9 @@ import java.awt.event.KeyEvent;
  *   └─────────────────────────────────────────────────────┘
  *
  * Controls:
- *   TAB / LEFT/RIGHT on focused panel switches panels.
- *   UP/DOWN changes selection within a panel.
+ *   Q switches panels (was Tab — Tab is eaten by Swing focus traversal).
+ *   LEFT/RIGHT changes selection within a panel.
+ *   UP/DOWN navigates buttons/back row.
  *   ENTER launches.
  *   ESC → main menu.
  */
@@ -54,7 +56,6 @@ public class DebugMenuScreen {
     private static final String[] BOSS_LABELS  = { "VANGUARD", "SWARMMASTER", "IRONCLAD", "PHANTOM", "APEX" };
     private static final int[]    BOSS_LEVELS  = { 5, 10, 15, 20, 25 };
 
-    // Region table: which levels map to which regions
     private static final String[] REGION_NAMES = { "RED", "YELLOW", "BLUE", "GREEN", "WHITE" };
     private static final int[][]  REGION_RANGE = { {1,5}, {6,10}, {11,15}, {16,20}, {21,25} };
 
@@ -71,8 +72,8 @@ public class DebugMenuScreen {
             return;
         }
 
-        // Tab cycles focus
-        if (InputManager.isKeyPressed(KeyEvent.VK_TAB)) {
+        // FIX: Q cycles focus instead of Tab (Swing eats VK_TAB before KeyListener sees it)
+        if (InputManager.isKeyPressed(KeyEvent.VK_Q)) {
             focus = (focus + 1) % 5;
             return;
         }
@@ -122,14 +123,12 @@ public class DebugMenuScreen {
     }
 
     private void launchBoss(int bossIndex) {
-        // Boss levels are: RED=5, YELLOW=10, BLUE=15, GREEN=20, WHITE=25
         int bossLevel = BOSS_LEVELS[bossIndex];
         ProfileManager.createProfile(5, "DEBUG", GameMode.CAMPAIGN);
         PendingGameStart.level     = bossLevel;
         PendingGameStart.isNewGame = false;
         PendingGameStart.gameMode  = GameMode.CAMPAIGN;
         PendingGameStart.saveSlot  = 5;
-        // The level at 5/10/15/20/25 always has a boss wave as its last wave
         GameStateManager.setState(GameState.LEVEL_LOAD);
     }
 
@@ -197,13 +196,11 @@ public class DebugMenuScreen {
         int btnW = 200;
         int btnH = 38;
 
-        // Launch level
         drawButton(g, leftX + (panelW - btnW) / 2, btnY, btnW, btnH,
                 "LAUNCH LEVEL " + String.format("%02d", selectedLevel),
                 focus == 2,
                 UITheme.ACCENT);
 
-        // Launch boss
         String bossLabel = "LAUNCH " + BOSS_LABELS[selectedBoss];
         drawButton(g, rightX + (panelW - btnW) / 2, btnY, btnW, btnH,
                 bossLabel,
@@ -218,10 +215,11 @@ public class DebugMenuScreen {
         g.setColor(focus == 4 ? UITheme.ACCENT : UITheme.TEXT_DIM);
         g.drawString(back, CX - fmM.stringWidth(back) / 2, backY);
 
-        // ── Footer ────────────────────────────────────────────────────
+        // ── Footer — updated key hint ─────────────────────────────────
         g.setFont(UIFonts.SMALL.deriveFont(9f));
         fmS9 = g.getFontMetrics();
-        String footer = "TAB  switch panel    LEFT/RIGHT  change    ENTER  launch    ESC  back";
+        // FIX: changed TAB to Q in the hint text
+        String footer = "Q  switch panel    LEFT/RIGHT  change    ENTER  launch    ESC  back";
         g.setColor(UITheme.TEXT_FAINT);
         g.drawString(footer, CX - fmS9.stringWidth(footer) / 2, H - 16);
     }
@@ -232,7 +230,6 @@ public class DebugMenuScreen {
         Color  rc     = UITheme.getRegionColor(region);
         boolean boss  = isBossLevel(selectedLevel);
 
-        // Level number selector: < 01 >
         g.setFont(UIFonts.MENU);
         FontMetrics fm = g.getFontMetrics();
         String levelStr = String.format("%02d", selectedLevel);
@@ -247,21 +244,18 @@ public class DebugMenuScreen {
         g.setColor(UITheme.TEXT_DIM);
         g.drawString(arrowR, cx + fm.stringWidth(levelStr) / 2 + 10, y + 24);
 
-        // Region tag
         g.setFont(UIFonts.SMALL.deriveFont(10f));
         fm = g.getFontMetrics();
         String regStr = "REGION:  " + region;
         g.setColor(rc);
         g.drawString(regStr, x, y + 50);
 
-        // Boss indicator
         if (boss) {
             String bossTag = "\u25B6 BOSS LEVEL";
             g.setColor(new Color(255, 80, 80));
             g.drawString(bossTag, x, y + 68);
         }
 
-        // Difficulty description
         g.setFont(UIFonts.SMALL.deriveFont(9f));
         fm = g.getFontMetrics();
         String diff = difficultyTag(selectedLevel);
@@ -273,7 +267,6 @@ public class DebugMenuScreen {
             g.drawString(parts[1].trim(), x, y + 106);
         }
 
-        // Progress bar showing position 1-25
         int barW   = w;
         int barH   = 4;
         int barY   = y + 130;
@@ -285,7 +278,6 @@ public class DebugMenuScreen {
         g.setColor(rc);
         if (fillW > 0) g.fillRect(x, barY, fillW, barH);
 
-        // Region tick marks
         for (int r = 0; r < REGION_RANGE.length; r++) {
             int tickLevel = REGION_RANGE[r][0];
             int tickX     = x + (int)(barW * (tickLevel - 1) / 24f);
@@ -293,7 +285,6 @@ public class DebugMenuScreen {
             g.fillRect(tickX, barY - 2, 1, barH + 4);
         }
 
-        // Level numbers along bar
         g.setFont(UIFonts.SMALL.deriveFont(8f));
         fm = g.getFontMetrics();
         for (int tick : new int[]{1, 5, 10, 15, 20, 25}) {
@@ -306,7 +297,6 @@ public class DebugMenuScreen {
 
     // ── Boss panel contents ───────────────────────────────────────────
     private void renderBossPanel(Graphics2D g, int x, int y, int w) {
-        // Boss grid: 3 across, 2 rows (5 total)
         int cols     = 3;
         int cellW    = (w - (cols - 1) * 8) / cols;
         int cellH    = 48;
@@ -320,39 +310,33 @@ public class DebugMenuScreen {
             boolean  sel = (i == selectedBoss);
             Color    bc  = UITheme.getRegionColor(BOSS_NAMES[i]);
 
-            // Cell background
             g.setColor(sel
                     ? new Color(bc.getRed(), bc.getGreen(), bc.getBlue(), 35)
                     : new Color(10, 10, 18));
             g.fillRect(bx, by, cellW, cellH);
 
-            // Border
             g.setColor(sel ? bc : new Color(40, 40, 60));
             g.fillRect(bx, by,         cellW, 1);
             g.fillRect(bx, by + cellH - 1, cellW, 1);
             g.fillRect(bx, by,         1, cellH);
             g.fillRect(bx + cellW - 1, by, 1, cellH);
 
-            // Top accent bar
             if (sel) {
                 g.setColor(bc);
                 g.fillRect(bx, by, cellW, 2);
             }
 
-            // Region name
             g.setFont(UIFonts.SMALL.deriveFont(9f));
             FontMetrics fm = g.getFontMetrics();
             g.setColor(sel ? bc : UITheme.TEXT_DIM);
             g.drawString(BOSS_NAMES[i], bx + cellW / 2 - fm.stringWidth(BOSS_NAMES[i]) / 2, by + 18);
 
-            // Boss name
             g.setFont(UIFonts.SMALL.deriveFont(8f));
             fm = g.getFontMetrics();
             g.setColor(sel ? UITheme.PRIMARY : new Color(70, 70, 90));
             g.drawString(BOSS_LABELS[i], bx + cellW / 2 - fm.stringWidth(BOSS_LABELS[i]) / 2, by + 34);
         }
 
-        // Selected boss detail
         Color selC = UITheme.getRegionColor(BOSS_NAMES[selectedBoss]);
         g.setFont(UIFonts.SMALL.deriveFont(9f));
         FontMetrics fmD = g.getFontMetrics();
@@ -370,11 +354,9 @@ public class DebugMenuScreen {
     // ── Reusable panel frame ──────────────────────────────────────────
     private void drawPanel(Graphics2D g, int x, int y, int w, int h,
                            String title, boolean focused) {
-        // Background
         g.setColor(new Color(6, 6, 14));
         g.fillRect(x, y, w, h);
 
-        // Border
         Color border = focused ? UITheme.SECONDARY : new Color(40, 40, 60);
         g.setColor(border);
         g.fillRect(x,     y,     w, 1);
@@ -382,17 +364,14 @@ public class DebugMenuScreen {
         g.fillRect(x,     y,     1, h);
         g.fillRect(x+w-1, y,     1, h);
 
-        // Top accent bar
         g.setColor(focused ? UITheme.SECONDARY : new Color(60, 60, 80));
         g.fillRect(x, y, w, 2);
 
-        // Panel title
         g.setFont(UIFonts.SMALL.deriveFont(9f));
         FontMetrics fm = g.getFontMetrics();
         g.setColor(focused ? UITheme.SECONDARY : UITheme.TEXT_DIM);
         g.drawString(title, x + 10, y + 16);
 
-        // Focus indicator dot
         if (focused) {
             g.setColor(UITheme.SECONDARY);
             g.fillOval(x + w - 16, y + 8, 6, 6);
@@ -402,13 +381,11 @@ public class DebugMenuScreen {
     // ── Reusable button ───────────────────────────────────────────────
     private void drawButton(Graphics2D g, int x, int y, int w, int h,
                             String label, boolean focused, Color accentCol) {
-        // Background
         g.setColor(focused
                 ? new Color(accentCol.getRed(), accentCol.getGreen(), accentCol.getBlue(), 25)
                 : new Color(8, 8, 18));
         g.fillRect(x, y, w, h);
 
-        // Border
         g.setColor(focused ? accentCol : new Color(40, 40, 60));
         g.fillRect(x,     y,     w, 1);
         g.fillRect(x,     y+h-1, w, 1);
@@ -420,10 +397,8 @@ public class DebugMenuScreen {
             g.fillRect(x, y, w, 2);
         }
 
-        // Label — centered
         g.setFont(UIFonts.SMALL.deriveFont(9f));
         FontMetrics fm = g.getFontMetrics();
-        // Truncate if needed
         String disp = label;
         while (fm.stringWidth(disp) > w - 16 && disp.length() > 4) {
             disp = disp.substring(0, disp.length() - 1);

@@ -18,8 +18,22 @@ public class ProjectileEntity extends Entity {
         SNIPER      // thin purple needle
     }
 
-    private final int        damage;
-    private final boolean    fromPlayer;
+    public enum ProjectileModifier {
+        NORMAL,
+        PIERCING,
+        EXPLOSIVE,
+        CHAIN,
+        WAVE
+    }
+
+    private ProjectileModifier modifier = ProjectileModifier.NORMAL;
+
+    // for special behaviors
+    private float waveTime = 0f;
+    private float baseX, baseY;
+
+    private int        damage;
+    private boolean    fromPlayer;
     private final BulletType bulletType;
     private final ImageSequenceSet anim;
 
@@ -145,5 +159,15 @@ public class ProjectileEntity extends Entity {
                 g2.fillOval((int)x + 1, (int)y + 2, width - 2, height - 4);
             }
         }
+    }
+    // Add this method to the bottom of the class
+    public void reset(double newX, double newY, double vx, double vy, int newDamage, boolean isFromPlayer) {
+        this.x = newX;
+        this.y = newY;
+        this.velocityX = vx;
+        this.velocityY = vy;
+        this.damage = newDamage;
+        this.fromPlayer = isFromPlayer;
+        this.setRemovable(false); // Resurrect the bullet
     }
 }

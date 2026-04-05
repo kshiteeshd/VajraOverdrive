@@ -11,8 +11,8 @@ public abstract class Entity {
     public double x;
     public double y;
 
-    protected double velocityX;
-    protected double velocityY;
+    public double velocityX;
+    public double velocityY;
 
     public int width;
     public int height;
@@ -25,6 +25,9 @@ public abstract class Entity {
         this.y = y;
         this.width = width;
         this.height = height;
+    }
+    public void setRemovable(boolean removable) {
+        this.removable = removable;
     }
 
     public Rectangle getBounds(){

@@ -18,6 +18,17 @@ import java.util.List;
  * Player is now a required parameter on all construction paths.
  * Callers that previously omitted it must now pass the PlayerShip
  * reference explicitly.
+ *
+ * FIX (formation drift): setFormationPos() is now called in the ENTERING
+ * loop so ZIGZAG/STRAFE/DIVE enemies know their target column from the
+ * first frame. Previously formationX stayed 0.0 (Java default) during
+ * entry, causing non-STATIC enemies to offset from x=0 and appear
+ * bunched in the top-left corner.
+ *
+ * FIX (V-formation count mismatch): FormationGenerator corrects odd/even
+ * count internally, so we now use targets.size() as the authoritative
+ * count when spawning enemies, not def.getTotalEnemyCount(). This
+ * prevents an index mismatch when an even V-count is bumped to odd.
  */
 public class FleetController {
 
@@ -55,19 +66,32 @@ public class FleetController {
                 def.spacing, centerX, def.formationY
         );
 
+        // FIX: use targets.size() as the authoritative count.
+        // FormationGenerator may adjust count internally (e.g. V bumps even→odd),
+        // so targets.size() is the real number of positions generated.
+        int spawnCount = targets.size();
         int index = 0;
+
+        outer:
         for (EnemyGroup group : def.enemyGroups) {
             for (int i = 0; i < group.count; i++) {
-                if (index >= targets.size()) break;
+                if (index >= spawnCount) break outer;
                 Point p = targets.get(index);
                 EnemyEntity enemy = group.enemyType.create(
                         p.x, spawnY, entityManager);
+
+                // FIX: set formation position immediately so ZIGZAG/STRAFE/DIVE
+                // enemies offset from the correct column during the ENTERING phase,
+                // not from x=0 (Java default).
+                enemy.setFormationPos(p.x, p.y);
+
                 entityManager.add(enemy);
                 enemies.add(enemy);
                 index++;
             }
         }
 
+        // Trim targets to match the actual number of enemies spawned
         if (targets.size() > enemies.size())
             targets = new ArrayList<>(targets.subList(0, enemies.size()));
     }
@@ -77,8 +101,6 @@ public class FleetController {
         if (def.enemyGroups == null || def.enemyGroups.isEmpty())
             return EnemyClass.BASIC;
 
-        // FIX: use EnemyEntity.EnemyClass indirectly via type name for now.
-        // Batch 2 will wire this through the EnemyType directly.
         String name = def.enemyGroups.get(0).enemyType.name;
         return switch (name) {
             case "FastEnemy",   "FastEnemy_T2"   -> EnemyClass.FAST;
@@ -105,6 +127,11 @@ public class FleetController {
                 EnemyEntity e      = enemies.get(i);
                 Point       target = targets.get(i);
                 if (e.removable) continue;
+
+                // FIX: keep formationPos updated every frame during entry
+                // so applyMovePattern() always offsets from the correct column.
+                e.setFormationPos(target.x, target.y);
+
                 if (e.y < target.y) {
                     e.y += 2.0;
                     if (e.y > target.y) e.y = target.y;

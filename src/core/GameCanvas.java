@@ -72,6 +72,19 @@ public class GameCanvas extends JPanel {
 
         setBackground(Color.BLACK);
         setFocusable(true);
+        // ADD THESE TWO LINES inside GameCanvas constructor, right after:
+//   setFocusable(true);
+//
+// They stop Swing consuming Tab/Shift-Tab for focus traversal
+// before the KeyListener sees them (defensive fix even though we
+// replaced Tab with Q in DebugMenuScreen).
+
+        setFocusTraversalKeysEnabled(false);
+
+// Also recommended — prevents arrow keys being consumed by any
+// scroll pane or parent container:
+// Already handled since GameCanvas extends JPanel with no scroll parent,
+// but setFocusTraversalKeysEnabled(false) is the important one.
         setPreferredSize(new Dimension(
                 LayoutConfig.VIRTUAL_WIDTH,
                 LayoutConfig.VIRTUAL_HEIGHT));

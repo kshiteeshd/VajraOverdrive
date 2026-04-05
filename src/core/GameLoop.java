@@ -1,9 +1,7 @@
-
 package core;
 
-/**
- * Fixed timestep game loop.
- */
+import java.util.concurrent.locks.LockSupport;
+
 public class GameLoop implements Runnable {
 
     private Thread gameThread;
@@ -19,6 +17,7 @@ public class GameLoop implements Runnable {
     }
 
     public void start() {
+        if (running) return;
         running = true;
         gameThread = new Thread(this);
         gameThread.start();
@@ -26,26 +25,28 @@ public class GameLoop implements Runnable {
 
     @Override
     public void run() {
-
         long lastTime = System.nanoTime();
         double delta = 0;
-
         int frames = 0;
         long timer = System.currentTimeMillis();
 
         while (running) {
-
             long now = System.nanoTime();
             delta += (now - lastTime) / UPDATE_INTERVAL;
             lastTime = now;
 
+            boolean shouldRender = false;
+
             while (delta >= 1) {
                 canvas.update();
                 delta--;
+                shouldRender = true; // Only render if an update actually happened
             }
 
-            canvas.repaint();
-            frames++;
+            if (shouldRender) {
+                canvas.repaint();
+                frames++;
+            }
 
             if (System.currentTimeMillis() - timer >= 1000) {
                 canvas.setFPS(frames);
@@ -53,9 +54,9 @@ public class GameLoop implements Runnable {
                 timer += 1000;
             }
 
-            try {
-                Thread.sleep(1);
-            } catch (InterruptedException ignored) {}
+            // High precision yield instead of Thread.sleep(1)
+            // This prevents CPU melting while keeping frame-pacing strictly accurate
+            LockSupport.parkNanos(1_000_000); // 1 millisecond park
         }
     }
 }
