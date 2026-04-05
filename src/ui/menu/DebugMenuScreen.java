@@ -162,7 +162,7 @@ public class DebugMenuScreen {
         g.setFont(UIFonts.TITLE);
         FontMetrics fmT = g.getFontMetrics();
         String title = "DEBUG MODE";
-        g.setColor(UITheme.SECONDARY);
+        g.setColor(UITheme.PRIMARY);
         g.drawString(title, CX - fmT.stringWidth(title) / 2, 52);
 
         g.setFont(UIFonts.SMALL.deriveFont(9f));
@@ -171,7 +171,7 @@ public class DebugMenuScreen {
         g.setColor(UITheme.TEXT_DIM);
         g.drawString(sub, CX - fmS9.stringWidth(sub) / 2, 72);
 
-        g.setColor(new Color(160, 120, 255, 40));
+        g.setColor(new Color(0, 255, 255, 40));
         g.fillRect(CX - 180, 82, 360, 1);
 
         // ── Two-column panels ─────────────────────────────────────────
@@ -357,23 +357,23 @@ public class DebugMenuScreen {
         g.setColor(new Color(6, 6, 14));
         g.fillRect(x, y, w, h);
 
-        Color border = focused ? UITheme.SECONDARY : new Color(40, 40, 60);
+        Color border = focused ? UITheme.PRIMARY : new Color(40, 40, 60);
         g.setColor(border);
         g.fillRect(x,     y,     w, 1);
         g.fillRect(x,     y+h-1, w, 1);
         g.fillRect(x,     y,     1, h);
         g.fillRect(x+w-1, y,     1, h);
 
-        g.setColor(focused ? UITheme.SECONDARY : new Color(60, 60, 80));
+        g.setColor(focused ? UITheme.PRIMARY : new Color(60, 60, 80));
         g.fillRect(x, y, w, 2);
 
         g.setFont(UIFonts.SMALL.deriveFont(9f));
         FontMetrics fm = g.getFontMetrics();
-        g.setColor(focused ? UITheme.SECONDARY : UITheme.TEXT_DIM);
+        g.setColor(focused ? UITheme.PRIMARY : UITheme.TEXT_DIM);
         g.drawString(title, x + 10, y + 16);
 
         if (focused) {
-            g.setColor(UITheme.SECONDARY);
+            g.setColor(UITheme.PRIMARY);
             g.fillOval(x + w - 16, y + 8, 6, 6);
         }
     }

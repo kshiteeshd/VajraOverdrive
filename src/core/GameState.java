@@ -22,6 +22,7 @@ public enum GameState {
     REGION_INTRO,
     LEVEL_LOAD,
     PLAYING,
+    PAUSED,             // in-game pause (ESC while PLAYING)
     LEVEL_TRANSITION,
     GAME_OVER,
     CAMPAIGN_COMPLETE

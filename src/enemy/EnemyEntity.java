@@ -73,6 +73,17 @@ public abstract class EnemyEntity extends Entity {
         this.formationY = fy;
     }
 
+    /**
+     * Scale this enemy's movement velocities by a difficulty multiplier.
+     * Called by FleetController after construction so DifficultyController
+     * speed values actually reach individual enemies.
+     */
+    public void applyDifficultyScale(double speedMult) {
+        moveVelX  *= speedMult;
+        moveVelY  *= speedMult;
+        velocityY *= speedMult;
+    }
+
     // ── Damage ────────────────────────────────────────────────────────
     public void takeDamage(int dmg) {
         health -= dmg;

@@ -92,15 +92,18 @@ public abstract class BossEntity extends Entity {
 
         // Check phase transitions
         for (int i = 0; i < stats.phaseThresholds.length; i++) {
-            int threshold = (int)(stats.maxHealth * stats.phaseThresholds[i]);
+            // Math.round prevents the int-cast truncation that could skip a
+            // threshold when maxHealth * fraction is e.g. 299.99 → 299 not 300
+            int threshold = Math.round(stats.maxHealth * stats.phaseThresholds[i]);
             // transition to phase i+1 when health drops below threshold
             if (currentHealth <= threshold && phase == i) {
                 phase++;
                 phaseJustChanged = true;
                 onPhaseChange(phase);
                 ScreenShake.large();
-                // Speed up movement each phase
-                currentSpeed = stats.moveSpeed * (1.0 + phase * 0.3);
+                // Speed up movement each phase — capped so boss can't overshoot
+                currentSpeed = Math.min(
+                        stats.moveSpeed * (1.0 + phase * 0.3), 8.0);
                 // Fire rate increases each phase
                 fireRateMs = (long)(stats.fireRateMs / (1.0 + phase * 0.4));
                 break;
