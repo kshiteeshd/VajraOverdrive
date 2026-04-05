@@ -24,4 +24,12 @@ public class PendingGameStart {
 
     /** Save slot number (1-based) for auto-save. */
     public static int      saveSlot  = 1;
+
+    /**
+     * When non-null, WaveManager skips all fleet waves and spawns this
+     * region's boss directly. Set by DebugMenuScreen, consumed (nulled)
+     * by WaveManager on first construction so it doesn't bleed into the
+     * next session.
+     */
+    public static String directBossRegion = null;
 }

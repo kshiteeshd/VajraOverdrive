@@ -11,6 +11,8 @@ import physics.CollisionSystem;
 import player.PlayerShip;
 import score.ScoreManager;
 
+import ui.menu.PendingGameStart;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -65,6 +67,17 @@ public class WaveManager {
         this.levelDefinition = level;
         this.lastFleetClearTime = System.currentTimeMillis();
         startNextWave();
+
+        // Debug: skip all fleet waves and spawn boss directly
+        String bossRegion = PendingGameStart.directBossRegion;
+        if (bossRegion != null) {
+            PendingGameStart.directBossRegion = null; // consume flag
+            activeWave       = null;
+            fleets.clear();
+            fleetIndex       = Integer.MAX_VALUE;     // mark fleets exhausted
+            currentWaveIndex = levelDefinition.waves.size(); // mark waves done
+            spawnBoss(bossRegion);
+        }
     }
 
     // ── Update ────────────────────────────────────────────────────────

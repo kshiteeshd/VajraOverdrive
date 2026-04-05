@@ -6,6 +6,7 @@ import gfx.FxLayer;
 import gfx.ImageSequenceSet;
 import gfx.ShipRegistry;
 import input.InputManager;
+import score.ScoreManager;
 import wave.WaveManager;
 
 import java.awt.*;
@@ -14,10 +15,8 @@ import java.awt.event.KeyEvent;
 
 public class PlayerShip extends Entity {
 
-    // ── Stats ─────────────────────────────────────────────────────────
-    private double speed        = 5;
-    private long   lastShotTime = 0;
-    private long   fireDelay    = 200;
+    // ── Movement ──────────────────────────────────────────────────────
+    private double speed = 5;
 
     // ── Health ────────────────────────────────────────────────────────
     private int maxHealth     = 100;
@@ -34,6 +33,23 @@ public class PlayerShip extends Entity {
 
     private static final long INVINCIBLE_TIME = 3000;
     private static final long RESPAWN_TIME    = 2000;
+
+    // ── Firing: twin cannons ──────────────────────────────────────────
+    // Two bullets fire simultaneously from the left and right cannon tips,
+    // slightly angled inward so they converge ~120px ahead of the ship.
+    private long lastShotTime = 0;
+    private static final long FIRE_DELAY       = 160;   // ms between shots
+    private static final double TWIN_CONVERGE  = 0.4;   // inward vx per cannon
+    private static final double TWIN_SPEED     = 9.0;
+
+    // ── Firing: charge shot ───────────────────────────────────────────
+    // Hold Z/SPACE for CHARGE_TIME ms to release a wide, powerful blast.
+    // Visual: muzzle glow that pulses brighter as charge builds.
+    private long chargeStart         = 0;
+    private boolean charging         = false;
+    private static final long CHARGE_TIME   = 550;  // ms to full charge
+    private static final int  CHARGE_DMG    = 20;
+    private static final double CHARGE_SPEED = 13.0;
 
     // ── Animation ─────────────────────────────────────────────────────
     private ImageSequenceSet anim;
@@ -72,6 +88,9 @@ public class PlayerShip extends Entity {
     }
 
     // ── Damage ────────────────────────────────────────────────────────
+    // Each hit chips currentHealth by dmg. A life is lost only when
+    // health reaches 0 — not on every hit. This lets the player tank
+    // a few bullets before dying, making the HP bar meaningful.
     public void takeDamage(int dmg) {
         if (respawning || invincible) return;
 
@@ -81,14 +100,16 @@ public class PlayerShip extends Entity {
 
         if (anim.has("hit")) anim.play("hit", "idle");
 
-        // Reduce health — each hit is treated as a life lost
-        // with health resetting on respawn, so each life = full health.
-        // Damage chips the shield display before triggering respawn.
         currentHealth = Math.max(0, currentHealth - dmg);
+        ScoreManager.get().playerDamaged();
 
-        respawning   = true;
-        respawnStart = System.currentTimeMillis();
-        WaveManager.loseLife();
+        if (currentHealth <= 0) {
+            // Life lost — trigger respawn sequence
+            respawning   = true;
+            respawnStart = System.currentTimeMillis();
+            WaveManager.loseLife();
+        }
+        // else: health chipped but still alive; no respawn
     }
 
     // ── Update ────────────────────────────────────────────────────────
@@ -105,11 +126,9 @@ public class PlayerShip extends Entity {
                 invincible      = true;
                 invincibleStart = now;
 
-                // Full health restored on respawn
-                currentHealth = maxHealth;
+                currentHealth = maxHealth;   // full HP on respawn
 
-                x = CombatArea.LEFT_BOUND
-                        + CombatArea.WIDTH / 2 - width / 2.0;
+                x = CombatArea.LEFT_BOUND + CombatArea.WIDTH / 2 - width / 2.0;
                 y = CombatArea.BOTTOM_BOUND - 80;
 
                 if (anim.has("idle")) anim.play("idle");
@@ -118,10 +137,8 @@ public class PlayerShip extends Entity {
         }
 
         // ── Invincibility timer ───────────────────────────────────────
-        if (invincible) {
-            if (now - invincibleStart > INVINCIBLE_TIME)
-                invincible = false;
-        }
+        if (invincible && now - invincibleStart > INVINCIBLE_TIME)
+            invincible = false;
 
         // ── Movement ──────────────────────────────────────────────────
         velocityX = 0;
@@ -134,85 +151,173 @@ public class PlayerShip extends Entity {
         x += velocityX;
         y += velocityY;
 
-        // Clamp to combat area
-        if (x < CombatArea.LEFT_BOUND)
-            x = CombatArea.LEFT_BOUND;
-        if (x > CombatArea.RIGHT_BOUND - width)
-            x = CombatArea.RIGHT_BOUND - width;
-        if (y < CombatArea.TOP_BOUND)
-            y = CombatArea.TOP_BOUND;
-        if (y > CombatArea.BOTTOM_BOUND - height)
-            y = CombatArea.BOTTOM_BOUND - height;
+        if (x < CombatArea.LEFT_BOUND)          x = CombatArea.LEFT_BOUND;
+        if (x > CombatArea.RIGHT_BOUND - width)  x = CombatArea.RIGHT_BOUND - width;
+        if (y < CombatArea.TOP_BOUND)            y = CombatArea.TOP_BOUND;
+        if (y > CombatArea.BOTTOM_BOUND - height) y = CombatArea.BOTTOM_BOUND - height;
 
         // ── Thrust animation ──────────────────────────────────────────
         boolean moving = (velocityX != 0 || velocityY != 0);
-        if (moving
-                && anim.has("thrust")
-                && "idle".equals(anim.getCurrentName())) {
+        if (moving && anim.has("thrust") && "idle".equals(anim.getCurrentName()))
             anim.play("thrust", "idle");
-        }
 
-        // ── Shooting ──────────────────────────────────────────────────
+        // ── Shooting ─────────────────────────────────────────────────
         boolean fireKey = InputManager.isKeyPresent(KeyEvent.VK_Z)
                 || InputManager.isKeyPresent(KeyEvent.VK_SPACE);
 
-        if (fireKey && now - lastShotTime > fireDelay) {
-            lastShotTime = now;
-            entityManager.add(new ProjectileEntity(
-                    x + width / 2.0 - 3, y,
-                    0, -8, 6, 12, 5, true
-            ));
+        if (fireKey) {
+            if (!charging) {
+                // Start charge timer on first frame the key is held
+                charging    = true;
+                chargeStart = now;
+            }
+
+            long heldMs = now - chargeStart;
+
+            if (heldMs >= CHARGE_TIME) {
+                // ── Charge shot release ───────────────────────────────
+                // Only fires if enough time has passed since last shot,
+                // so repeated tap-releases don't spray charge shots.
+                if (now - lastShotTime > FIRE_DELAY) {
+                    lastShotTime = now;
+                    charging     = false;
+                    chargeStart  = 0;
+                    fireChargeShot();
+                }
+            } else if (now - lastShotTime > FIRE_DELAY) {
+                // ── Twin cannon burst ─────────────────────────────────
+                // Left cannon: slight rightward convergence
+                // Right cannon: slight leftward convergence
+                lastShotTime = now;
+                fireTwinCannons();
+            }
+        } else {
+            // Key released — cancel charge (no charge-on-release; hold for effect)
+            if (charging && now - chargeStart >= CHARGE_TIME
+                    && now - lastShotTime > FIRE_DELAY) {
+                // Released after full charge — fire
+                lastShotTime = now;
+                fireChargeShot();
+            }
+            charging    = false;
+            chargeStart = 0;
         }
+    }
+
+    // ── Fire helpers ──────────────────────────────────────────────────
+
+    private void fireTwinCannons() {
+        double leftX  = x + width * 0.20 - 2;
+        double rightX = x + width * 0.80 - 2;
+        double muzzleY = y + 2;
+
+        // Left cannon: slight rightward angle toward center
+        entityManager.add(ProjectilePool.get(
+                leftX, muzzleY,
+                TWIN_CONVERGE, -TWIN_SPEED,
+                5, 12, 5, true,
+                ProjectileEntity.BulletType.PLAYER
+        ));
+        // Right cannon: slight leftward angle toward center
+        entityManager.add(ProjectilePool.get(
+                rightX, muzzleY,
+                -TWIN_CONVERGE, -TWIN_SPEED,
+                5, 12, 5, true,
+                ProjectileEntity.BulletType.PLAYER
+        ));
+    }
+
+    private void fireChargeShot() {
+        double cx = x + width / 2.0 - 6;
+        entityManager.add(ProjectilePool.get(
+                cx, y - 4,
+                0, -CHARGE_SPEED,
+                12, 20, CHARGE_DMG, true,
+                ProjectileEntity.BulletType.PLAYER
+        ));
     }
 
     // ── Render ────────────────────────────────────────────────────────
     @Override
     public void render(Graphics g) {
         // Blink while respawning or invincible
-        if ((respawning || invincible)
-                && System.currentTimeMillis() % 300 < 150) return;
+        if ((respawning || invincible) && System.currentTimeMillis() % 300 < 150) return;
+
+        Graphics2D g2 = (Graphics2D) g;
 
         // Sprite — use if loaded
         BufferedImage frame = anim.getFrame();
         if (frame != null) {
-            g.drawImage(frame, (int) x, (int) y, width, height, null);
-            return;
+            g2.drawImage(frame, (int) x, (int) y, width, height, null);
+        } else {
+            renderFallback(g2);
         }
 
-        // ── Fallback: cyan triangle ───────────────────────────────────
-        Graphics2D g2 = (Graphics2D) g;
+        // ── Charge glow overlay (drawn on top of sprite or fallback) ──
+        if (charging && chargeStart > 0) {
+            long now    = System.currentTimeMillis();
+            float prog  = Math.min((now - chargeStart) / (float) CHARGE_TIME, 1f);
+            float pulse = (float)(0.3 + 0.4 * Math.abs(Math.sin(now * 0.014)));
+            float alpha = prog * pulse;
+
+            Composite old = g2.getComposite();
+            g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
+
+            int cx  = (int) x + width  / 2;
+            int glowR = (int)(4 + prog * 12);
+            // Outer charge ring — fades from cyan to white at full charge
+            Color glowCol = prog >= 1f
+                    ? new Color(255, 255, 200)
+                    : new Color(0, 220, 255);
+            g2.setColor(glowCol);
+            g2.fillOval(cx - glowR, (int)y - glowR / 2, glowR * 2, glowR * 2);
+
+            // Inner bright core
+            g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, prog * 0.8f));
+            g2.setColor(Color.WHITE);
+            g2.fillOval(cx - 3, (int)y - 2, 6, 6);
+
+            g2.setComposite(old);
+        }
+
+        // ── Invincible shimmer ring ───────────────────────────────────
+        if (invincible) {
+            long now = System.currentTimeMillis();
+            float shimmer = 0.3f + 0.4f * (float) Math.abs(Math.sin(now * 0.01));
+            Composite old = g2.getComposite();
+            g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, shimmer));
+            g2.setColor(new Color(0, 255, 255));
+            g2.drawOval((int)x - 4, (int)y - 4, width + 8, height + 8);
+            g2.setComposite(old);
+        }
+    }
+
+    private void renderFallback(Graphics2D g2) {
         int cx = (int) x + width / 2;
 
-        // Main body
+        // Main body — cyan triangle
         g2.setColor(new Color(0, 220, 255));
-        int[] bx = { cx,       (int)x,           (int)x + width };
-        int[] by = { (int)y,   (int)y + height,   (int)y + height };
+        int[] bx = { cx,     (int)x,          (int)x + width };
+        int[] by = { (int)y, (int)y + height,  (int)y + height };
         g2.fillPolygon(bx, by, 3);
 
         // Inner highlight
         g2.setColor(new Color(180, 255, 255));
-        int[] cx2 = { cx,       cx - 4,      cx + 4     };
-        int[] cy2 = { (int)y+4, (int)y+14,   (int)y+14  };
-        g2.fillPolygon(cx2, cy2, 3);
+        int[] hx = { cx,     cx - 4,    cx + 4   };
+        int[] hy = { (int)y+4, (int)y+14, (int)y+14 };
+        g2.fillPolygon(hx, hy, 3);
+
+        // Cannon tips — two small rectangles at wing positions
+        g2.setColor(new Color(0, 180, 220));
+        int leftTip  = (int)(x + width * 0.20) - 1;
+        int rightTip = (int)(x + width * 0.80) - 1;
+        g2.fillRect(leftTip,  (int)y + 2, 3, 6);
+        g2.fillRect(rightTip, (int)y + 2, 3, 6);
 
         // Engine glow when moving
         if (velocityX != 0 || velocityY != 0) {
             g2.setColor(new Color(255, 140, 0, 180));
             g2.fillOval(cx - 4, (int)y + height - 4, 8, 8);
-        }
-
-        // Invincible shimmer — thin cyan ring
-        if (invincible) {
-            long now = System.currentTimeMillis();
-            float shimmer = 0.3f + 0.4f
-                    * (float) Math.abs(Math.sin(now * 0.01));
-            g2.setComposite(AlphaComposite.getInstance(
-                    AlphaComposite.SRC_OVER, shimmer));
-            g2.setColor(new Color(0, 255, 255));
-            g2.drawOval((int)x - 4, (int)y - 4,
-                    width + 8, height + 8);
-            g2.setComposite(AlphaComposite.getInstance(
-                    AlphaComposite.SRC_OVER, 1f));
         }
     }
 }

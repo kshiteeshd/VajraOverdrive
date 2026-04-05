@@ -125,10 +125,12 @@ public class DebugMenuScreen {
     private void launchBoss(int bossIndex) {
         int bossLevel = BOSS_LEVELS[bossIndex];
         ProfileManager.createProfile(5, "DEBUG", GameMode.CAMPAIGN);
-        PendingGameStart.level     = bossLevel;
-        PendingGameStart.isNewGame = false;
-        PendingGameStart.gameMode  = GameMode.CAMPAIGN;
-        PendingGameStart.saveSlot  = 5;
+        PendingGameStart.level            = bossLevel;
+        PendingGameStart.isNewGame        = false;
+        PendingGameStart.gameMode         = GameMode.CAMPAIGN;
+        PendingGameStart.saveSlot         = 5;
+        // Flag tells WaveManager to skip fleet waves and spawn boss directly
+        PendingGameStart.directBossRegion = BOSS_NAMES[bossIndex];
         GameStateManager.setState(GameState.LEVEL_LOAD);
     }
 

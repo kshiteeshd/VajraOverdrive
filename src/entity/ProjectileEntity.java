@@ -34,8 +34,8 @@ public class ProjectileEntity extends Entity {
 
     private int        damage;
     private boolean    fromPlayer;
-    private final BulletType bulletType;
-    private final ImageSequenceSet anim;
+    private BulletType bulletType;
+    private ImageSequenceSet anim;
 
     // ── Constructors ──────────────────────────────────────────────────
 
@@ -161,13 +161,18 @@ public class ProjectileEntity extends Entity {
         }
     }
     // Add this method to the bottom of the class
-    public void reset(double newX, double newY, double vx, double vy, int newDamage, boolean isFromPlayer) {
+    // Add this to the bottom of ProjectileEntity.java
+    public void reset(double newX, double newY, double vx, double vy, int w, int h, int newDamage, boolean isFromPlayer, BulletType type) {
         this.x = newX;
         this.y = newY;
         this.velocityX = vx;
         this.velocityY = vy;
+        this.width = w;
+        this.height = h;
         this.damage = newDamage;
         this.fromPlayer = isFromPlayer;
-        this.setRemovable(false); // Resurrect the bullet
+        this.bulletType = type;
+        this.anim = buildAnim(type); // Rebuild the animation for the new bullet type
+        this.removable = false;      // Resurrect the bullet!
     }
 }
