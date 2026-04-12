@@ -85,22 +85,17 @@ public class PlayerShip extends Entity {
     // Individual hits only chip health; the player survives multiple hits.
     public void takeDamage(int dmg) {
         if (respawning || invincible) return;
-        if (shieldSystem.absorbDamage(dmg)) return;   // shield ate it
+        if (shieldSystem.absorbDamage(dmg)) return;   // shield ate it — no SFX
 
-        double cx = x + width  / 2.0;
-        double cy = y + height / 2.0;
-        FxLayer.get().playerHit(cx, cy);
+        audio.SoundManager.get().play("sfx_player_hit");
 
-        if (anim.has("hit")) anim.play("hit", "idle");
-
-        currentHealth = Math.max(0, currentHealth - dmg);
-
+        currentHealth -= dmg;
         if (currentHealth <= 0) {
-            respawning   = true;
-            respawnStart = System.currentTimeMillis();
+            currentHealth = 0;
+            respawning    = true;
+            respawnStart  = System.currentTimeMillis();
             WaveManager.loseLife();
         }
-        // else: health chipped, still alive — no respawn
     }
 
     // ── Update ────────────────────────────────────────────────────────

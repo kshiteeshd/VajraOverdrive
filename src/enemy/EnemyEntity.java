@@ -91,6 +91,7 @@ public abstract class EnemyEntity extends Entity {
             double cx = x + width  / 2.0;
             double cy = y + height / 2.0;
 
+
             // FIX: use getEnemyClass() instead of getSimpleName()
             switch (getEnemyClass()) {
                 case TANK   -> FxLayer.get().deathBurst(cx, cy, new Color(200, 40, 40));
@@ -100,9 +101,11 @@ public abstract class EnemyEntity extends Entity {
             }
 
             removable = true;
+            audio.SoundManager.get().play("sfx_enemy_death");
         } else {
             FxLayer.get().hitFlash(x, y, width, height);
             if (anim.has("hit")) anim.play("hit", "idle");
+            audio.SoundManager.get().play("sfx_enemy_hit");
         }
     }
 

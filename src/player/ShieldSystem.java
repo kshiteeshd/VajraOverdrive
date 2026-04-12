@@ -30,17 +30,22 @@ public class ShieldSystem {
 
     // ── Per-frame update ──────────────────────────────────────────────
     public void update(boolean shieldKeyHeld) {
+        boolean wasActive = active;
+
         if (shieldKeyHeld && (active || charge >= MIN_ACTIVATE)) {
-            // Activate / stay active while key held and charge remains
             active = true;
             charge = Math.max(0f, charge - DRAIN_PER_FRAME);
-            if (charge <= 0f) active = false;   // force off when depleted
+            if (charge <= 0f) active = false;
         } else {
             active = false;
             charge = Math.min(1f, charge + RECHARGE_PER_FRAME);
         }
-    }
 
+        // Play activation SFX once on the frame the shield turns on
+        if (!wasActive && active) {
+            audio.SoundManager.get().play("sfx_shield_activate");
+        }
+    }
     // ── Damage intercept — called from PlayerShip.takeDamage() ────────
     // Returns true if the shield absorbed the hit (no HP deducted).
     public boolean absorbDamage(int dmg) {

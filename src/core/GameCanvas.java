@@ -125,20 +125,20 @@ public class GameCanvas extends JPanel {
     }
 
     // ── Session rebuild ───────────────────────────────────────────────
-    private void rebuildSession(boolean isNewGame) {
+    private void rebuildSession() {
         int startLevel = PendingGameStart.level;
 
         entityManager   = new EntityManager();
         player          = PlayerShip.createDefault(entityManager);
+
+        // Wire saved ship tier — previously dead code, ship was always tier 1
+        if (ProfileManager.getProfile() != null && ProfileManager.getProfile().shipTier > 1)
+            player.upgradeTier(ProfileManager.getProfile().shipTier);
+
         campaignManager = new CampaignManager(entityManager, player, startLevel);
-        FxLayer.get().init(entityManager);
+
         WaveManager.resetSession(3);
-
         ScoreManager.get().reset();
-        ScoreManager.get().setHUDRef(nebulHUD);
-
-        if (!isNewGame && ProfileManager.getProfile() != null)
-            ScoreManager.get().setScore(ProfileManager.getProfile().score);
 
         spaceBackground.setRegion(campaignManager.getCurrentRegion());
     }
@@ -262,12 +262,12 @@ public class GameCanvas extends JPanel {
             case DEBUG_MENU     -> debugMenu.enter();
 
             case CAMPAIGN_INTRO -> {
-                rebuildSession(true);
+                rebuildSession();
                 campaignIntro.reset();
             }
 
             case LEVEL_LOAD -> {
-                rebuildSession(false);
+                rebuildSession();
                 levelLoad.enter(
                         campaignManager.getCurrentLevel(),
                         campaignManager.getCurrentRegion());

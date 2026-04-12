@@ -34,38 +34,14 @@ public class WeaponSystem {
     private boolean overheated  = false;
     private long    lastFireTime = 0;
 
-    // ── Per-frame update — decay heat, clear lockout ──────────────────
-    public void update() {
-        heat = Math.max(0f, heat - HEAT_DECAY);
-        if (overheated && heat <= COOL_THRESHOLD) {
-            overheated = false;
-        }
-    }
+
 
     // ── Gate — PlayerShip calls this before firing ────────────────────
     public boolean canFire(long now) {
         return !overheated && (now - lastFireTime >= FIRE_RATE_MS);
     }
 
-    // ── Shoot — spawns one bullet, accumulates heat ───────────────────
-    public void fire(double shipX, double shipY, int shipWidth, EntityManager em) {
-        double cx      = shipX + shipWidth / 2.0 - 2;
-        double muzzleY = shipY + 2;
 
-        ProjectileEntity bullet = ProjectilePool.get(
-                cx, muzzleY,
-                0, -BULLET_SPEED,
-                5, 12, 5, true,
-                ProjectileEntity.BulletType.PLAYER
-        );
-        em.add(bullet);
-
-        heat = Math.min(OVERHEAT_THRESHOLD, heat + HEAT_PER_SHOT);
-        if (heat >= OVERHEAT_THRESHOLD) {
-            overheated = true;
-        }
-        lastFireTime = System.currentTimeMillis();
-    }
 
     // ── Accessors for HUD / PlayerShip ───────────────────────────────
     public float   getHeat()       { return heat;       }
@@ -127,5 +103,40 @@ public class WeaponSystem {
                     (int)(t * 30)
             );
         }
+    }
+
+    // ── Per-frame update — decay heat, clear lockout ──────────────────
+    public void update() {
+        boolean wasOverheated = overheated;
+        heat = Math.max(0f, heat - HEAT_DECAY);
+        if (overheated && heat <= COOL_THRESHOLD) {
+            overheated = false;
+        }
+        // overheat SFX fires once on the frame the lockout begins
+        if (!wasOverheated && overheated) {
+            audio.SoundManager.get().play("sfx_overheat");
+        }
+    }
+
+    // ── Shoot — spawns one bullet, accumulates heat ───────────────────
+    public void fire(double shipX, double shipY, int shipWidth, EntityManager em) {
+        double cx      = shipX + shipWidth / 2.0 - 2;
+        double muzzleY = shipY + 2;
+
+        ProjectileEntity bullet = ProjectilePool.get(
+                cx, muzzleY,
+                0, -BULLET_SPEED,
+                5, 12, 5, true,
+                ProjectileEntity.BulletType.PLAYER
+        );
+        em.add(bullet);
+
+        audio.SoundManager.get().play("sfx_fire");
+
+        heat = Math.min(OVERHEAT_THRESHOLD, heat + HEAT_PER_SHOT);
+        if (heat >= OVERHEAT_THRESHOLD) {
+            overheated = true;
+        }
+        lastFireTime = System.currentTimeMillis();
     }
 }
