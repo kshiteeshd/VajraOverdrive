@@ -146,7 +146,7 @@ public class WeaponSystem {
     }
 
     // ── Fire — spawns bullet(s) based on current mode and tempo ───────
-    public void fire(double shipX, double shipY, int shipWidth, EntityManager em) {
+    public void fire(double shipX, double shipY, int shipWidth, EntityManager em, long now) {
         // Interpolate bullet properties based on tempo
         int    dmg   = interpolateDamage();
         double speed = interpolateSpeed();
@@ -165,7 +165,7 @@ public class WeaponSystem {
 
         // TODO: SoundManager.get().play("sfx_fire");
 
-        lastFireTime = System.currentTimeMillis();
+        lastFireTime = now;
     }
 
     // ── Fire patterns ─────────────────────────────────────────────────
@@ -232,12 +232,13 @@ public class WeaponSystem {
     }
 
     // ── Pool helper — keeps fire methods readable ─────────────────────
+    // ── Bullet factory — creates new instances (no pooling) ────────────────
     private ProjectileEntity pool(double x, double y,
                                   double vx, double vy,
                                   int w, int h, int dmg,
                                   ProjectileEntity.BulletType type,
                                   ProjectileEntity.ProjectileModifier mod) {
-        ProjectileEntity p = ProjectilePool.get(x, y, vx, vy, w, h, dmg, true, type);
+        ProjectileEntity p = new ProjectileEntity(x, y, vx, vy, w, h, dmg, true, type);
         p.setModifier(mod);
         return p;
     }

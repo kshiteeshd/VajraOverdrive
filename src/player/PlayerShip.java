@@ -214,7 +214,7 @@ public class PlayerShip extends Entity {
 
         // ── Fire ──────────────────────────────────────────────────────
         if (fireKey && weaponSystem.canFire(now)) {
-            weaponSystem.fire(x, y, width, entityManager);
+            weaponSystem.fire(x, y, width, entityManager, now);
         }
     }
 
@@ -234,16 +234,16 @@ public class PlayerShip extends Entity {
             renderFallback(g2);
         }
 
-        // ── Hit flash — red overlay on damage ─────────────────────────
-        if (hitFlashFrames > 0) {
-            Composite old = g2.getComposite();
-            // Alpha fades as frames tick down: max at first frame, gone at 0
-            float alpha = hitFlashFrames * (0.55f / HIT_FLASH_DURATION);
-            g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
-            g2.setColor(new Color(255, 40, 40));
-            g2.fillRect((int) x, (int) y, width, height);
-            g2.setComposite(old);
-        }
+//        // ── Hit flash — red overlay on damage ─────────────────────────
+//        if (hitFlashFrames > 0) {
+//            Composite old = g2.getComposite();
+//            // Alpha fades as frames tick down: max at first frame, gone at 0
+//            float alpha = hitFlashFrames * (0.55f / HIT_FLASH_DURATION);
+//            g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
+//            g2.setColor(new Color(255, 40, 40));
+//            g2.fillRect((int) x, (int) y, width, height);
+//            g2.setComposite(old);
+//        }
 
         // ── System overlays — isolated composite state ────────────────
         Graphics2D overlay = (Graphics2D) g2.create();

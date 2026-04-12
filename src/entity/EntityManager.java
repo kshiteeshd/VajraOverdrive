@@ -58,12 +58,8 @@ public class EntityManager {
             // removing them from the list. This is what actually populates
             // the pool — without it, ProjectilePool.get() always creates
             // new objects and no recycling ever happens.
-            for (int i = 0; i < entities.size(); i++) {
-                Entity e = entities.get(i);
-                if (e.isRemovable() && e instanceof ProjectileEntity) {
-                    ProjectilePool.release((ProjectileEntity) e);
-                }
-            }
+            // Remove all removable entities (bullets, dead enemies, etc.)
+            entities.removeIf(Entity::isRemovable);
 
             entities.removeIf(Entity::isRemovable);
         } finally {
