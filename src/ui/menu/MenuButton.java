@@ -40,8 +40,8 @@ public class MenuButton {
         SpaceBackground bg = SpaceBackground.getMenuBackground();
         bg.update();
         bg.render(g, 0, 0,
-                LayoutConfig.WINDOW_WIDTH,
-                LayoutConfig.WINDOW_HEIGHT);
+                LayoutConfig.VIRTUAL_WIDTH,
+                LayoutConfig.VIRTUAL_HEIGHT);
     }
 
     // ── Single button ─────────────────────────────────────────────────
@@ -50,7 +50,7 @@ public class MenuButton {
         FontMetrics fm = g.getFontMetrics();
 
         String display = (selected ? ">  " : "   ") + text;
-        int drawX = (LayoutConfig.WINDOW_WIDTH
+        int drawX = (LayoutConfig.VIRTUAL_WIDTH
                 - fm.stringWidth(display)) / 2;
 
         if (selected) {

@@ -4,6 +4,7 @@ import enemy.EnemyEntity;
 import enemy.data.EnemyStats;
 import entity.EntityManager;
 import entity.ProjectileEntity;
+import entity.ProjectilePool;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -12,6 +13,10 @@ import java.awt.image.BufferedImage;
  * Tier-1: purple crosshair — single aimed shot.
  * Tier-2: gold crosshair with outer triangle indicators —
  *         fires a 3-shot aimed burst spread.
+ *
+ * FIX: all bullet creation now uses ProjectilePool.get() instead of
+ *      new ProjectileEntity(). Keeps all bullets in the same pool
+ *      lifecycle so recycled bullets always go through reset().
  */
 public class SniperEnemy extends EnemyEntity {
 
@@ -55,7 +60,8 @@ public class SniperEnemy extends EnemyEntity {
                 double vx = (ndx / nlen) * 5.5;
                 double vy = (ndy / nlen) * 5.5;
 
-                entityManager.add(new ProjectileEntity(
+                // FIX: use ProjectilePool instead of new
+                entityManager.add(ProjectilePool.get(
                         bx, by,
                         vx, vy,
                         4, 18,
@@ -73,7 +79,8 @@ public class SniperEnemy extends EnemyEntity {
             double vx  = (dx / len) * 5.5;
             double vy  = (dy / len) * 5.5;
 
-            entityManager.add(new ProjectileEntity(
+            // FIX: use ProjectilePool instead of new
+            entityManager.add(ProjectilePool.get(
                     bx, by,
                     vx, vy,
                     4, 18,
@@ -115,45 +122,47 @@ public class SniperEnemy extends EnemyEntity {
             g2.fillRect(cx - 1, (int)y + 2, 2, height - 4);
             g2.fillRect((int)x + 2, cy - 1, width - 4, 2);
 
-            // Corner bracket marks (targeting indicator)
-            int bSize = 4;
-            g2.setColor(new Color(255, 240, 100));
+            // Corner brackets — outer triangles
+            g2.setColor(new Color(255, 160, 0));
+            int tri = 6;
             // top-left
-            g2.fillRect((int)x + 2, (int)y + 2, bSize, 1);
-            g2.fillRect((int)x + 2, (int)y + 2, 1, bSize);
+            g2.fillPolygon(
+                    new int[]{ (int)x - 2, (int)x + tri, (int)x - 2 },
+                    new int[]{ (int)y - 2, (int)y - 2,   (int)y + tri }, 3);
             // top-right
-            g2.fillRect((int)x + width - 2 - bSize, (int)y + 2, bSize, 1);
-            g2.fillRect((int)x + width - 3, (int)y + 2, 1, bSize);
+            g2.fillPolygon(
+                    new int[]{ (int)x+width+2, (int)x+width-tri, (int)x+width+2 },
+                    new int[]{ (int)y - 2,     (int)y - 2,       (int)y + tri },   3);
             // bottom-left
-            g2.fillRect((int)x + 2, (int)y + height - 3, bSize, 1);
-            g2.fillRect((int)x + 2, (int)y + height - 2 - bSize, 1, bSize);
+            g2.fillPolygon(
+                    new int[]{ (int)x - 2, (int)x + tri, (int)x - 2 },
+                    new int[]{ (int)y+height+2, (int)y+height+2, (int)y+height-tri }, 3);
             // bottom-right
-            g2.fillRect((int)x + width - 2 - bSize, (int)y + height - 3, bSize, 1);
-            g2.fillRect((int)x + width - 3, (int)y + height - 2 - bSize, 1, bSize);
+            g2.fillPolygon(
+                    new int[]{ (int)x+width+2, (int)x+width-tri, (int)x+width+2 },
+                    new int[]{ (int)y+height+2, (int)y+height+2, (int)y+height-tri }, 3);
 
-            // Centre dot — bright gold
-            g2.setColor(new Color(255, 255, 150));
+            // Core dot — white
+            g2.setColor(Color.WHITE);
             g2.fillOval(cx - 3, cy - 3, 6, 6);
-
-            // Body fill — dark gold tint
-            g2.setColor(new Color(60, 40, 0, 100));
-            g2.fillOval((int)x + 4, (int)y + 4, width - 8, height - 8);
-
         } else {
-            // ── Tier-1: original purple crosshair
-            g2.setColor(new Color(160, 60, 220));
-            g2.drawOval((int)x + 2, (int)y + 2, width - 4, height - 4);
+            // ── Tier-1: purple crosshair
+            // Outer ring
+            g2.setColor(new Color(140, 40, 200));
+            g2.drawOval((int)x + 1, (int)y + 1, width - 2, height - 2);
+
+            // Inner ring
+            g2.setColor(new Color(180, 80, 240));
             g2.drawOval((int)x + 4, (int)y + 4, width - 8, height - 8);
 
-            g2.setColor(new Color(200, 100, 255));
+            // Cross lines
+            g2.setColor(new Color(160, 60, 220));
             g2.fillRect(cx - 1, (int)y + 2, 2, height - 4);
             g2.fillRect((int)x + 2, cy - 1, width - 4, 2);
 
-            g2.setColor(new Color(240, 160, 255));
-            g2.fillOval(cx - 3, cy - 3, 6, 6);
-
-            g2.setColor(new Color(80, 20, 120, 120));
-            g2.fillOval((int)x + 2, (int)y + 2, width - 4, height - 4);
+            // Core dot
+            g2.setColor(new Color(220, 160, 255));
+            g2.fillOval(cx - 2, cy - 2, 4, 4);
         }
     }
 }

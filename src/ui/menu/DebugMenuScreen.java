@@ -43,8 +43,8 @@ import java.awt.event.KeyEvent;
  */
 public class DebugMenuScreen {
 
-    private static final int W  = LayoutConfig.WINDOW_WIDTH;
-    private static final int H  = LayoutConfig.WINDOW_HEIGHT;
+    private static final int W  = LayoutConfig.VIRTUAL_WIDTH;
+    private static final int H  = LayoutConfig.VIRTUAL_HEIGHT;
     private static final int CX = W / 2;
 
     // Focus: 0 = level panel, 1 = boss panel, 2 = launch level, 3 = launch boss, 4 = back

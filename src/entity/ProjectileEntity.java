@@ -91,12 +91,37 @@ public class ProjectileEntity extends Entity {
         });
     }
 
-    public boolean isFromPlayer() { return fromPlayer; }
-    public int     getDamage()    { return damage;     }
+    // ── Accessors ─────────────────────────────────────────────────────
+
+    public boolean    isFromPlayer()  { return fromPlayer; }
+    public int        getDamage()     { return damage;     }
+    public BulletType getBulletType() { return bulletType;  }
+
+    /**
+     * Returns the current modifier on this projectile.
+     * Used by CollisionSystem to decide whether the bullet should be
+     * removed on hit (NORMAL) or pass through (PIERCING), chain to
+     * nearby enemies (CHAIN), etc.
+     */
+    public ProjectileModifier getModifier() { return modifier; }
+
+    /**
+     * Sets the modifier on this projectile.
+     * Called by WeaponSystem when firing in PIERCING or other special
+     * weapon modes, and cleared back to NORMAL by reset() on pool recycle.
+     */
+    public void setModifier(ProjectileModifier mod) { this.modifier = mod; }
+
+    /**
+     * Convenience check — true if this bullet should NOT be consumed
+     * on the first enemy it hits.
+     */
+    public boolean isPiercing() { return modifier == ProjectileModifier.PIERCING; }
 
     // ── Reset — called by ProjectilePool on recycle ───────────────────
     // Clears ALL mutable state so a recycled bullet cannot exhibit
-    // behaviour from its previous life (e.g. WAVE modifier drift).
+    // behaviour from its previous life (e.g. WAVE modifier drift,
+    // leftover PIERCING flag, stale velocity).
     public void reset(double newX, double newY,
                       double vx, double vy,
                       int w, int h,
@@ -112,6 +137,7 @@ public class ProjectileEntity extends Entity {
         this.fromPlayer = isFromPlayer;
         this.bulletType = type;
         // Stale modifier state cleared — fixes erratic recycled-bullet movement
+        // and prevents a recycled PIERCING bullet from passing through enemies
         this.modifier   = ProjectileModifier.NORMAL;
         this.waveTime   = 0f;
         this.baseX      = 0f;
@@ -127,7 +153,7 @@ public class ProjectileEntity extends Entity {
         anim.update();
         x += velocityX;
         y += velocityY;
-        if (y < CombatArea.TOP_BOUND  - 20
+        if (y < CombatArea.TOP_BOUND    - 20
                 || y > CombatArea.BOTTOM_BOUND + 20
                 || x < CombatArea.LEFT_BOUND   - 20
                 || x > CombatArea.RIGHT_BOUND  + 20) {

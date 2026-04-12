@@ -16,8 +16,8 @@ import java.awt.event.KeyEvent;
 
 public class LoadGameMenuScreen {
 
-    private static final int W          = LayoutConfig.WINDOW_WIDTH;
-    private static final int H          = LayoutConfig.WINDOW_HEIGHT;
+    private static final int W          = LayoutConfig.VIRTUAL_WIDTH;
+    private static final int H          = LayoutConfig.VIRTUAL_HEIGHT;
     private static final int CX         = W / 2;
     private static final int SLOT_COUNT = SaveManager.MAX_SLOTS;
     private static final int ROWS       = SLOT_COUNT + 1; // slots + BACK

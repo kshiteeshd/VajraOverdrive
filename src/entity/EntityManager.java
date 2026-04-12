@@ -7,6 +7,19 @@ import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+/**
+ * Central list that stores and updates all entities.
+ *
+ * FIX: ReadWriteLock prevents ConcurrentModificationException between
+ *      the game loop (update thread) and Swing AWT-EventQueue (render).
+ *
+ * FIX: Removable ProjectileEntity instances are released back to
+ *      ProjectilePool BEFORE being removed from the list. This keeps
+ *      the object pool populated so subsequent ProjectilePool.get()
+ *      calls recycle existing objects instead of always allocating new.
+ *      Without this, the pool was permanently empty and get() always
+ *      called new ProjectileEntity() — defeating the entire pool.
+ */
 public class EntityManager {
 
     private final List<Entity> entities = new ArrayList<>();
@@ -31,6 +44,7 @@ public class EntityManager {
     public void update() {
         lock.writeLock().lock();
         try {
+            // Merge pending entities queued during last frame
             if (!pending.isEmpty()) {
                 entities.addAll(pending);
                 pending.clear();
@@ -40,7 +54,10 @@ public class EntityManager {
                 entities.get(i).update();
             }
 
-            // NEW: Salvage projectiles before they are removed
+            // Salvage removable projectiles back into the pool BEFORE
+            // removing them from the list. This is what actually populates
+            // the pool — without it, ProjectilePool.get() always creates
+            // new objects and no recycling ever happens.
             for (int i = 0; i < entities.size(); i++) {
                 Entity e = entities.get(i);
                 if (e.isRemovable() && e instanceof ProjectileEntity) {
@@ -55,7 +72,7 @@ public class EntityManager {
     }
 
     public void render(Graphics g) {
-        // We lock the list for reading so AWT doesn't crash if the game loop updates it
+        // Lock for reading so AWT doesn't crash if the game loop updates it
         lock.readLock().lock();
         try {
             for (int i = 0; i < entities.size(); i++) {

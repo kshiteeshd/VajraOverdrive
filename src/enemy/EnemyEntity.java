@@ -3,6 +3,8 @@ package enemy;
 import enemy.data.EnemyStats;
 import entity.Entity;
 import entity.EntityManager;
+import entity.ProjectileEntity;
+import entity.ProjectilePool;
 import gfx.FxLayer;
 import gfx.ImageSequenceSet;
 import gfx.ShipRegistry;
@@ -91,7 +93,6 @@ public abstract class EnemyEntity extends Entity {
             double cx = x + width  / 2.0;
             double cy = y + height / 2.0;
 
-
             // FIX: use getEnemyClass() instead of getSimpleName()
             switch (getEnemyClass()) {
                 case TANK   -> FxLayer.get().deathBurst(cx, cy, new Color(200, 40, 40));
@@ -174,7 +175,7 @@ public abstract class EnemyEntity extends Entity {
         if (entityManager == null) return;
 
         // FIX: use getEnemyClass() instead of getSimpleName()
-        entity.ProjectileEntity.BulletType bt = resolveBulletType();
+        ProjectileEntity.BulletType bt = resolveBulletType();
 
         int bw, bh;
         double bvy;
@@ -190,9 +191,15 @@ public abstract class EnemyEntity extends Entity {
             double startAngle  = -totalSpread / 2.0;
             for (int i = 0; i < stats.bulletCount; i++) {
                 double angle = Math.toRadians(startAngle + i * stats.bulletSpread);
-                double vx    = Math.sin(angle) * 4.0;
-                double vy    = Math.cos(angle) * 4.0;
-                entityManager.add(new entity.ProjectileEntity(
+                // FIX: use bvy (per-type speed) instead of hardcoded 4.0.
+                // Previously scatter shots always flew at 4.0 regardless of
+                // enemy type — tanks fired scatter 33% too fast, snipers 33%
+                // too slow. Now scatter speed matches single-fire speed.
+                double vx = Math.sin(angle) * bvy;
+                double vy = Math.cos(angle) * bvy;
+                // FIX: use ProjectilePool instead of new — keeps all bullets
+                // in the same lifecycle so the pool actually gets populated.
+                entityManager.add(ProjectilePool.get(
                         x + width / 2.0 - bw / 2.0,
                         y + height,
                         vx, vy, bw, bh,
@@ -200,7 +207,8 @@ public abstract class EnemyEntity extends Entity {
                 ));
             }
         } else {
-            entityManager.add(new entity.ProjectileEntity(
+            // FIX: use ProjectilePool instead of new
+            entityManager.add(ProjectilePool.get(
                     x + width / 2.0 - bw / 2.0,
                     y + height,
                     0, bvy, bw, bh,
@@ -209,13 +217,13 @@ public abstract class EnemyEntity extends Entity {
         }
     }
 
-    private entity.ProjectileEntity.BulletType resolveBulletType() {
+    private ProjectileEntity.BulletType resolveBulletType() {
         // FIX: enum switch, not string comparison
         return switch (getEnemyClass()) {
-            case TANK   -> entity.ProjectileEntity.BulletType.TANK;
-            case FAST   -> entity.ProjectileEntity.BulletType.FAST;
-            case SNIPER -> entity.ProjectileEntity.BulletType.SNIPER;
-            default     -> entity.ProjectileEntity.BulletType.BASIC;
+            case TANK   -> ProjectileEntity.BulletType.TANK;
+            case FAST   -> ProjectileEntity.BulletType.FAST;
+            case SNIPER -> ProjectileEntity.BulletType.SNIPER;
+            default     -> ProjectileEntity.BulletType.BASIC;
         };
     }
 

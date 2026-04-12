@@ -28,8 +28,8 @@ import java.awt.event.KeyEvent;
  */
 public class MainMenuScreen {
 
-    private static final int W  = LayoutConfig.WINDOW_WIDTH;
-    private static final int H  = LayoutConfig.WINDOW_HEIGHT;
+    private static final int W  = LayoutConfig.VIRTUAL_WIDTH;
+    private static final int H  = LayoutConfig.VIRTUAL_HEIGHT;
     private static final int CX = W / 2;
 
     private static final String[] LABELS = {

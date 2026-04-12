@@ -4,6 +4,7 @@ import config.CombatArea;
 import entity.Entity;
 import entity.EntityManager;
 import entity.ProjectileEntity;
+import entity.ProjectilePool;
 import gfx.FxLayer;
 import gfx.ScreenShake;
 import player.PlayerShip;
@@ -22,6 +23,11 @@ import java.awt.image.BufferedImage;
  *   renderBody()    — the actual visual for this boss
  *   onPhaseChange() — triggered when a threshold is crossed
  *   firePattern()   — per-phase attack logic
+ *
+ * FIX: fire helpers now use ProjectilePool.get() instead of
+ *      new ProjectileEntity(). This keeps ALL bullets in the same
+ *      pool lifecycle — prevents stale-velocity bugs when boss
+ *      bullets get recycled as player bullets (or vice versa).
  */
 public abstract class BossEntity extends Entity {
 
@@ -205,16 +211,23 @@ public abstract class BossEntity extends Entity {
     }
 
     // ── Fire helpers for subclasses ───────────────────────────────────
-    /** Fire straight down from center. */
+
+    /**
+     * Fire straight down from center.
+     * FIX: uses ProjectilePool instead of new — consistent lifecycle.
+     */
     protected void fireStraight(int damage, int bw, int bh, double speed) {
-        entityManager.add(new ProjectileEntity(
+        entityManager.add(ProjectilePool.get(
                 x + width / 2.0 - bw / 2.0, y + height,
                 0, speed, bw, bh,
                 damage, false, ProjectileEntity.BulletType.TANK
         ));
     }
 
-    /** Fire aimed at current player position. */
+    /**
+     * Fire aimed at current player position.
+     * FIX: uses ProjectilePool instead of new — consistent lifecycle.
+     */
     protected void fireAimed(int damage, double speed) {
         if (player == null) return;
         double px  = player.x + player.width  / 2.0;
@@ -223,7 +236,7 @@ public abstract class BossEntity extends Entity {
         double dy  = py - (y + height / 2.0);
         double len = Math.sqrt(dx * dx + dy * dy);
         if (len == 0) len = 1;
-        entityManager.add(new ProjectileEntity(
+        entityManager.add(ProjectilePool.get(
                 x + width / 2.0 - 3, y + height,
                 (dx / len) * speed, (dy / len) * speed,
                 5, 18,
@@ -231,7 +244,10 @@ public abstract class BossEntity extends Entity {
         ));
     }
 
-    /** Fire N bullets in a spread fan downward. */
+    /**
+     * Fire N bullets in a spread fan downward.
+     * FIX: uses ProjectilePool instead of new — consistent lifecycle.
+     */
     protected void fireSpread(int count, double spreadDeg,
                               int damage, double speed) {
         double totalSpread = spreadDeg * (count - 1);
@@ -240,7 +256,7 @@ public abstract class BossEntity extends Entity {
             double angle = Math.toRadians(startAngle + i * spreadDeg);
             double vx    = Math.sin(angle) * speed;
             double vy    = Math.cos(angle) * speed;
-            entityManager.add(new ProjectileEntity(
+            entityManager.add(ProjectilePool.get(
                     x + width / 2.0 - 4, y + height,
                     vx, vy, 8, 8,
                     damage, false, ProjectileEntity.BulletType.BASIC
