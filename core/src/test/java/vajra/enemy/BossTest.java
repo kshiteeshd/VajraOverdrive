@@ -263,4 +263,47 @@ class BossTest {
         assertTrue(e.dead, "a stood-down unit retires after its exit walk");
         assertTrue(w.bullets.isEmpty(), "and never fires on the way out");
     }
+
+    @Test
+    void memoryRetiresWhatTheHullStudies() {
+        Enemy b = new Enemy(Enemy.Kind.BALA, 0, 0);
+        b.boss = true;
+        b.bossPhase = 2; // the duel: memory owns the dial
+        b.hp = b.maxHp;
+        b.bossTook[0] = 9999; // the hull has hammered him through his volley most
+        b.bossTook[3] = 500;  // and through his shock next
+        for (int i = 0; i < 4; i++) BossBrain.pick(b); // four patterns: the study beat fires
+        assertEquals(0, b.bossBanA, "the most-studied pattern retires");
+        assertEquals(3, b.bossBanB, "and the second with it");
+        for (int i = 0; i < 40; i++) {
+            int p = BossBrain.pick(b);
+            assertTrue(p == 1 || p == 2, "a studied pattern stays dark: pick chose " + p);
+        }
+    }
+
+    @Test
+    void memoryLeansTowardWhatSears() {
+        Enemy b = new Enemy(Enemy.Kind.BALA, 0, 0);
+        b.boss = true;
+        b.bossPhase = 2;
+        b.hp = b.maxHp;
+        b.bossDeal[2] = 999; // his mortar has seared this hull for everything else squared
+        int mortars = 0;
+        for (int i = 0; i < 16; i++) if (BossBrain.pick(b) == 2) mortars++;
+        assertTrue(mortars >= 12, "the searing pattern owns the dial: " + mortars + " of 16");
+    }
+
+    @Test
+    void unStudiedPatternsNeverRetireForNothing() {
+        Enemy b = new Enemy(Enemy.Kind.BALA, 0, 0);
+        b.boss = true;
+        b.bossPhase = 2;
+        b.hp = b.maxHp;
+        for (int i = 0; i < 16; i++) { // sixteen patterns, nothing studied, nothing dealt
+            int p = BossBrain.pick(b);
+            assertTrue(p >= 0 && p <= 3, "always a legal pattern");
+        }
+        assertEquals(-1, b.bossBanA, "no pattern retires for nothing");
+        assertEquals(-1, b.bossBanB, "none at all");
+    }
 }

@@ -280,19 +280,21 @@ when every box is closed. `[x]` marks shipped.
    the crashed beacon (the band-2 cache is the beacon); `CacheDirector.payout` speaks HIS line
    when the beacon pays, and only if met — every other cache stays silent, exactly the
    no-announcement law. Payout law untouched (100 coins + life).
-6. [ ] **The Ninth Maya** — Maya Vana's wright; FIRST SIGHT; her letter (LETTER II) unlocks at
-   the warden's fall (`BossBrain` death hook → Chatter), her want (salvage wall tiles) rides the
-   Salvage template when it lands (task 10).
-7. [ ] **Kaliya the Tide-Pilot** — the caravan voice at band 3; FIRST SIGHT; his want rides the
-   Courier template (task 11); his payoff (water shortcut) is the Wave under-test.
+6. [x] **The Ninth Maya** — placed in her own woods at depth of band 2, FIRST SIGHT promises
+   the letter; the warden's fall (`World.victory` → `Chatter.wardenFalls`) speaks LETTER II in
+   three lines, met only — an unmet voice pays nothing. Her want (Salvage) rides task 10.
+7. [x] **Kaliya the Tide-Pilot** — placed on the water road at band 3 (Svapna Mandala); FIRST
+   SIGHT promises the spark job; the Courier template (task 11) will answer it.
 
 ### The four mission templates (Atala launch set)
 
-8. [ ] **The missions state** — `Missions.java` on the run: trigger, one `Mission` row, state
-   (open/working/done), reward pay, and the two copy lines per template. Run-scoped; co-op rides
-   the host's rows (one test each in `CoOpTest` as they land).
-9. [ ] **Bounty first** (needs no pockets): a named rogue elite with its own spawn law roams
-   band 2's belt, hunts on sight; the kill pays the bounty. Compass hint via the Scout's report.
+8. [x] **The missions state** — `Missions.java` on the run: one `bounty` row, three states
+   (NONE/OPEN/DONE), reward pay (250 coins + a life) with the closing popup. Run-scoped; one
+   card per run; co-op rows ride the host (each template's `CoOpTest` as it lands).
+9. [x] **Bounty first** — the card goes up ONLY when the Scout's beacon answers (met only);
+   DAMBHA, a named rogue of the illusion wood, joins the roster mid-run (elite heavy-shell,
+   hunts straight on sight); his fall pays the frame he dies. `MissionsTest` pins the gate,
+   the purse and the one-card law.
 10. [ ] **Salvage second**: N wrecks (a new passive pickup, reuse `Pickup` machinery) scattered
     in one marked area per band 2–3 for Maya's retempering; the Nth triggers her job-done.
 11. [ ] **Courier third**: the spark — hull slowed + glowing while carried, `wakeRange` of every
@@ -306,8 +308,10 @@ when every box is closed. `[x]` marks shipped.
 13. [ ] **Pockets + murmurs, bands 1–3** — `MapGen.carvePocket(band)`: one ruin (the mural +
     a cache door) and one supply grove per band, `compass`-named; ten murmur texts at their
     stone (the plan's appendix becomes `Murmurs.java`).
-14. [x] **Bala memory** — [pending next turn: `BossBrain.pick()` weights by punish-per-pattern]
-    — kept open until its three-claim test exists in `BossTest`.
+14. [x] **Bala memory** — `bossTook`/`bossDeal` books live on the boss; every fourth pattern
+   the two the hull punishes hardest retire a spell (never an un-studied one), the searing
+   pattern carries the most weight, anti-repeat keeps a winner a rhythm not a machine. Three
+   claims pinned in `BossTest` (retire, lean, nothing-for-nothing).
 15. [ ] **The codex, v1** — 12 pages (`Faith` entries locked to events so far: Deepening texts,
     each voice met, each job done, the warden's fall), `boolean[64]` on the profile campaign,
     a CODEX tab on the pause screen. Pages carry warden/roster/voice/place one-pagers from this

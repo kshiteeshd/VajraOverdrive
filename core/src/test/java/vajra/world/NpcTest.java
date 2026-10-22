@@ -39,20 +39,23 @@ class NpcTest {
     }
 
     @Test
-    void theScoutStandsAtHisBandTwoPost() {
+    void theVoicesStandAtTheirPosts() {
         World w = new World();
-        assertEquals(1, w.voices.size(), "one voice in Atala wave 1");
+        assertEquals(3, w.voices.size(), "Scout, Maya and Kaliya hold Atala's wave 1");
         Enemy scout = w.voices.get(0);
-        assertTrue(scout.voice, "voiced");
+        assertEquals("SCOUT", scout.voiceName, "the first is the Scout");
         assertTrue(scout.homeY > w.regionStart[2] && scout.homeY < w.regionEnd[2],
                 "the Scout holds the band-2 post");
-        assertTrue(scout.hp > 0, "alive");
+        Enemy maya = w.voices.get(1);
+        assertEquals("MAYA", maya.voiceName, "the Ninth Maya keeps her own woods");
+        assertTrue(maya.homeY > w.regionStart[2] && maya.homeY < w.regionEnd[2], "Maya Vana, band 2");
+        Enemy kaliya = w.voices.get(2);
+        assertEquals("KALIYA", kaliya.voiceName, "the Tide-Pilot keeps the water road");
+        assertTrue(kaliya.homeY > w.regionStart[3] && kaliya.homeY < w.regionEnd[3], "Svapna Mandala, band 3");
         // and the roster never changed: the order of battle does not count a person
         assertEquals(227, w.enemies.size(), "Atala's placement is untouched by voices");
-        int lance = 0;
         for (Enemy e : w.enemies)
-            if (e.kind == Enemy.Kind.LANCE && e.voice) lance++;
-        assertEquals(0, lance, "no voice hides inside the roster either");
+            assertFalse(e.voice, "no voice hides inside the roster either");
     }
 
     @Test

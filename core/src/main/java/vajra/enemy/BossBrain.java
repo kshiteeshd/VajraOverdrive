@@ -11,10 +11,11 @@ import java.util.Random;
 /** Bala's brain. One state machine keyed off hp:
  *  phase 1 THE COMMANDER (100-66%): holds the pit, slow ordered volleys — his retinue rings him
  *      and soaks the shots; every volley release is the order for the ring to fire together.
- *  phase 2 THE DUEL (66-33%): stands whoever is left down, then circles at 420 px cycling
- *      volley -> spiral -> mortar -> shockwave.
+ *  phase 2 THE DUEL (66-33%): stands whoever is left down, then circles at 420 px choosing
+ *      volley, spiral, mortar and shockwave by memory - what this hull punishes retires,
+ *      what has seared the hull leans (see pick).
  *  phase 3 BERSERK (33-0%): blinks to a new berth every few seconds — each vanish drops an
- *      elite pair at the old post (cap 6, they re-form his ring) — faster cycle, double spiral,
+ *      elite pair at the old post (cap 6, they re-form his ring) — faster pace, double spiral,
  *      and below 15% the spiral never stops.
  *  Writes vx/vy only, like Brain; fires through World with its own shot rows. */
 public class BossBrain {
@@ -88,6 +89,10 @@ public class BossBrain {
             e.bossTelegraph = false;
             e.bossTimer = e.bossPhase == 1 ? 1.6f : e.bossPhase == 2 ? 1.3f : 0.9f;
         } else {
+            // MEMORY: the pattern that just played is charged with what it dealt the hull,
+            // then the window reopens empty for the next pattern
+            e.bossDeal[e.bossPattern] += Math.max(0f, e.bossDealStart - hull.hp);
+            e.bossDealStart = 0f;
             e.bossPattern = pick(e);
             e.bossTelegraph = true;
             e.bossTimer = e.bossPattern == MORTAR ? 0.9f : e.bossPattern == VOLLEY ? 0.7f : 0.6f;
@@ -102,13 +107,37 @@ public class BossBrain {
         }
     }
 
-    private static int pick(Enemy e) {
+    /** Attack choice. Phase 1 keeps the volley (the commander only issues orders); the last
+     *  15% stays the spiral (desperation never stops). Between them MEMORY holds the dial:
+     *  every fourth pattern, a study beat — the two patterns this hull punishes hardest retire
+     *  for a spell (never an unplayed one), and among the rest, the pattern that has seared
+     *  the hull most carries the most weight, half-weighted when repeated to keep a winner
+     *  from machine-cycling. */
+    static int pick(Enemy e) {
         if (e.bossPhase == 1) return VOLLEY; // the commander only issues orders
         if (e.hp < e.maxHp * 0.15f) return SPIRAL; // desperation: it never stops spinning
-        return (e.bossPattern + 1) & 3; // cycle volley -> spiral -> mortar -> shock
+        if (++e.bossMind % 4 == 0) { // a study beat: what did this hull learn about me?
+            int a = -1, b = -1;
+            for (int i = 0; i < 4; i++) {
+                if (a < 0 || e.bossTook[i] > e.bossTook[a]) { b = a; a = i; }
+                else if (b < 0 || e.bossTook[i] > e.bossTook[b]) b = i;
+            }
+            e.bossBanA = e.bossTook[a] > 0 ? a : -1; // un-studied patterns never retire for nothing
+            e.bossBanB = e.bossTook[b] > 0 ? b : -1;
+        }
+        int choice = -1;
+        float best = -1;
+        for (int i = 0; i < 4; i++) {
+            if (i == e.bossBanA || i == e.bossBanB) continue;
+            float wgt = 1f + e.bossDeal[i];
+            if (i == e.bossPattern) wgt *= 0.5f; // a winner is not a machine
+            if (wgt > best) { best = wgt; choice = i; }
+        }
+        return choice;
     }
 
     private static void release(Enemy e, World w) {
+        e.bossDealStart = w.nearestHull(e.x, e.y).hp; // the deal window opens: the pattern plays
         switch (e.bossPattern) {
             case VOLLEY: {
                 vajra.ship.Ship hull = w.nearestHull(e.x, e.y);

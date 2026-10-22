@@ -93,6 +93,7 @@ public class Enemy {
     //  is the class law that spans every damage/fire path in this file and Brain's hover ---
     public boolean voice;
     public boolean voiceMet; // Chatter's first sight already spoken, this run
+    public String voiceName; // which person this is ("SCOUT"/"MAYA"/"KALIYA") - Chatter keys on it
     // --- BOSS (Bala) only: phase machine state, ignored by every other unit ---
     public boolean boss;        // run by BossBrain: own wake rule, own HUD bar, own attacks
     public boolean dismissed;   // the commander stood this unit down: leave the arena, no fire
@@ -101,6 +102,14 @@ public class Enemy {
     public boolean bossTelegraph;
     public int bossPhase = 1;   // 1 commander / 2 duel / 3 berserk
     public int bossPattern;     // 0 volley / 1 spiral / 2 mortar / 3 shock
+    // MEMORY (step 1 of the wave plan): what each pattern costs him and deals to the hull.
+    // BossBrain reads these at every pick — the two patterns the hull punishes hardest retire
+    // for a spell, and the pattern that has seared the hull most carries the most weight.
+    public final float[] bossTook = new float[4];
+    public final float[] bossDeal = new float[4];
+    public int bossBanA = -1, bossBanB = -1; // the retiring patterns, edited by BossBrain
+    public int bossMind;        // study beats counted
+    public float bossDealStart; // the hull's hp when the deal window opened
     public float bossTimer;     // telegraph, stagger or hidden countdown
     public float bossStream;    // spiral shots still to whip out
     public float bossBlink;     // seconds to the next blink (phase 3)
@@ -229,6 +238,7 @@ public class Enemy {
         if (ghost && w.clientSeat) return false;
         if (boss && (bossInvuln || bossHidden)) return false; // stagger beats and blinks eat hits
         hp = Math.max(0, hp - amount);
+        if (boss) bossTook[bossPattern] += amount; // MEMORY: what this pattern cost while it played
         hitFlash = 0.12f; // the hit strobe
         if (boss && !active) w.orderRetinue(this); // shot awake: the ring still forms
         active = true;

@@ -155,18 +155,27 @@ final class WorldGen {
         for (Enemy.Kind k : Enemy.Kind.values())
             if (k != Enemy.Kind.BALA)
                 w.quota[k.ordinal()] = Math.min(placed[k.ordinal()], Math.max(3, placed[k.ordinal()] / 8));
-        // THE VOICES: a person stands where the roster counts nothing — placed after the quota
-        // sum, so no kind's seal leans on him, and into w.voices, not w.enemies: the order of
-        // battle is unchanged. Uparichara's Scout of the wave plan, at his band-2 post; the
-        // band-2 cache is his beacon, and Chatter carries his lines.
-        float sy = w.regionStart[2] + 0.5f * (w.regionEnd[2] - w.regionStart[2]);
-        float[] spot = openNear(2300, sy, w.regionStart[2] + 240, w.regionEnd[2] - 240);
-        Enemy scout = new Enemy(Enemy.Kind.LANCE, spot[0], spot[1]);
-        scout.voice = true;
-        scout.active = true;
-        scout.homeX = spot[0];
-        scout.homeY = spot[1];
-        w.voices.add(scout);
+        // THE VOICES: the people of the wave plan, off the roster, placed after the quota sum
+        // so no kind's seal leans on any of them and the order of battle never changes.
+        // The Scout of band 2 is met first at build; the band-2 cache is his beacon; the
+        // bounty card goes up when the beacon answers. Chatter carries all their lines.
+        addVoice(Enemy.Kind.LANCE, "SCOUT", 2300, 0.50f, 2);
+        addVoice(Enemy.Kind.LANCE, "MAYA", 1500, 0.75f, 2); // Maya Vana: her own woods
+        addVoice(Enemy.Kind.LANCE, "KALIYA", 3700, 0.50f, 3); // the water road, Svapna Mandala
+    }
+
+    /** A person at a post: off the roster (w.voices), awake to hover, named for the Chatter
+     *  rail. Nobody here is a target; the voices are never counted by any roster law. */
+    private void addVoice(Enemy.Kind kind, String name, float cx, float depth, int band) {
+        float cy = w.regionStart[band] + depth * (w.regionEnd[band] - w.regionStart[band]);
+        float[] spot = openNear(cx, cy, w.regionStart[band] + 240, w.regionEnd[band] - 240);
+        Enemy v = new Enemy(kind, spot[0], spot[1]);
+        v.voice = true;
+        v.active = true;
+        v.homeX = spot[0];
+        v.homeY = spot[1];
+        v.voiceName = name;
+        w.voices.add(v);
     }
 
     /** Spiral outward from the aim point until a spot is clear of rock for a ship-sized box.

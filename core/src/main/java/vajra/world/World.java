@@ -162,6 +162,7 @@ public class World {
         docking = new DockingSystem(this);
         cacheDirector = new CacheDirector(this);
         enemyDirector = new EnemyDirector(this);
+        missions = new Missions(this);
     }
 
     public World() {
@@ -170,6 +171,7 @@ public class World {
 
     private final DockingSystem docking;
     private final CacheDirector cacheDirector;
+    public final Missions missions; // THE MISSIONS: run-scoped side work, the bounty first
     private final LootSystem loot = new LootSystem();
     private final EnemyDirector enemyDirector;
 
@@ -284,6 +286,7 @@ public class World {
         cacheDirector.resolve();
         for (Enemy v : voices) v.update(dt, this, clock); // THE VOICES hover off the roster
         Chatter.update(this); // the voices speak on their own events, once per run
+        missions.update(); // the bounty pays the frame the rogue is spent
         docking.update(dt); // after ship.update, so the bay test sees this frame's position
     }
 
@@ -1184,6 +1187,7 @@ public class World {
                 e.commander = null;
             }
         hangar.coins += 150;
+        Chatter.wardenFalls(this); // the voices pay what a fall promised: Maya's letter
         for (int c = 72; c <= 88; c++) tileMapBoss.set(c, 93, TileMap.EMPTY);
         addEffect(Effect.ring(WORLD_CX, 20560, 260, 1f, 0.84f, 0.3f));
         addEffect(Effect.ring(b.x, b.y, 500, 1f, 0.84f, 0.3f));
