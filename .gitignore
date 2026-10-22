@@ -19,5 +19,15 @@ profiles.json
 # bundled runtimes (jlink-built, ~50MB each) - rebuild from a Temurin 17 JDK
 tools/jre/
 
+# local design scans and unshipped art (the game never loads these)
+docs/design-notes/
+assets/SpaceShooterAssetPack_*.png
+tools/atala_map.png
+
+# dev asset generators (one-shot art tooling; the art they made is in assets/)
+tools/gen_*.py
+tools/gen_popup_art.ps1
+tools/fix_wall_tiles.py
+
 # generated docs (rebuild with tools\collect-multiplayer.bat)
 code_notes/

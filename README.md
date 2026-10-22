@@ -484,8 +484,10 @@ lists). ONE typed row does the rest, by shape:
 - a bare `ROOM:ABCD` — the code is looked up on the LAN first, then the linked
   server is dialled (an UNLINKED machine is told what to type instead of
   dialling its own loopback);
-- a bare `ip:port` — sets the link (`relay.txt` beside the game, applied live),
-  and that server's rooms list; there is no separate SERVER LINK row any more.
+- a bare `ip:port` — joins the GAME door at the game's port (26000): the address
+  itself is the room, and the pilot walks in when the host answers; any other
+  port sets the link (`relay.txt` beside the game, applied live), and that
+  server's rooms list. There is no separate SERVER LINK row.
 The link lives **in the game**. Friends never run `run-relay.bat` — that bat
 starts a SERVER; only the host's machine needs one, and the game starts it by
 itself when its dial finds silence and the target is this machine.

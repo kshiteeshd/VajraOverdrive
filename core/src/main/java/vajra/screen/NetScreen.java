@@ -108,6 +108,10 @@ public class NetScreen implements FlowState {
                 InetSocketAddress addr = pending.addr;
                 pending.session.close();
                 pending = null;
+                if (room.isEmpty()) { // a codeless walk-up: no relay to retry, the door is just dead
+                    status = "NO GAME AT " + addr + " — THE HOST MUST BE HOSTING";
+                    return;
+                }
                 // THE ROOM MAY BE RIGHT HERE: the link a host shares is its public address,
                 // which a pilot on the host's own network may not be able to reach. The
                 // room shouts its LAN address on the wire — look it up by its four
@@ -432,8 +436,9 @@ public class NetScreen implements FlowState {
 
     /** A typed link — the ONE line a friend can be given, doing the right thing by shape:
      *  an invite joins the room, a room code is looked up (LAN wire first, linked server
-     *  second), and a bare address POINTS the game at a server — saved to relay.txt and
-     *  applied live, so its rooms list without another word. */
+     *  second), an address AT THE GAME'S PORT walks straight into that room, and any
+     *  other address POINTS the game at a server — saved to relay.txt and applied live,
+     *  so its rooms list without another word. */
     private void admit(String text) {
         String[] invite = inviteOf(text);
         if (invite != null) {
@@ -455,6 +460,20 @@ public class NetScreen implements FlowState {
         String link = relayCheck(text);
         if (link == null) {
             status = "ONE LINK AT A TIME — ABCD@ip:port OR ip:port";
+            return;
+        }
+        int c = link.lastIndexOf(':');
+        int port;
+        try {
+            port = Integer.parseInt(link.substring(c + 1));
+        } catch (NumberFormatException n) {
+            status = "ONE LINK AT A TIME — ABCD@ip:port OR ip:port";
+            return;
+        }
+        if (port == UdpTransport.PORT) {
+            // the GAME door: an address at the game's port is a room to walk into —
+            // knock directly, before anything about links
+            knock("", new InetSocketAddress(link.substring(0, c), port));
             return;
         }
         RelayTransport.RELAY = link;
@@ -499,8 +518,12 @@ public class NetScreen implements FlowState {
             Transport net = new UdpTransport(0); // an ephemeral client port
             Session s = Session.join(net, vajra.profile.Profiles.active().name, addr);
             pending = new Pending(s, room, addr, System.currentTimeMillis() + 2500);
-            status = "KNOCKING ON " + addr + "…";
+            status = (room.isEmpty() ? "WALKING IN AT " : "KNOCKING ON ") + addr + "…";
         } catch (Exception e) {
+            if (room.isEmpty()) {
+                status = "NO GAME AT " + addr + " — THE HOST MUST BE HOSTING";
+                return;
+            }
             startRelay(room, addr);
         }
     }
