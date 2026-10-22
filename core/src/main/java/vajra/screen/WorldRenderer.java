@@ -119,6 +119,12 @@ public final class WorldRenderer {
             if (t[0] + 40 > l && t[0] - 40 < l + viewW && t[1] + 40 > b && t[1] - 40 < b + viewH)
                 fx.drawFlame(batch, t[0], t[1], t[2], world.time(), i);
         }
+        for (int i = 0; i < world.wrecks.length; i++) { // MAYA'S GROVE: the fallen walls she wants home
+            float[] wk = world.wrecks[i];
+            if (!world.wreckTaken[i]
+                    && wk[0] + 40 > l && wk[0] - 40 < l + viewW && wk[1] + 40 > b && wk[1] - 40 < b + viewH)
+                fx.drawWreck(batch, wk[0], wk[1], i % 2);
+        }
         for (int i = 0; i < world.enemies.size(); i++) {
             Enemy e = world.enemies.get(i);
             if (e.bossHidden) continue; // mid-blink: the body is elsewhere

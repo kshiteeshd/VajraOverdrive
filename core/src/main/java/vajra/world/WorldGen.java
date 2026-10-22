@@ -56,6 +56,16 @@ final class WorldGen {
             w.caches[i][0] = spot[0];
             w.caches[i][1] = spot[1];
         }
+        // MAYA'S GROVE: six wall-forged wrecks winding through Maya Vana, alternating left and
+        // right of the centre line — her retempering ask, six stops on a readable route.
+        for (int i = 0; i < w.wrecks.length; i++) {
+            float t = 0.18f + 0.64f * i / (w.wrecks.length - 1f);
+            float cy = w.regionStart[2] + t * (w.regionEnd[2] - w.regionStart[2]);
+            float cx2 = (i % 2 == 0) ? 1400 : 3900;
+            float[] spot = openNear(cx2, cy, w.regionStart[2] + 240, w.regionEnd[2] - 240);
+            w.wrecks[i][0] = spot[0];
+            w.wrecks[i][1] = spot[1];
+        }
         for (int i = 0; i < w.shops.length; i++) { // SHOPS: bands 1-4, alternating right/left of centre
             int r = i + 1;
             float cx = (i % 2 == 0) ? 3700 : 1500;

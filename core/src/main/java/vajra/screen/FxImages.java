@@ -98,6 +98,17 @@ public class FxImages {
         return k < n ? k : steps - k;
     }
 
+    /** MAYA'S WRECKS: a fallen piece of her forged walls, seen as a dead plant flat on the
+     *  grove floor — same art, no sway, the slate tint of rusted metal. Taken wrecks draw
+     *  nothing: the hammer has them home. */
+    public void drawWreck(SpriteBatch batch, float x, float y, int variant) {
+        TextureRegion[] sheet = plants[variant];
+        if (sheet == null) return;
+        batch.setColor(0.45f, 0.47f, 0.55f, 1f);
+        batch.draw(sheet[0], x - 16, y - 16, 16, 16, 32, 32, 1, 1, 75);
+        batch.setColor(1, 1, 1, 1);
+    }
+
     private TextureRegion load(String path, boolean bar) {
         TextureRegion r = loadOrNull(path, false);
         if (r != null) return r;

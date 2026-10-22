@@ -27,7 +27,7 @@ Measured against the code, not the dream.
 | **voices** — NPCs that talk, want things, ask things, remember you | **none** |
 | **side work** — missions that are not the gate chain | **none** |
 | **ambient life** — traffic that is not out to kill you | **none** |
-| **the codex** — a place where the world speaks in peace | **none** |
+| **the codex** — a place where the world speaks in peace | **v1 landed** (Wave 1 task 15: 12 pages, pause flip-book) |
 | **boss memory** — a boss that learns from how you fight *him* | **none** |
 
 Atala as a *circuit* is done — descent, seals, shops, checkpoint, boss, victory card. Atala as
@@ -295,8 +295,11 @@ when every box is closed. `[x]` marks shipped.
    DAMBHA, a named rogue of the illusion wood, joins the roster mid-run (elite heavy-shell,
    hunts straight on sight); his fall pays the frame he dies. `MissionsTest` pins the gate,
    the purse and the one-card law.
-10. [ ] **Salvage second**: N wrecks (a new passive pickup, reuse `Pickup` machinery) scattered
-    in one marked area per band 2–3 for Maya's retempering; the Nth triggers her job-done.
+10. [x] **Salvage second**: six wall-forged wrecks (`World.wrecks`, gen-placed alternating
+    left/right of the centre line through Maya Vana, drawn as fallen grove pieces); Maya's
+    sight opens the row; any hull over a wreck takes it; the sixth homes to the hammer:
+    200 coins + the forge's first Akasha shard, her job-done lines, one run. `MissionsTest`
+    pins the ask, the carries and the pay-once.
 11. [ ] **Courier third**: the spark — hull slowed + glowing while carried, `wakeRange` of every
     awake-able unit in the band stretched ×2 while it rides; delivers to Kaliya; Escort is its
     co-op skin (the caravan hull rides the courier instead of the player).
@@ -312,10 +315,12 @@ when every box is closed. `[x]` marks shipped.
    the two the hull punishes hardest retire a spell (never an un-studied one), the searing
    pattern carries the most weight, anti-repeat keeps a winner a rhythm not a machine. Three
    claims pinned in `BossTest` (retire, lean, nothing-for-nothing).
-15. [ ] **The codex, v1** — 12 pages (`Faith` entries locked to events so far: Deepening texts,
-    each voice met, each job done, the warden's fall), `boolean[64]` on the profile campaign,
-    a CODEX tab on the pause screen. Pages carry warden/roster/voice/place one-pagers from this
-    plan's own copy.
+15. [x] **The codex, v1** — 12 pages (`Codex.java`: Atala, the Vajrayudha, the Deepening, the
+    three voices, the beacon, the rogue, the retempering, Bala, Maya's letter, the fifth step),
+    lifted once per run via `Codex.unlock` (a popup says the book exists), `boolean[]` on the
+    profile (`recordCodex` folds at `endRun`; grows with COUNT; save roundtrip pinned), and a
+    CODEX row on the pause screen → `CodexScreen`: a flip-book (A/D or W/S), opens on the
+    first unread page, sealed pages honest about their silence. `CodexTest` pins the sheet.
 
 ### The gate
 

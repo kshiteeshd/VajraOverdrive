@@ -136,6 +136,12 @@ public class World {
             { 0.72f, 0.64f, 1.00f }, { 0.86f, 0.94f, 1.00f }, { 1.00f, 0.45f, 0.10f },
             { 0.25f, 0.82f, 0.90f }, { 0.82f, 0.66f, 0.28f } };
     public int lokaIndex = 0; // which loka this run is in (LokaTable index; 0 = Atala)
+    /** THE CODEX: this run's page lifts, folded into the profile at endRun. */
+    public final boolean[] codex = new boolean[Codex.COUNT];
+    /** MAYA'S GROVE: the six wrecks of Maya Vana, wound through the band at gen (wreckTaken
+     *  is the host's truth — taken wrecks stay taken for everyone). */
+    public final float[][] wrecks = new float[6][2];
+    public final boolean[] wreckTaken = new boolean[6];
     public static final float PULL_R = 90;   // magnetism reach, px
     public static final float PULL_G = 1500; // accel at 100% magnet: terminal = PULL_G / DRAG = 500 px/s
 
@@ -163,6 +169,8 @@ public class World {
         cacheDirector = new CacheDirector(this);
         enemyDirector = new EnemyDirector(this);
         missions = new Missions(this);
+        Codex.unlock(this, Codex.ATALA);      // the run's opening record: where the pilot is
+        Codex.unlock(this, Codex.VAJRA);      // and what he carries
     }
 
     public World() {
@@ -286,7 +294,7 @@ public class World {
         cacheDirector.resolve();
         for (Enemy v : voices) v.update(dt, this, clock); // THE VOICES hover off the roster
         Chatter.update(this); // the voices speak on their own events, once per run
-        missions.update(); // the bounty pays the frame the rogue is spent
+        missions.update(); // the bounty pays the frame the rogue is spent; wrecks pay as they're carried
         docking.update(dt); // after ship.update, so the bay test sees this frame's position
     }
 
@@ -561,6 +569,7 @@ public class World {
         if (!regionScored[r]) {
             regionScored[r] = true;
             score.add(Score.REGION);
+            Codex.unlock(this, Codex.DEEPENING); // the descent teaches, the book takes the page
             popups.push(new Popups.Spec().text("THE DEEPENING").img("pravesh")
                     .at(ship.x, ship.y + 40).color(1f, 1f, 1f).scale(1.2f).life(1.8f));
         }

@@ -19,9 +19,9 @@ import vajra.world.World;
  *  divider, diamond markers on the selected row) but none of its motion: the run is frozen, so
  *  the screen is too.
  *
- *  <p>ESC resumes, Q quits, the mouse highlights and clicks. */
+ *  <p>ESC resumes, Q quits, the mouse highlights and clicks. CODEX opens the pilot's page-book. */
 public class PauseScreen implements FlowState {
-    static final String[] ROWS = {"RESUME", "SETTINGS", "QUIT TO TITLE"};
+    static final String[] ROWS = {"RESUME", "SETTINGS", "CODEX", "QUIT TO TITLE"};
     private static final float ROW_Y = 380;   // first row baseline
     private static final float PITCH = 56;    // row pitch
     private static final float HALF_W = 200;  // row hit half-width
@@ -91,6 +91,7 @@ public class PauseScreen implements FlowState {
         int sel = menu.selected();
         if (sel == 0) flow.pop();
         else if (sel == 1) flow.push(new SettingsScreen(flow, ui, batch)); // the run stays frozen
+        else if (sel == 2) flow.push(new CodexScreen(flow, ui, batch, world));
         else quit();
     }
 

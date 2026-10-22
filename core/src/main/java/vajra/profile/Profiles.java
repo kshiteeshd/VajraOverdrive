@@ -64,6 +64,7 @@ public final class Profiles {
         Profile p = all.get(sel);
         if (w.multiplayer) p.recordMultiplayer(kills, w.score.points, w.time());
         else p.recordRun(kills, w.score.points, w.time());
+        p.recordCodex(w.codex); // the book travels with the pilot, not the run
         SaveGame.finish(w.hangar, w.score.points);
         save();
     }

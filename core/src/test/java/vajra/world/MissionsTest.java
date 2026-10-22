@@ -57,4 +57,28 @@ class MissionsTest {
         Chatter.beaconRaised(w); // the beacon answers again — midrun nothing reopens
         assertEquals(Missions.DONE, w.missions.bounty, "one card per run");
     }
+
+    @Test
+    void theWrecksComeHomeAndTheHammerPays() {
+        World w = new World();
+        assertEquals(Missions.NONE, w.missions.salvage, "no ask before Maya");
+        w.missions.openSalvage(); // Maya's sight does the asking in play; the row is what it opens
+        assertEquals(Missions.OPEN, w.missions.salvage);
+        w.missions.openSalvage();
+        assertEquals(Missions.OPEN, w.missions.salvage, "the ask seats once: no reset of the count");
+        int coins = w.hangar.coins;
+        for (int i = 0; i < 6; i++) { // the hull carried home, one wreck per stop
+            w.ship.x = w.wrecks[i][0];
+            w.ship.y = w.wrecks[i][1];
+            w.missions.update();
+            assertEquals(i + 1, w.missions.salvageTaken, "stop " + i + " landed");
+            assertEquals(i == 5 ? Missions.DONE : Missions.OPEN, w.missions.salvage);
+            assertTrue(w.wreckTaken[i], "gone is gone");
+        }
+        w.missions.update();
+        w.missions.update();
+        assertEquals(coins + 200, w.hangar.coins, "the retempering pays once");
+        assertEquals(1, w.hangar.shards[0], "and the forge's first Akasha shard");
+        assertTrue(w.codex[Codex.RETEMPER], "the book takes the page");
+    }
 }

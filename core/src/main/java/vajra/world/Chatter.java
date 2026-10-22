@@ -26,15 +26,20 @@ public final class Chatter {
             switch (e.voiceName == null ? "SCOUT" : e.voiceName) {
                 case "MAYA":
                     speak(w, e, "I AM THE NINTH MAYA, AND I PUT THE HAMMER DOWN YEARS AGO.");
-                    speak(w, e, "MY SON HOLDS THE GATE BELOW WITH MY LIGHT IN HIS HAND. WHEN HE FALLS, MY LETTER IS YOURS.");
+                    speak(w, e, "MY SON HOLDS THE GATE BELOW. WHEN HE FALLS, MY LETTER IS YOURS.");
+                    speak(w, e, "FIRST: SIX WRECKS OF MY WOODS. THE HAMMER STILL WANTS.");
+                    w.missions.openSalvage();
+                    Codex.unlock(w, Codex.MAYA);
                     break;
                 case "KALIYA":
                     speak(w, e, "KALIYA, TIDE-PILOT. THE WATER ROAD IS OPEN - THE CARAVAN WAITS BELOW.");
                     speak(w, e, "THE SPARK JOB LEAVES THIS BAND SOON. WHEN IT DOES, EVERY PILOT HEARS IT.");
+                    Codex.unlock(w, Codex.KALIYA);
                     break;
                 default: // THE SCOUT
                     speak(w, e, "I FELL ABOVE THE THIRD BAND - NO RESCUE RUNS THIS DEEP.");
                     speak(w, e, "MY BEACON LIES JUST INSIDE THE GATE ABOVE. RAISE IT.");
+                    Codex.unlock(w, Codex.SCOUT);
             }
         }
     }
@@ -43,6 +48,7 @@ public final class Chatter {
      *  every other cache pays without a word, exactly the no-announcement cache law.
      *  His report is also the gold brokers' cue: the rogue's card goes up on the board. */
     public static void beaconRaised(World w) {
+        Codex.unlock(w, Codex.BEACON);
         for (int i = 0; i < w.voices.size(); i++) {
             Enemy e = w.voices.get(i);
             if (!e.voice || !e.voiceMet || !"SCOUT".equals(e.voiceName)) continue;
@@ -51,12 +57,28 @@ public final class Chatter {
         }
     }
 
-    /** THE WARDEN FALLS: whatever a voice promised at the fall is paid here — Maya's letter
-     *  (LETTER II), and nothing for a voice not met. The victory card's own law is untouched. */
-    public static void wardenFalls(World w) {
+    /** THE RETEMPERING: Maya's six wrecks are home. The codex page is Missions' doing;
+     *  the voice owns the words. */
+    public static void salvageDone(World w) {
         for (int i = 0; i < w.voices.size(); i++) {
             Enemy e = w.voices.get(i);
             if (e.voiceMet && "MAYA".equals(e.voiceName)) {
+                speak(w, e, "THE WRECKS ARE HOME. THE HAMMER WARMS ONE MORE TIME.");
+                speak(w, e, "TAKE THE BAG AND THE SHARD. THE REST OF MY METAL WAITS FOR A LONGER FLIGHT.");
+            }
+        }
+    }
+
+    /** THE WARDEN FALLS: whatever a voice promised at the fall is paid here — Maya's letter
+     *  (LETTER II), and nothing for a voice not met. The victory card's own law is untouched.
+     *  The book takes the warden, the letter and the promise of what stands below. */
+    public static void wardenFalls(World w) {
+        Codex.unlock(w, Codex.BALA);
+        Codex.unlock(w, Codex.FIFTH);
+        for (int i = 0; i < w.voices.size(); i++) {
+            Enemy e = w.voices.get(i);
+            if (e.voiceMet && "MAYA".equals(e.voiceName)) {
+                Codex.unlock(w, Codex.LETTER);
                 speak(w, e, "SON OF MINE HELD THE DOOR WITH A LIGHT IN HIS HAND THAT TOOK IT FOR A LAMP.");
                 speak(w, e, "HE STOOD YOU DOWN WITH HONOR, AND PUT HIS BACK IN FRONT OF IT TILL THE WORLD CAME THROUGH HIM ANYWAY.");
                 speak(w, e, "GO DEEPER, PILOT. THE HAMMER IS STILL IN MY FORGE - COME BACK FOR IT.");

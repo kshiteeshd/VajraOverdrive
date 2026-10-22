@@ -27,6 +27,9 @@ public final class Profile {
     public final Stats campaign = new Stats();
     public final Stats multiplayer = new Stats(); // written by a multiplayer flight
     public final Settings settings = new Settings();
+    /** THE CODEX: pages this pilot has unlocked across all runs (null until the first fold —
+     *  length is set by the first fold, so this file never has to know the page count). */
+    public boolean[] codex;
 
     /** A finished run folds into the campaign book: one more run, its kills, its score and
      *  its seconds; `best` keeps only the top single run. An abandoned run still counts —
@@ -49,6 +52,17 @@ public final class Profile {
         multiplayer.seconds += Math.max(0, seconds);
     }
 
+    /** The run's codex lifts fold in: a page seen once is seen for good (pure or, never erase). */
+    public void recordCodex(boolean[] run) {
+        if (run == null) return;
+        if (codex == null || codex.length < run.length) {
+            boolean[] grown = new boolean[run.length];
+            if (codex != null) System.arraycopy(codex, 0, grown, 0, codex.length);
+            codex = grown;
+        }
+        for (int i = 0; i < run.length && i < codex.length; i++) codex[i] |= run[i];
+    }
+
     // --- pure serialization, SaveGame's contract ------------------------------------------
 
     private static final Json JSON = new Json();
@@ -59,6 +73,7 @@ public final class Profile {
         public String name;
         public Stats campaign, multiplayer;
         public String settings; // the settings' own JSON, so its clamps stay in one place
+        public boolean[] codex; // the codex book, or null on a profile older than the book
     }
 
     public static String serialize(Profile p) {
@@ -67,6 +82,7 @@ public final class Profile {
         d.campaign = p.campaign;
         d.multiplayer = p.multiplayer;
         d.settings = Settings.serialize(p.settings);
+        d.codex = p.codex;
         return JSON.toJson(d);
     }
 
@@ -82,6 +98,7 @@ public final class Profile {
         if (d.name != null && !d.name.isBlank()) p.name = d.name;
         if (d.campaign != null) p.campaign.copyFrom(d.campaign);
         if (d.multiplayer != null) p.multiplayer.copyFrom(d.multiplayer);
+        if (d.codex != null) p.recordCodex(d.codex);
         Settings.deserialize(p.settings, d.settings);
     }
 }

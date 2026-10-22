@@ -8,7 +8,12 @@ import vajra.enemy.Enemy;
 public final class Missions {
     public static final int NONE = 0, OPEN = 1, DONE = 2;
 
+    public static final int SALVAGE_NEED = 6;      // Maya's retempering ask
+    public static final float SALVAGE_TOUCH = 60;  // hull centre to wreck, px
+
     public int bounty = NONE;
+    public int salvage = NONE;                // Maya's grove: the wrecks she wants home
+    public int salvageTaken;
     private final World world;
     private Enemy rogue; // the named target, once the card goes up
 
@@ -40,16 +45,58 @@ public final class Missions {
                 .color(1f, 0.8f, 0.35f).scale(1.2f));
     }
 
-    /** Run every frame from World.update: the purse pays the frame the rogue is spent. */
-    public void update() {
-        if (bounty != OPEN) return;
-        if (rogue == null || !rogue.dead) return;
-        bounty = DONE;
-        world.hangar.coins += 250;
-        world.lives++;
+    /** Maya's ask opens the salvage row: the grove's wrecks, six of them, to her hammer. */
+    public void openSalvage() {
+        if (salvage != NONE) return;
+        salvage = OPEN;
+        salvageTaken = 0;
         world.popups.push(new Popups.Spec()
-                .text("DAMBHA IS SPENT - THE BROKERS PAY THE CARD, AND A LIFE SAILS FOR IT.")
+                .text("MAYA'S ASK IS ON THE BOARD: SIX WRECKS OF HER WOODS, HOME TO THE HAMMER.")
                 .at(world.ship.x, world.ship.y - 60).life(3f).rise(8)
-                .color(1f, 0.9f, 0.5f).scale(1.2f));
+                .color(0.55f, 0.95f, 1f).scale(1.15f));
+    }
+
+    /** Run every frame from World.update: the bounty pays the frame the rogue is spent;
+     *  the salvage takes wrecks as any hull moves over them (the co-op partner counts too). */
+    public void update() {
+        if (bounty == OPEN && rogue != null && rogue.dead) {
+            bounty = DONE;
+            world.hangar.coins += 250;
+            world.lives++;
+            world.popups.push(new Popups.Spec()
+                    .text("DAMBHA IS SPENT - THE BROKERS PAY THE CARD, AND A LIFE SAILS FOR IT.")
+                    .at(world.ship.x, world.ship.y - 60).life(3f).rise(8)
+                    .color(1f, 0.9f, 0.5f).scale(1.2f));
+            Codex.unlock(world, Codex.ROGUE);
+        }
+        if (salvage != OPEN) return;
+        java.util.ArrayList<vajra.ship.Ship> hulls = new java.util.ArrayList<>(2 + world.extras.size());
+        hulls.add(world.ship);
+        if (world.partnerAlive()) hulls.add(world.partner);
+        for (World.SeatHull gh : world.extras)
+            if (gh.ship != null && gh.ship.hp > 0) hulls.add(gh.ship);
+        for (int i = 0; i < world.wrecks.length; i++) {
+            if (world.wreckTaken[i]) continue;
+            for (vajra.ship.Ship h : hulls) {
+                if (h.hp <= 0) continue;
+                float dx = h.x - world.wrecks[i][0], dy = h.y - world.wrecks[i][1];
+                if (dx * dx + dy * dy > SALVAGE_TOUCH * SALVAGE_TOUCH) continue;
+                world.wreckTaken[i] = true;
+                salvageTaken++;
+                world.addEffect(Effect.ring(world.wrecks[i][0], world.wrecks[i][1], 90, 0.55f, 0.95f, 1f));
+                world.popups.push(new Popups.Spec()
+                        .text("SALVAGE " + salvageTaken + " OF " + SALVAGE_NEED + " IN THE HOPPER.")
+                        .at(world.wrecks[i][0], world.wrecks[i][1] + 40).life(1.6f)
+                        .color(0.55f, 0.95f, 1f).scale(1.05f));
+                break;
+            }
+        }
+        if (salvageTaken >= SALVAGE_NEED) {
+            salvage = DONE;
+            world.hangar.coins += 200;
+            world.hangar.addShard(0, 0); // Atala mints Akasha: the forge's first feed
+            Codex.unlock(world, Codex.RETEMPER);
+            Chatter.salvageDone(world);
+        }
     }
 }
