@@ -89,6 +89,10 @@ public class Enemy {
     public boolean siteGuard; // stands on a shop or checkpoint: ignores cache triggers
     public boolean elite;
     public boolean hunt;   // a cache ambush: converge straight on the ship, no ring, no leash
+    // --- THE VOICES: a person, never a target. Lives off the roster (World.voices); the flag
+    //  is the class law that spans every damage/fire path in this file and Brain's hover ---
+    public boolean voice;
+    public boolean voiceMet; // Chatter's first sight already spoken, this run
     // --- BOSS (Bala) only: phase machine state, ignored by every other unit ---
     public boolean boss;        // run by BossBrain: own wake rule, own HUD bar, own attacks
     public boolean dismissed;   // the commander stood this unit down: leave the arena, no fire
@@ -177,7 +181,7 @@ public class Enemy {
      *  up close; MAYAVI marks where its lob lands; LANCE flashes a one-frame laser sight.
      *  Routed and dismissed units never fire: rout means neutral, stand-down means gone. */
     private void fire(World w) {
-        if (routed || dismissed || fireTimer > 0 || kind.fireCd <= 0) return;
+        if (voice || routed || dismissed || fireTimer > 0 || kind.fireCd <= 0) return;
         vajra.ship.Ship hull = w.nearestHull(x, y); // aim at whoever's closest to the muzzle
         float dx = hull.x - x, dy = hull.y - y;
         float d = (float) Math.sqrt(dx * dx + dy * dy);
@@ -218,6 +222,7 @@ public class Enemy {
     /** The same hit, with the roster id that fired it (0 = this seat). */
     public boolean hurt(float amount, World w, int owner) {
         if (dead) return false;
+        if (voice) return false; // a person: nothing to reward, nothing to spend
         // A GHOST is the host's word about a foe, not a body. On a guest seat it must not be
         // hurt at all: the host owns every verdict, and a guest killing its own copy used to
         // score phantom kills, drop phantom loot and delete the host's real drops.
@@ -234,7 +239,7 @@ public class Enemy {
         }
         if (y >= w.regionStart[3]) { // CALL TO ARMS: the top three regions hear the fight...
             for (Enemy o : w.enemies) {
-                if (o == this || o.dead || o.active) continue;
+                if (o == this || o.dead || o.active || o.voice) continue;
                 float ox = o.x - x, oy = o.y - y;
                 if (ox * ox + oy * oy < ARMS * ARMS) o.active = true; // ...and wake up
             }

@@ -118,6 +118,10 @@ public class World {
     public int shooter;         // whose round/contact is about to hurt someone: a roster id
     int enemySeq, dropSeq;      // the host's id ledgers for foes and ground loot
     public java.util.ArrayList<Enemy> enemies = new java.util.ArrayList<>();
+    /** THE VOICES: the people of Patala live off the roster — a run's order of battle counts
+     *  nothing of them, threatening none of them, and no behaviour law ever mistakes them
+     *  for a combatant. They tick in their own pass and render in their own loop. */
+    public final java.util.ArrayList<Enemy> voices = new java.util.ArrayList<>();
     public final List<Bullet> bullets = new ArrayList<>();
     public final List<Effect> effects = new ArrayList<>();
     public final List<Pickup> pickups = new ArrayList<>(); // coins + health pops, swept by the hull
@@ -278,6 +282,8 @@ public class World {
         for (Checkpoint c : checkpoints) collectCheckpoint(c);
         cacheDirector.update();
         cacheDirector.resolve();
+        for (Enemy v : voices) v.update(dt, this, clock); // THE VOICES hover off the roster
+        Chatter.update(this); // the voices speak on their own events, once per run
         docking.update(dt); // after ship.update, so the bay test sees this frame's position
     }
 

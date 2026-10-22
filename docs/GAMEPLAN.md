@@ -252,6 +252,79 @@ bar for the next milestone.
 
 ---
 
+## 7. WAVE 1 — the build sheet
+
+The tasks in the order they land, each independently shippable and test-covered. Wave 1 is done
+when every box is closed. `[x]` marks shipped.
+
+### The voice layer (systems, once)
+
+1. [x] **A voiced flag on the body** — `Enemy.voice`: a hull that is a person, not a target.
+   One flag, law in the class: `hurt()` refuses outright (single choke point, so future
+   splash/beam paths can never wrong the voices either), `fire()` never speaks, the call-to-arms
+   wake passes them by. They live off the roster (`World.voices`), so the order of battle, the
+   retention counts, the ram law and every roster behavior never touch them at all.
+2. [x] **The hover brain** — `Brain.think`'s first branch for a voice: a slow post-drift + a
+   gentle weave with the roster's rock-whiskers, never closing on the hull. Voice pass ticks
+   them in their own loop in `World.update`.
+3. [x] **Speech, event-keyed** — `Chatter`: popups on sight / job-done events, fired ONCE
+   (per-run flags on the body — a run owns nothing, so flags die with the run, exactly the
+   persistence law). Copy written to the bala standard, delivered calm-cyan through `PopupArt`.
+4. [x] **Rendering** — the voice wears its kind's hull (art reuse) tinted the eye's blue, so a
+   friendly silhouette reads as *not one of them* at a glance.
+
+### The first three voices (Atala)
+
+5. [x] **Uparichara's Scout, complete** — placed by `WorldGen` at his band-2 post (after the
+   quota sum, so no kind's seal leans on him); FIRST SIGHT on the approach; his want = raise
+   the crashed beacon (the band-2 cache is the beacon); `CacheDirector.payout` speaks HIS line
+   when the beacon pays, and only if met — every other cache stays silent, exactly the
+   no-announcement law. Payout law untouched (100 coins + life).
+6. [ ] **The Ninth Maya** — Maya Vana's wright; FIRST SIGHT; her letter (LETTER II) unlocks at
+   the warden's fall (`BossBrain` death hook → Chatter), her want (salvage wall tiles) rides the
+   Salvage template when it lands (task 10).
+7. [ ] **Kaliya the Tide-Pilot** — the caravan voice at band 3; FIRST SIGHT; his want rides the
+   Courier template (task 11); his payoff (water shortcut) is the Wave under-test.
+
+### The four mission templates (Atala launch set)
+
+8. [ ] **The missions state** — `Missions.java` on the run: trigger, one `Mission` row, state
+   (open/working/done), reward pay, and the two copy lines per template. Run-scoped; co-op rides
+   the host's rows (one test each in `CoOpTest` as they land).
+9. [ ] **Bounty first** (needs no pockets): a named rogue elite with its own spawn law roams
+   band 2's belt, hunts on sight; the kill pays the bounty. Compass hint via the Scout's report.
+10. [ ] **Salvage second**: N wrecks (a new passive pickup, reuse `Pickup` machinery) scattered
+    in one marked area per band 2–3 for Maya's retempering; the Nth triggers her job-done.
+11. [ ] **Courier third**: the spark — hull slowed + glowing while carried, `wakeRange` of every
+    awake-able unit in the band stretched ×2 while it rides; delivers to Kaliya; Escort is its
+    co-op skin (the caravan hull rides the courier instead of the player).
+12. [ ] **The Covert Way fourth**: a murmur at the band-3 checkpoint whispers the compass
+    bearing of the cache-door that only opens at depth; the door is a `cache` with a story key.
+
+### Breadth + memory
+
+13. [ ] **Pockets + murmurs, bands 1–3** — `MapGen.carvePocket(band)`: one ruin (the mural +
+    a cache door) and one supply grove per band, `compass`-named; ten murmur texts at their
+    stone (the plan's appendix becomes `Murmurs.java`).
+14. [x] **Bala memory** — [pending next turn: `BossBrain.pick()` weights by punish-per-pattern]
+    — kept open until its three-claim test exists in `BossTest`.
+15. [ ] **The codex, v1** — 12 pages (`Faith` entries locked to events so far: Deepening texts,
+    each voice met, each job done, the warden's fall), `boolean[64]` on the profile campaign,
+    a CODEX tab on the pause screen. Pages carry warden/roster/voice/place one-pagers from this
+    plan's own copy.
+
+### The gate
+
+16. [x] **`NpcTest` covers the voice law** (never dies, never fires, never woken, speech once,
+    roster untouched, the round flies through). Each template ships with its test at the moment
+    it ships. Netplay: each template's co-op carry test in `CoOpTest` when it lands.
+
+One turn = the voice layer (1–5) whole, green, played. The rest is listed for the next turns
+and priced so nothing here needs decomposing into "bigger than a turn".
+
+
+---
+
 ## Appendix — the first ten letters and murmur texts (drafted as delivered copy)
 
 (kept in this file so the texts live in the repo; delivery goes through PopupArt ensuite)

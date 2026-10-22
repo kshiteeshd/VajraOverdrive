@@ -126,6 +126,13 @@ public final class WorldRenderer {
                 foes.draw(batch, e, world.time());
             }
         }
+        for (Enemy v : world.voices) { // THE VOICES: people wear the eye's blue, off the roster
+            if (v.x + v.w / 2 > l && v.x - v.w / 2 < l + viewW && v.y + v.h / 2 > b && v.y - v.h / 2 < b + viewH) {
+                batch.setColor(0.55f, 0.95f, 1f, 1f);
+                foes.draw(batch, v, world.time());
+                batch.setColor(1, 1, 1, 1);
+            }
+        }
         for (int i = 0; i < world.orbs.length; i++) {
             if (world.orbs[i].visible) orbs.draw(batch, world.orbs[i]);
         }

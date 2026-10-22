@@ -66,6 +66,7 @@ public final class CacheDirector {
         world.lives++;
         world.addEffect(Effect.ring(world.caches[i][0], world.caches[i][1], 160, 1f, 0.84f, 0.3f));
         world.addEffect(Effect.spark(world.caches[i][0], world.caches[i][1], 1f, 0.84f, 0.3f));
+        if (i == 1) Chatter.beaconRaised(world); // index 1 = band 2: the Scout's beacon speaks
     }
 
     private boolean inBand(Enemy e, int band) { // cache 0..4 lives in regions 1..5

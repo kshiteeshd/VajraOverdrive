@@ -10,8 +10,7 @@ import vajra.world.World;
 // ponytail: slot + separation scans are O(n) per unit, call-to-arms O(n) per hit — fine at the
 // 165-unit roster (~50k/frame); go index loops / a spatial grid if the roster passes ~300.
 public class Brain {
-    private static final float WHISKER = 46;
-    private static final float MATE = 46;
+    private static final float WHISKER = 46;    private static final float MATE = 46;
     private static final float LEASH = 300;   // FORMATIONS: no further than 300px of the slot
     private static final float RANK_BOOST = 1.15f; // rank-1 leaders and elites run 15% hotter
     private static final float GAIN = 2.2f;   // closing gain on the orbit point
@@ -26,6 +25,7 @@ public class Brain {
             { 2600, 20450 }, { 2600, 17700 }, { 5050, 19100 }, { 150, 19100 } };
 
     public static void think(Enemy e, World w, float dt, float t) {
+        if (e.voice) { hover(e, w, dt); return; } // THE VOICES: nothing to hunt, nothing to flee
         vajra.ship.Ship hull = w.nearestHull(e.x, e.y);
         float dx = hull.x - e.x, dy = hull.y - e.y;
         float dist = (float) Math.sqrt(dx * dx + dy * dy);
@@ -244,5 +244,38 @@ public class Brain {
             }
         }
         return best;
+    }
+
+    /** THE VOICES hover: a post-drift and a slow weave that never closes on anyone, shy of rock
+     *  by the same whisker bend the roster steers with. Writes vx/vy only; Enemy integrates. */
+    private static void hover(Enemy e, World w, float dt) {
+        vajra.ship.Ship hull = w.nearestHull(e.x, e.y);
+        float dx = hull.x - e.x, dy = hull.y - e.y;
+        float d = (float) Math.sqrt(dx * dx + dy * dy);
+        e.facing = (float) Math.atan2(dy, dx); // a pilot watches; nothing about this is stealth
+        float gx = (e.homeX - e.x) * 0.08f;    // the post pulls, the way a post does
+        float gy = (e.homeY - e.y) * 0.08f;
+        if (d < 320 && d > 1) { // and keeps the stranger at reading distance, never crowding in
+            gx -= dx / d * 20;
+            gy -= dy / d * 20;
+        }
+        float gs = (float) Math.sqrt(gx * gx + gy * gy);
+        if (gs > 1) { // rock whiskers, shared with the roster's steering
+            float fx = gx / gs, fy = gy / gs;
+            if (w.blockedPx(e.x + fx * 60, e.y + fy * 60)) {
+                gx -= fx * 200;
+                gy -= fy * 200;
+                gx += -fy * 140;
+                gy += fx * 140;
+            }
+        }
+        gs = (float) Math.sqrt(gx * gx + gy * gy);
+        if (gs > 26) { // the meander is the point: slower than any roster cruise
+            gx = gx / gs * 26;
+            gy = gy / gs * 26;
+        }
+        float k = 1 - (float) Math.exp(-4f * dt);
+        e.vx += (gx - e.vx) * k;
+        e.vy += (gy - e.vy) * k;
     }
 }
