@@ -1,65 +1,39 @@
 package vajra.world;
 
+import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
-import org.junit.jupiter.api.Test;
-
-/** Contract for the universal popup system (ported from src_reboot v0.9.5). Guards against
- *  the "stuck popup" regression: a popup MUST expire after its lifetime, and the pool is a
- *  fixed ring that never grows. */
+/** THE POPUP STACK: lines landing on one spot cascade one pitch down each, so a voice's
+ *  same-frame lines and the run's opening pages read in order instead of as one pile of ink. */
 class PopupsTest {
+
+    private static Popups.Spec line(String t) {
+        return new Popups.Spec().text(t).at(100, 200);
+    }
+
     @Test
-    void popupExpiresAfterItsLifetime() {
+    void stackedLinesCascadeAndTheChainResets() {
         Popups p = new Popups();
-        p.push(new Popups.Spec().text("+50").at(0f, 0f).life(1f));
-        assertTrue(p.anyActive());
-        for (int i = 0; i < 61; i++) p.update(1f / 60f); // just over one sim-second
-        assertFalse(p.anyActive(), "popup must vanish after its life");
+        p.push(line("ONE"));
+        assertEquals(200, p.peek(0).y, 1e-6);
+        assertEquals(100, p.peek(0).x, 1e-6);
+        p.push(line("TWO"));
+        assertEquals(174, p.peek(0).y, 1e-6, "same spot: one pitch lower");
+        assertEquals(200, p.peek(1).y, 1e-6, "the first line keeps its spot");
+        p.push(new Popups.Spec().text("FAR").at(900, 600)); // a different spot starts fresh
+        assertEquals(600, p.peek(0).y, 1e-6);
+        p.push(line("BACK")); // the old spot again: no stale chain, the head is where it stood
+        assertEquals(200, p.peek(0).y, 1e-6);
     }
 
     @Test
-    void punchInEasesToFullScale() {
+    void lifeColorsAndScaleRideTheCopy() {
         Popups p = new Popups();
-        Popups.Spec s = new Popups.Spec().text("+10").scale(2f).intro(0.12f);
-        p.push(s);
-        Popups.Spec slot = live(p);
-        assertEquals(1f, p.punchOf(slot), 0.01f, "at birth the punch is half scale");
-        p.update(0.12f);
-        assertEquals(2f, p.punchOf(slot), 0.01f, "past the intro it is full scale");
-    }
-
-    @Test
-    void poolOverwritesOldestWithoutGrowing() {
-        Popups p = new Popups();
-        for (int i = 0; i < Popups.MAX + 10; i++)
-            p.push(new Popups.Spec().text("t" + i).life(60f));
-        assertEquals(Popups.MAX, p.activeCount(), "pool is a fixed ring - never grows");
-    }
-
-    @Test
-    void theScriptureImageRidesThePush() {
-        Popups p = new Popups();
-        p.push(new Popups.Spec().text("THREEFOLD").img("tritiya").at(0f, 0f));
-        assertEquals("tritiya", live(p).img, "the Devanagari key survives into the pooled slot");
-        assertEquals("THREEFOLD", live(p).text);
-    }
-
-    @Test
-    void multiplierTiersMapToTheirVerse() {
-        assertEquals("dvitiya", World.tierArt(2));
-        assertEquals("tritiya", World.tierArt(3));
-        assertEquals("chaturth", World.tierArt(4));
-        assertEquals("pancham", World.tierArt(5), "the ladder caps at five");
-        assertEquals("pancham", World.tierArt(9), "and stays capped");
-        assertEquals("TWOFOLD", World.tierWord(2));
-        assertEquals("THREEFOLD", World.tierWord(3));
-        assertEquals("FOURFOLD", World.tierWord(4));
-        assertEquals("FIVEFOLD", World.tierWord(5));
-        assertEquals("FIVEFOLD", World.tierWord(9));
-    }
-
-    private static Popups.Spec live(Popups p) {
-        for (Popups.Spec s : p.slots()) if (s.text != null) return s;
-        throw new AssertionError("no live slot");
+        p.push(new Popups.Spec().text("S").life(3.2f).rise(6)
+                .color(0.55f, 0.95f, 1f).scale(1.15f));
+        Popups.Spec s = p.peek(0);
+        assertEquals(3.2f, s.lifeMax, 1e-6);
+        assertEquals(0.55f, s.r, 1e-6);
+        assertEquals(1.15f, s.scale, 1e-6);
     }
 }

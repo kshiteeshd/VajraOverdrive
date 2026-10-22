@@ -37,6 +37,11 @@ public final class Popups {
     private final Spec[] pool = new Spec[MAX];
     private int cursor;
 
+    // THE STACK: the head of the most recent pushes. Lines landing exactly on it cascade one
+    // line pitch down instead of piling into one unreadable bundle.
+    private float headX = Float.NaN, headY = Float.NaN;
+    private static final float CASCADE = 26;
+
     public Popups() {
         for (int i = 0; i < MAX; i++) {
             pool[i] = new Spec();
@@ -44,14 +49,23 @@ public final class Popups {
         }
     }
 
-    /** Copies the spec into the next pooled slot (oldest overwritten when full). */
+    /** Copies the spec into the next pooled slot (oldest overwritten when full).
+     *
+     *  A spec landing exactly on the previous spec's spot sits one pitch BELOW it: same-frame
+     *  speech (a voice's two or three lines, the run's opening pages, a double salvage touch)
+     *  then reads as ordered lines, not ink on ink. A different spot starts a fresh stack. */
     public void push(Spec spec) {
         Spec slot = pool[cursor];
         cursor = (cursor + 1) % MAX;
+        if (spec.x == headX && spec.y == headY) headY -= CASCADE; // stacked speech reads down
+        else {
+            headX = spec.x;
+            headY = spec.y;
+        }
         slot.text = spec.text;
         slot.img = spec.img;
         slot.x = spec.x;
-        slot.y = spec.y;
+        slot.y = headY;
         slot.r = spec.r;
         slot.g = spec.g;
         slot.b = spec.b;
@@ -60,6 +74,12 @@ public final class Popups {
         slot.lifeMax = spec.lifeMax;
         slot.rise = spec.rise;
         slot.intro = spec.intro;
+    }
+
+    /** The spec pushed `back` pushes ago, or null if that slot is empty. Test read only. */
+    Spec peek(int back) {
+        Spec s = pool[(cursor + MAX - 1 - (back % MAX)) % MAX];
+        return s.text == null ? null : s;
     }
 
     /** Advances every live popup: rise + decay; dead ones free their slot. */
