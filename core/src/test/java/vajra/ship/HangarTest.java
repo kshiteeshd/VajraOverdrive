@@ -39,7 +39,7 @@ class HangarTest {
         Hangar h = new Hangar();
         h.coins = 9999;
         h.buyShip(2, 1);
-        h.buyShip(4, 2);
+        h.buyShip(4, 3); // one hull opens per loka: Mk-3 at Vitala, Mk-5 at Talatala
         // three hulls owned: 0, 2 and 4. A full lap forward is three steps and returns home.
         assertEquals(2, h.cycleShip(0, 1));
         assertEquals(4, h.cycleShip(2, 1));
@@ -52,7 +52,7 @@ class HangarTest {
         Hangar h = new Hangar();
         h.coins = 9999;
         assertFalse(h.buy(ShipDef.ALL[3], 1), "you cannot tier a hull you have not bought");
-        h.buyShip(3, 1);
+        h.buyShip(3, 2); // Hive Mk-4 opens at Sutala
         assertTrue(h.buy(ShipDef.ALL[3], 1));
     }
 
@@ -92,8 +92,9 @@ class HangarTest {
         h.coins = 9999;
         ShipDef seven = ShipDef.ALL[6];
         ShipDef one = ShipDef.ALL[0];
-        h.buyShip(6, 3);
-        h.shards[0] = Hangar.SHARD_COST; // x.3 wants shards on top of coins
+        h.buyShip(6, 5);
+        h.buy(seven, 1);
+        h.shards[0] = Hangar.tierShards(seven); // x.3 wants shards on top of coins, more in a deeper hull
         h.buy(seven, 2); // 7.3 Seventh Halo: hull +50
         assertEquals(50f, h.hullBonus(seven), 0.001f);
         assertEquals(0f, h.hullBonus(one), 0.001f, "another ship's upgrades don't leak");
@@ -105,6 +106,8 @@ class HangarTest {
         h.coins = 9999;
         ShipDef d = ShipDef.ALL[0];
         int cost = d.upgrades[2].cost;
+        assertFalse(h.buy(d, 2), "x.3 cannot come before x.2");
+        assertTrue(h.buy(d, 1));
         int coins0 = h.coins;
         assertFalse(h.buy(d, 2), "no shards: the top tier waits");
         h.shards[0] = 1;
@@ -180,6 +183,8 @@ class HangarTest {
         assertTrue(h.weaponOwned[0], "the Single Bolt comes with the hull");
         assertFalse(h.weaponOwned[8], "the Laser waits in the shop");
         h.coins = 9999;
+        assertFalse(h.buyWeapon(8), "the Laser is not offered before Mahitala");
+        h.loka = 4;
         assertTrue(h.buyWeapon(8));
         assertEquals(9999 - WeaponDef.LASER.cost, h.coins, "the price lands");
         assertTrue(h.weaponOwned[8]);

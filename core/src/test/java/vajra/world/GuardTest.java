@@ -45,28 +45,28 @@ class GuardTest {
         }
     }
 
-    /** Every Atala site holds three: a rank-1 leader and two sentries, kind graded by band.
+    /** Every Atala site holds three: a rank-1 KEEPER (lamp-keeper at a checkpoint, bay-master at a shop) and two sentries graded by band.
      *  Sites index as region i+1 — Bhu Loka (region 0) has no shop, checkpoint or guard. */
     @Test
     void shopsAndCheckpointsHoldRegionRankedGuards() {
         World w = new World();
         for (int i = 0; i < w.shops.length; i++)
-            assertHolds(w, w.shops[i][0], w.shops[i][1], i + 1, "shop " + i);
+            assertHolds(w, w.shops[i][0], w.shops[i][1], i + 1, "shop " + i, Enemy.Kind.VANIJA);
         for (int i = 0; i < w.checkpoints.length; i++)
-            assertHolds(w, w.checkpoints[i].x, w.checkpoints[i].y, i + 1, "checkpoint " + i);
+            assertHolds(w, w.checkpoints[i].x, w.checkpoints[i].y, i + 1, "checkpoint " + i, Enemy.Kind.DIPAKA);
         int inBhu = 0;
         for (Enemy e : w.enemies)
             if (e.guard && e.homeY < w.regionStart[1]) inBhu++;
         assertEquals(0, inBhu, "no guards stationed in Bhu Loka");
     }
 
-    private void assertHolds(World w, float x, float y, int region, String site) {
+    private void assertHolds(World w, float x, float y, int region, String site, Enemy.Kind keeper) {
         int found = 0, rank1 = 0;
         for (Enemy e : w.enemies) {
-            if (!e.guard || Math.abs(e.homeX - x) > 110 || Math.abs(e.homeY - y) > 110) continue;
+            if (!e.guard || Math.abs(e.homeX - x) > 150 || Math.abs(e.homeY - y) > 150) continue;
             found++;
             if (e.rank == 1) rank1++;
-            Enemy.Kind expect = e.rank == 1 ? World.GUARD[region][0] : World.GUARD[region][1];
+            Enemy.Kind expect = e.rank == 1 ? keeper : World.GUARD[region][1]; // the keeper leads, the region grades the sentries
             assertEquals(expect, e.kind, site + " guard kind for region " + region);
         }
         assertEquals(3, found, site + " holds a leader and two sentries");

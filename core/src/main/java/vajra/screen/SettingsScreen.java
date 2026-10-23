@@ -115,6 +115,11 @@ public class SettingsScreen implements FlowState {
         return "";
     }
 
+    /** A row as drawn: its label and, when it has one, its value. */
+    private String rowText(int i) {
+        return menu.label(i) + (value(i).isEmpty() ? "" : "   " + value(i));
+    }
+
     @Override
     public void render() {
         ui.shapes.setProjectionMatrix(ui.camera.combined);
@@ -122,15 +127,14 @@ public class SettingsScreen implements FlowState {
         Template.dim(ui, 1f); // opaque: its own screen, nothing bleeds through from below
         Ornament.frame(ui);
         Ornament.titleMarkers(ui, "SETTINGS", Template.TITLE_Y);
-        Ornament.markers(ui, Template.COL, menu.label(menu.selected()), menu.rowY(menu.selected()));
+        Ornament.markers(ui, Template.COL, rowText(menu.selected()), menu.rowY(menu.selected()));
         ui.shapes.end();
 
         batch.setProjectionMatrix(ui.camera.combined);
         batch.begin();
         Template.title(ui, batch, "SETTINGS", Template.TITLE_Y, 1);
         for (int i = 0; i < menu.count(); i++)
-            Template.menuRow(ui, batch, menu.label(i) + (value(i).isEmpty() ? "" : "   " + value(i)),
-                    menu.selected(i), menu.rowY(i));
+            Template.menuRow(ui, batch, rowText(i), menu.selected(i), menu.rowY(i));
         Template.keys(ui, batch, Template.FOOT_Y, "W/S", "SELECT", "A/D or CLICK SIDES", "ADJUST", "ESC", "BACK");
         batch.end();
     }

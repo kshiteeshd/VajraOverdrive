@@ -595,7 +595,7 @@ public class NetScreen implements FlowState {
         ui.beginShapes(ShapeRenderer.ShapeType.Filled);
         Template.dim(ui, 1f); // opaque: its own screen
         Ornament.frame(ui);
-        Ornament.titleMarkers(ui, "NETPLAY", Template.TITLE_Y);
+        Ornament.titleMarkers(ui, "MULTIPLAYER", Template.TITLE_Y);
         if (joining) {
             java.util.List<LanBeacon.Found> found = rows();
             for (int i = 0; i < found.size(); i++) {
@@ -617,7 +617,7 @@ public class NetScreen implements FlowState {
 
         batch.setProjectionMatrix(ui.camera.combined);
         batch.begin();
-        Template.title(ui, batch, "NETPLAY", Template.TITLE_Y, 1);
+        Template.title(ui, batch, "MULTIPLAYER", Template.TITLE_Y, 1);
         if (joining) {
             drawJoinPanel();
         } else {

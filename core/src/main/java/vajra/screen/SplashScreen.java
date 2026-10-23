@@ -26,7 +26,7 @@ import vajra.flow.FlowState;
  *
  *  <p>ESC resumes, Q quits, the mouse highlights and clicks. */
 public class SplashScreen implements FlowState {
-    // Public because the screenshot test samples frames at these marks, the way ShopUi
+    // Public because the screenshot test samples frames at these marks, the way BayUi
     // publishes its layout constants for the HUD screenshots.
     public static final float DELAY = 1.2f;     // black first: the window settles before the logo
     public static final float FADE_IN = 0.7f;    // logo 0 -> 1
@@ -75,7 +75,7 @@ public class SplashScreen implements FlowState {
     @Override
     public void update(float dt) {
         t += dt;
-        if (done(t)) flow.set(new HomeScreen(flow, ui, batch)); // hands over to the menu
+        if (done(t)) flow.set(ComicScreen.firstOrHome(flow, ui, batch)); // the story once, then the menu
     }
 
     @Override

@@ -58,11 +58,11 @@ public final class CacheDirector {
         }
     }
 
-    /** The stash changes hands: 100 coins and a life, once, for THIS seat. The payment ring
+    /** The stash changes hands: 100 coins (more in a deeper loka) and a life, once, for THIS seat. The payment ring
      *  at the cache is the only mark it leaves — no label, no marker, no announcement. */
     private void payout(int i) {
         world.cacheState[world.slot][i] = World.CACHE_DONE;
-        world.hangar.coins += 100;
+        world.hangar.coins += Math.round(100 * (float) Math.sqrt(vajra.world.LokaTable.at(world.lokaIndex).hpScale));
         world.lives++;
         world.addEffect(Effect.ring(world.caches[i][0], world.caches[i][1], 160, 1f, 0.84f, 0.3f));
         world.addEffect(Effect.spark(world.caches[i][0], world.caches[i][1], 1f, 0.84f, 0.3f));

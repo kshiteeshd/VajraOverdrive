@@ -11,24 +11,39 @@ import vajra.flow.Flow;
 import vajra.flow.FlowState;
 import vajra.update.Updater;
 
-/** The title screen: an opaque ink field, the pixel logo, a temple divider, and seven text rows
- *  (PLAY / MULTIPLAYER / CONTROLS / PROFILE / SETTINGS / UPDATE / QUIT).
+/** The title screen: an opaque ink field, the pixel logo, a temple divider, and its text rows:
+ *  CONTINUE (only when the pilot left a run mid-flight) / NEW GAME / MULTIPLAYER / TUTORIALS /
+ *  PROFILE / SETTINGS / UPDATE / QUIT.
  *
  *  <p>The look is a vector-display take on temple geometry, all in the theme's one gold on ink:
  *  a hairline frame with corner brackets, a line-diamond-line divider, and diamond markers
  *  flanking the selected row. Nothing is filled heavily; every stroke is a hairline at low
  *  alpha, so the logo and the menu stay the loudest things.
  *
- *  <p>ENTER or a click activates the selected row. PLAY starts the run at once. UPDATE is the
+ *  <p>ENTER or a click activates the selected row. CONTINUE wakes the saved run where it was parked
+ *  (quit-to-title, a closed window and the quiet autosave all park it); NEW GAME starts fresh, and
+ *  when a save exists it asks once before erasing it. UPDATE is the
  *  in-game swapper: it pulls the newest setup exe per vajra.update.Updater and lets the
  *  installer take over. */
 public class HomeScreen implements FlowState {
+    /** The rows with no save to continue: NEW GAME leads. */
     static final String[] MENU =
-            {"PLAY", "MULTIPLAYER", "CONTROLS", "PROFILE", "SETTINGS", "UPDATE", "QUIT"};
-    private static final float MENU_Y = 284;  // first row baseline: seven rows, tighter pitch
-    private static final float PITCH = 33;    // row pitch (rows abut at HALF_H 16.5, no dead zone)
+            {"NEW GAME", "MULTIPLAYER", "TUTORIALS", "PROFILE", "SETTINGS", "UPDATE", "QUIT"};
+    static final String CONTINUE = "CONTINUE";
+    static final String SURE = "ERASE SAVE?  ENTER AGAIN";
+    private static final float MENU_Y = 284;  // first row baseline: up to eight rows, tighter pitch
+    private static final float PITCH = 28;    // row pitch (rows abut at HALF_H 14, no dead zone)
     private static final float HALF_W = 200;  // row hit half-width
-    private static final float HALF_H = 16.5f; // row hit half-height
+    private static final float HALF_H = 14;   // row hit half-height
+
+    /** The rows for a pilot: CONTINUE on top when a run is parked. */
+    static String[] rows(boolean hasRun) {
+        if (!hasRun) return MENU.clone();
+        String[] r = new String[MENU.length + 1];
+        r[0] = CONTINUE;
+        System.arraycopy(MENU, 0, r, 1, MENU.length);
+        return r;
+    }
 
     // The logo, at 2x the size it had: the 500x300 asset drawn at 800x480. The asset carries a
     // lot of transparent padding (its ink is only 330x149), so the drawn box is much taller
@@ -46,12 +61,17 @@ public class HomeScreen implements FlowState {
             new Texture(Gdx.files.internal("brand/vajra-overdrive-logo.png"));
     private final UiMenu menu;
     private final Updater updater;
+    private final boolean hasRun;   // a parked run exists: CONTINUE is the first row
+    private final String[] labels;
+    private boolean sure;           // NEW GAME was pressed once over a save
 
     public HomeScreen(Flow flow, Ui ui, SpriteBatch batch) {
         this.flow = flow;
         this.ui = ui;
         this.batch = batch;
-        this.menu = new UiMenu(MENU, MENU_Y, PITCH, HALF_W, HALF_H);
+        this.hasRun = vajra.profile.Profiles.active().hasRun();
+        this.labels = rows(hasRun);
+        this.menu = new UiMenu(labels, MENU_Y, PITCH, HALF_W, HALF_H);
         updater = new Updater();
         Template.setAccent(UiTheme.GOLD_R, UiTheme.GOLD_G, UiTheme.GOLD_B); // back to brand gold
         logo.setFilter(TextureFilter.Linear, TextureFilter.Linear);
@@ -68,6 +88,9 @@ public class HomeScreen implements FlowState {
     static int move(int sel, int dir) {
         return UiMenu.wrap(sel, dir, MENU.length);
     }
+
+    /** The row's name in the no-save list: CONTINUE shifts every row down by one. */
+    private int row() { return menu.selected() - (hasRun ? 1 : 0); }
 
     @Override
     public boolean keyDown(int keycode) {
@@ -95,19 +118,37 @@ public class HomeScreen implements FlowState {
     }
 
     private void activate() {
-        int sel = menu.selected();
-        if (sel == 0) flow.set(new GameScreen(batch, flow, ui));
+        if (hasRun && menu.selected() == 0) { // CONTINUE: the parked run, where it hung
+            flow.set(GameScreen.resume(batch, flow, ui, vajra.profile.Profiles.active().run));
+            return;
+        }
+        int sel = row();
+        if (sel == 0) newGame();
         else if (sel == 1) flow.push(new NetScreen(flow, ui, batch));
-        else if (sel == 2) flow.push(new ControlScreen(flow, ui, batch));
+        else if (sel == 2) flow.push(new TutorialScreen(flow, ui, batch));
         else if (sel == 3) flow.push(new ProfileScreen(flow, ui, batch));
         else if (sel == 4) flow.push(new SettingsScreen(flow, ui, batch));
         else if (sel == 5) updater.begin();
         else Gdx.app.exit();
     }
 
+    /** NEW GAME. Over a parked run it asks once: the first press arms the row, the second erases. */
+    private void newGame() {
+        if (hasRun && !sure) {
+            sure = true;
+            labels[1] = SURE;
+            return;
+        }
+        vajra.profile.Profiles.clearRun();
+        flow.set(new GameScreen(batch, flow, ui));
+    }
+
     @Override
     public void update(float dt) {
-        // nothing moves on this screen — the frame, divider and rows are all still
+        if (sure && menu.selected() != 1) { // wandered off the armed row: it disarms
+            sure = false;
+            labels[1] = MENU[0];
+        }
     }
 
     @Override

@@ -114,7 +114,7 @@ public final class Hud {
      *  over it: bars, score, the loka readout, the weapon plate and the vitals line are all noise
      *  on a menu screen — the yojana tape in particular drew straight through the panels.
      *  Game over still gets a translucent dimmer — there the frozen world IS the point. */
-    public void render(SpriteBatch batch, World world, ShipRenderer ships, ShopUi shopUi) {
+    public void render(SpriteBatch batch, World world, ShipRenderer ships, BayUi shopUi) {
         boolean hangar = shopUi != null;
         boolean over = world.runEnded();
         refresh(world, hangar, over);
@@ -130,7 +130,7 @@ public final class Hud {
         batch.end();
     }
 
-    private void shapePass(World w, boolean hangar, boolean over, ShopUi shopUi) {
+    private void shapePass(World w, boolean hangar, boolean over, BayUi shopUi) {
         if (!hangar && w.gameOver) {
             ui.shapes.setColor(0, 0, 0, 0.78f);
             ui.shapes.rect(0, 0, Ui.UI_W, Ui.UI_H);
@@ -138,13 +138,16 @@ public final class Hud {
         if (over) { // the results card: ink plate + the shared border, both in this pass
             ui.shapes.setColor(UiTheme.INK_R, UiTheme.INK_G, UiTheme.INK_B, 0.92f);
             ui.shapes.rect(END_X, END_Y, END_W, END_H);
-            Template.panelBorder(ui, END_X, END_Y, END_W, END_H);
+            Ornament.panel(ui, END_X, END_Y, END_W, END_H, 9, Template.accentR, Template.accentG, Template.accentB, 0.6f, false);
         }
         if (hangar) {
             shopUi.drawBackground(w);
             return;
         }
         shards.update(w);
+        gaze.shapes(ui, w, 1 / 60f);
+        jobs.shapes(ui, w);
+        toast.shapes(ui, w);
         bars.shapes(ui.shapes, w);
         crewShapes(w);
         depthTape(w);
@@ -153,9 +156,12 @@ public final class Hud {
     }
 
     private void batchPass(SpriteBatch batch, World w, boolean hangar, boolean over,
-                           ShipRenderer ships, ShopUi shopUi) {
+                           ShipRenderer ships, BayUi shopUi) {
         if (!hangar) {
             drawScore(batch);
+            gaze.label(ui, batch, w);
+            jobs.text(ui, batch, w);
+            toast.text(ui, batch, w);
             drawIndicator(batch, w);
             compass.label(batch, w);
             drawWeapon(batch, w);
@@ -166,7 +172,7 @@ public final class Hud {
         if (w.victoryT >= 0 && w.victoryT < World.VICTORY_LAP) {
             float a = w.victoryT < 3f ? 1 : World.VICTORY_LAP - w.victoryT;
             Template.title(ui, batch, "ATALA CONQUERED", Template.CARD_Y, a);
-            Template.sub(ui, batch, "the pit is yours — Bala has fallen", Template.CARD_SUB_Y, a);
+            Template.sub(ui, batch, "the first piece answers - below, Vitala burns gold", Template.CARD_SUB_Y, a);
         }
         if (over) drawEndCard(batch, w);
         if (hangar) shopUi.draw(batch, w, ships, cards);
@@ -401,6 +407,9 @@ public final class Hud {
     /** The combo window left, read from the world each frame (it drains continuously, so it is
      *  the one number here that cannot be cached). */
     private float comboT;
+    private final HudGaze gaze = new HudGaze();
+    private final HudJobs jobs = new HudJobs();
+    private final HudToast toast = new HudToast();
 
     /** Bottom-right: the fitted weapon's face card sits directly on the shard gauge, its name
      *  to the left. V/B still cycles the loadout — the card and name changing is the whole
@@ -435,7 +444,7 @@ public final class Hud {
                 END_SUB_Y, 1);
         for (int i = 0; i < resultLines.length; i++)
             Template.line(ui, batch, resultLines[i], END_LINES[i], Template.A_LINE);
-        Template.line(ui, batch, "R or click for a new run", END_LINES[2] - 36, Template.A_HINT);
+        Template.line(ui, batch, "press R for a new run", END_LINES[2] - 36, Template.A_HINT);
     }
 
     public void dispose() {

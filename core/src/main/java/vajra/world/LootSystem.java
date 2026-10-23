@@ -75,7 +75,7 @@ public final class LootSystem {
             if (charged > 0)
                 world.popups.push(new Popups.Spec()
                         .text(world.hangar.forgeCharges[world.lokaIndex] == 1
-                                ? "THE LANCE IS FORGED" : "THE LANCE CHARGES")
+                                ? "THE ASTRA IS FORGED" : "THE ASTRA CHARGES")
                         .img("taptam").at(world.ship.x, world.ship.y + 34)
                         .color(c[0], c[1], c[2]).scale(1.25f).life(1.8f));
         } else if (p.type == Pickup.PIECE) {

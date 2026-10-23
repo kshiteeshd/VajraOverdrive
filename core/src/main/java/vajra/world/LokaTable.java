@@ -55,13 +55,13 @@ public final class LokaTable {
             // Namuchi and the naga Kaliya here. Sunless, jewel-walled, full of naga water.
             new Loka("Atala", "Bala", new int[] { 0 }, 1.0f, 1.0f, 1, 11),
             // Vitala — the ember deep: fire, serpents of flame, the first loka that hurts.
-            new Loka("Vitala", "Agnihotra", new int[] { 2 }, 1.35f, 1.2f, 3, 21),
+            new Loka("Vitala", "Agnihotra", new int[] { 2 }, 1.35f, 1.2f, 2, 21),
             // Sutala — the water-deep. Kaliya's lake-country; the dampest rock in Patala.
-            new Loka("Sutala", "Takshaka", new int[] { 3 }, 1.75f, 1.45f, 5, 31),
+            new Loka("Sutala", "Takshaka", new int[] { 3 }, 1.75f, 1.45f, 3, 31),
             // Talatala — stone and weight. Heavy, slow, patient.
-            new Loka("Talatala", "Kalanemi", new int[] { 4 }, 2.3f, 1.7f, 6, 41),
+            new Loka("Talatala", "Kalanemi", new int[] { 4 }, 2.3f, 1.7f, 4, 41),
             // Mahitala — the great deep. Mahitala's serpent courts, the most crowded band.
-            new Loka("Mahitala", "Hiranyaksha", new int[] { 1 }, 3.0f, 2.0f, 6, 51),
+            new Loka("Mahitala", "Hiranyaksha", new int[] { 1 }, 3.0f, 2.0f, 5, 51),
             // Rasatala — the pool of blood. Pays two elements: it is the first mixed harvest,
             // so the purity rule on the forge bites.
             new Loka("Rasatala", "Puloman", new int[] { 2, 4 }, 4.0f, 2.35f, 6, 61),

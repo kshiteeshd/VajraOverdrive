@@ -70,7 +70,7 @@ public final class SaveGame {
     }
 
     private static FileHandle file() {
-        return Gdx.files.local("vajra.save");
+        return Gdx.files.local(vajra.profile.Profiles.DATA + "vajra.save");
     }
 
     public static void store(Hangar h) {

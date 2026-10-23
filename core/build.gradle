@@ -8,4 +8,6 @@ dependencies {
 
 test {
     useJUnitPlatform()
+    // saves written by a test (profiles.json, vajra.save) go under build/, never over a pilot's real ones
+    systemProperty 'vajra.data', 'build/testdata/'
 }

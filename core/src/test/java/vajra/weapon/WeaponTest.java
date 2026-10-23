@@ -96,8 +96,9 @@ class WeaponTest {
         w.hangar.coins = 9999; // test purse: the yard ships with 0
         ShipDef d = ShipDef.ALL[3];
         w.ship.setDef(d);
-        w.hangar.buyShip(3, 1); // a tier upgrade needs the hull bought first
-        w.hangar.shards[0] = vajra.ship.Hangar.SHARD_COST; // x.3 wants shards on top of coins
+        w.hangar.buyShip(3, 2); // a tier upgrade needs the hull bought first (Hive opens at Sutala)
+        w.hangar.buy(d, 1);
+        w.hangar.shards[0] = vajra.ship.Hangar.tierShards(d); // x.3 wants shards on top of coins
         w.ship.hangar.buy(d, 2); // Seeker Chips: ×1.35 damage, no speed stat
         w.ship.facing = 0;
         w.ship.weapon.def = WeaponDef.SINGLE;

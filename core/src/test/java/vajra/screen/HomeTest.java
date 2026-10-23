@@ -18,14 +18,22 @@ class HomeTest {
     void theMenuCursorWrapsBothWays() {
         assertEquals(1, HomeScreen.move(0, 1));
         assertEquals(6, HomeScreen.move(0, -1), "up from the top wraps to QUIT");
-        assertEquals(0, HomeScreen.move(6, 1), "down from the bottom wraps to PLAY");
+        assertEquals(0, HomeScreen.move(6, 1), "down from the bottom wraps to the top");
     }
 
     @Test
-    void theRowsArePlayMultiplayerControlsProfileSettingsUpdateQuit() {
+    void withNoSaveTheRowsAreNewGameMultiplayerAndTheRest() {
         assertArrayEquals(
-                new String[] {"PLAY", "MULTIPLAYER", "CONTROLS", "PROFILE", "SETTINGS", "UPDATE", "QUIT"},
-                HomeScreen.MENU);
+                new String[] {"NEW GAME", "MULTIPLAYER", "TUTORIALS", "PROFILE", "SETTINGS", "UPDATE", "QUIT"},
+                HomeScreen.rows(false));
+    }
+
+    @Test
+    void withASavedRunContinueLeadsAndNewGameFollows() {
+        String[] r = HomeScreen.rows(true);
+        assertEquals("CONTINUE", r[0]);
+        assertEquals("NEW GAME", r[1]);
+        assertEquals(HomeScreen.MENU.length + 1, r.length);
     }
 
     /** The logo is 2x: the 500x300 asset drawn at 800x480. It carries heavy transparent padding
@@ -40,7 +48,7 @@ class HomeTest {
     /** The bottom row must clear the footer hint. This is the collision that actually happened. */
     @Test
     void theMenuClearsTheFooterHint() {
-        float bottom = HomeScreen.menuY() - 6 * HomeScreen.pitch(); // the bottom of seven rows
+        float bottom = HomeScreen.menuY() - 7 * HomeScreen.pitch(); // the bottom of eight rows (with CONTINUE)
         assertTrue(bottom - 14 > HINT_TOP + 10,
                 "QUIT at y" + bottom + " runs into the hint at y" + HINT_TOP);
     }

@@ -34,13 +34,22 @@ public class ShipDef {
     public final float damageReduction;
     public final Upgrade[] upgrades = new Upgrade[3];
 
+    /** TEST PRICING, flip-and-go: true scales every coin price to about a twentieth so the
+     *  forged sheets are flyable early (the real values stand in the ladder untouched and the
+     *  climbing order still holds); false is the shipping ladder and re-arms EconomyTest's
+     *  price window. Restore false before shipping. */
+    public static final boolean TEST_PRICING = true;
+
+    /** The test-price funnel: hull/tier coins at a twentieth, the free hull stays free. */
+    private static int priced(int cost) { return TEST_PRICING && cost > 0 ? cost / 20 : cost; }
+
     ShipDef(int id, String name, String flavor, int cost, int minLoka, float maxHp, float accel,
             float maxSpeed, float turnRate, float boostMult, float dashCd,
             float r, float g, float b, float damageReduction) {
         this.id = id;
         this.name = name;
         this.flavor = flavor;
-        this.cost = cost;
+        this.cost = priced(cost);
         this.minLoka = minLoka;
         this.maxHp = maxHp;
         this.accel = accel;
@@ -70,7 +79,7 @@ public class ShipDef {
                 float speedBonus, float turnBonus, float hullBonus, float shieldBonus) {
             this.label = label;
             this.name = name;
-            this.cost = cost;
+            this.cost = ShipDef.priced(cost);
             this.cooldownMult = cooldownMult;
             this.damageMult = damageMult;
             this.dashCdMult = dashCdMult;
@@ -109,31 +118,37 @@ public class ShipDef {
         return 0;
     }
 
-    // Hull ladder: Mk-1 is free, the pair per loka rises in price and in how good it is, so
-    // a run's coin finds a decision ("buy the better hull now, or bank toward Vajra-7").
-    // TEST PRICING on marks 1-2: bought for pocket change so their forged sheets are
-    // flyable early — restore 120/300 on mark 1 and 250/180/360 on mark 2 before shipping.
+    // THE HULL LADDER. One hull opens per loka (LokaTable.unlockShip), each priced against what that
+    // loka pays (docs/ECONOMY.md): a clean loka earns about 1250 coins x sqrt(hp scale), a pilot keeps
+    // about two thirds of it, and a hull plus its two tiers should cost roughly one loka's keep.
+    // Each hull is a ROLE, not just a bigger number:
+    //   Mk-1 the first blade - all-rounder          Mk-2 Kite  - fast and thin, a scout's hull
+    //   Mk-3 Aegis - the wall, 10% mitigation        Mk-4 Hive  - fire-rate, swarm logic
+    //   Mk-5 Lance - precision, damage              Mk-6 Mortar - slow, heavy, mitigated
+    //   Mk-7 Vajra-7 - the best of all of them, last
+    // Hull points climb about 2.4x from first to last, mitigation adds to it, against enemy fire that
+    // climbs 2.8x - the rest of the gap is the pilot's skill and the hangar's other two roads.
     public static final ShipDef[] ALL = {
             ship(0, "Vajra Mk-1", "the first blade", 0, 0, 100, 1850, 375, 180, 1.8f, 1.2f, 1f, 0.84f, 0.3f, 0f,
-                    up("1.2", "Rapid Cycler", 10, 0.82f, 1f, 1f, 0f, 0f, 0f, 0f),
-                    up("1.3", "Aegis Plate", 20, 1f, 1f, 1f, 0f, 0f, 40f, 15f)),
-            ship(1, "Kite Mk-2", "fast as rumor", 20, 0, 85, 2250, 435, 200, 2.0f, 1.0f, 0.3f, 0.8f, 1f, 0f,
-                    up("2.2", "Light Frames", 10, 1f, 1f, 1f, 50f, 10f, 0f, 0f),
-                    up("2.3", "Twin Link", 20, 0.80f, 1.25f, 1f, 0f, 0f, 0f, 0f)),
-            ship(2, "Aegis Mk-3", "the wall that walks", 320, 1, 150, 1550, 330, 160, 1.6f, 1.4f, 0.4f, 1f, 0.5f, 0.08f,
-                    up("3.2", "Reinforced Hull", 220, 1f, 1f, 1f, 0f, 0f, 60f, 0f),
-                    up("3.3", "Bulwark", 440, 1f, 1f, 0.92f, 0f, 0f, 0f, 55f)),
-            ship(3, "Hive Mk-4", "swarm logic", 380, 1, 100, 1850, 365, 180, 1.8f, 1.2f, 1f, 0.6f, 0.2f, 0f,
-                    up("4.2", "Swarm Lens", 240, 0.80f, 1f, 1f, 0f, 0f, 0f, 0f),
-                    up("4.3", "Seeker Chips", 480, 1f, 1.35f, 1f, 0f, 0f, 25f, 0f)),
-            ship(4, "Lance Mk-5", "reads the gap", 460, 2, 95, 2000, 405, 220, 1.8f, 1.1f, 0.75f, 0.5f, 1f, 0f,
-                    up("5.2", "Sharpened", 280, 1f, 1.30f, 1f, 0f, 0f, 0f, 0f),
-                    up("5.3", "Overdrive", 560, 0.85f, 1f, 1f, 45f, 15f, 0f, 0f)),
-            ship(5, "Mortar Mk-6", "arrives late, loudly", 560, 2, 120, 1700, 350, 170, 1.7f, 1.3f, 1f, 0.35f, 0.3f, 0.05f,
-                    up("6.2", "Heavy Bands", 320, 1f, 1.35f, 1f, 0f, 0f, 0f, 0f),
-                    up("6.3", "Quickload", 640, 0.76f, 1f, 0.80f, 0f, 0f, 0f, 0f)),
-            ship(6, "Vajra-7", "the seventh halo", 700, 3, 110, 2350, 470, 240, 2.0f, 0.9f, 1f, 1f, 0.95f, 0f,
-                    up("7.2", "Angel Protocol", 400, 0.82f, 1.25f, 1f, 0f, 0f, 0f, 0f),
-                    up("7.3", "Seventh Halo", 800, 1f, 1f, 0.72f, 0f, 0f, 50f, 50f))
+                    up("1.2", "Rapid Cycler", 120, 0.82f, 1f, 1f, 0f, 0f, 0f, 0f),
+                    up("1.3", "Aegis Plate", 300, 1f, 1f, 1f, 0f, 0f, 40f, 15f)),
+            ship(1, "Kite Mk-2", "fast as rumor", 260, 0, 90, 2250, 435, 200, 2.0f, 1.0f, 0.3f, 0.8f, 1f, 0f,
+                    up("2.2", "Light Frames", 140, 1f, 1f, 1f, 50f, 10f, 0f, 0f),
+                    up("2.3", "Twin Link", 300, 0.80f, 1.25f, 1f, 0f, 0f, 0f, 0f)),
+            ship(2, "Aegis Mk-3", "the wall that walks", 520, 1, 170, 1550, 330, 160, 1.6f, 1.4f, 0.4f, 1f, 0.5f, 0.10f,
+                    up("3.2", "Reinforced Hull", 260, 1f, 1f, 1f, 0f, 0f, 60f, 0f),
+                    up("3.3", "Bulwark", 520, 1f, 1f, 0.92f, 0f, 0f, 0f, 55f)),
+            ship(3, "Hive Mk-4", "swarm logic", 700, 2, 140, 1850, 365, 180, 1.8f, 1.2f, 1f, 0.6f, 0.2f, 0f,
+                    up("4.2", "Swarm Lens", 350, 0.80f, 1f, 1f, 0f, 0f, 0f, 0f),
+                    up("4.3", "Seeker Chips", 700, 1f, 1.35f, 1f, 0f, 0f, 25f, 0f)),
+            ship(4, "Lance Mk-5", "reads the gap", 900, 3, 150, 2000, 405, 220, 1.8f, 1.1f, 0.75f, 0.5f, 1f, 0f,
+                    up("5.2", "Sharpened", 450, 1f, 1.30f, 1f, 0f, 0f, 0f, 0f),
+                    up("5.3", "Overdrive", 900, 0.85f, 1f, 1f, 45f, 15f, 0f, 0f)),
+            ship(5, "Mortar Mk-6", "arrives late, loudly", 1150, 4, 230, 1700, 350, 170, 1.7f, 1.3f, 1f, 0.35f, 0.3f, 0.08f,
+                    up("6.2", "Heavy Bands", 580, 1f, 1.35f, 1f, 0f, 0f, 0f, 0f),
+                    up("6.3", "Quickload", 1150, 0.76f, 1f, 0.80f, 0f, 0f, 0f, 0f)),
+            ship(6, "Vajra-7", "the seventh halo", 1500, 5, 240, 2350, 470, 240, 2.0f, 0.9f, 1f, 1f, 0.95f, 0.05f,
+                    up("7.2", "Angel Protocol", 750, 0.82f, 1.25f, 1f, 0f, 0f, 0f, 0f),
+                    up("7.3", "Seventh Halo", 1500, 1f, 1f, 0.72f, 0f, 0f, 50f, 50f))
     };
 }

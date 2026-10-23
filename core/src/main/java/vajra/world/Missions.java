@@ -39,10 +39,7 @@ public final class Missions {
         rogue.active = true;
         rogue.wakeRange = 3000;
         world.add(rogue);
-        world.popups.push(new Popups.Spec()
-                .text("THE BROKERS PIN A CARD: DAMBHA, A ROGUE OF THE WOOD, SPOILS THE SEAM. HIS PURSE PAID ON HIS FALL.")
-                .at(world.ship.x, world.ship.y - 60).life(3f).rise(8)
-                .color(1f, 0.8f, 0.35f).scale(1.2f));
+        world.toast("BOUNTY", "DAMBHA, A ROGUE OF THE WOOD, SPOILS THE SEAM. HIS PURSE IS YOURS.");
     }
 
     /** Maya's ask opens the salvage row: the grove's wrecks, six of them, to her hammer. */
@@ -50,10 +47,7 @@ public final class Missions {
         if (salvage != NONE) return;
         salvage = OPEN;
         salvageTaken = 0;
-        world.popups.push(new Popups.Spec()
-                .text("MAYA'S ASK IS ON THE BOARD: SIX WRECKS OF HER WOODS, HOME TO THE HAMMER.")
-                .at(world.ship.x, world.ship.y - 60).life(3f).rise(8)
-                .color(0.55f, 0.95f, 1f).scale(1.15f));
+        world.toast("SALVAGE", "SIX WRECKS OF MAYA VANA, HOME TO HER HAMMER.");
     }
 
     /** Run every frame from World.update: the bounty pays the frame the rogue is spent;
@@ -63,10 +57,7 @@ public final class Missions {
             bounty = DONE;
             world.hangar.coins += 250;
             world.lives++;
-            world.popups.push(new Popups.Spec()
-                    .text("DAMBHA IS SPENT - THE BROKERS PAY THE CARD, AND A LIFE SAILS FOR IT.")
-                    .at(world.ship.x, world.ship.y - 60).life(3f).rise(8)
-                    .color(1f, 0.9f, 0.5f).scale(1.2f));
+            world.toast("DAMBHA FALLS", "THE CARD IS PAID. +250c AND A LIFE.");
             Codex.unlock(world, Codex.ROGUE);
         }
         if (salvage != OPEN) return;
@@ -84,10 +75,7 @@ public final class Missions {
                 world.wreckTaken[i] = true;
                 salvageTaken++;
                 world.addEffect(Effect.ring(world.wrecks[i][0], world.wrecks[i][1], 90, 0.55f, 0.95f, 1f));
-                world.popups.push(new Popups.Spec()
-                        .text("SALVAGE " + salvageTaken + " OF " + SALVAGE_NEED + " IN THE HOPPER.")
-                        .at(world.wrecks[i][0], world.wrecks[i][1] + 40).life(1.6f)
-                        .color(0.55f, 0.95f, 1f).scale(1.05f));
+                world.addEffect(Effect.ring(world.wrecks[i][0], world.wrecks[i][1], 44, 1f, 0.84f, 0.3f)); // the count is on the HUD tracker
                 break;
             }
         }

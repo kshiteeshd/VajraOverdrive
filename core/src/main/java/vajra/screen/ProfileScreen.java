@@ -36,8 +36,8 @@ public class ProfileScreen implements FlowState {
     private static final String[] LABELS = {"BEST", "RUNS", "KILLS", "POINTS", "TIME"};
 
     // palette
-    private static final float[] CYAN = {0.35f, 0.85f, 0.95f};
-    private static final float[] CYAN_DIM = {0.10f, 0.28f, 0.34f};
+    private static final float[] CYAN = {UiTheme.GOLD_R, UiTheme.GOLD_G, UiTheme.GOLD_B}; // the page wears the one gold
+    private static final float[] CYAN_DIM = {0.55f, 0.46f, 0.10f};
     private static final float[] PANEL = {0.03f, 0.07f, 0.10f};
 
     private final Flow flow;
@@ -237,12 +237,7 @@ public class ProfileScreen implements FlowState {
             Ornament.markers(ui, Template.COL, menu.label(menu.selected()), menu.rowY(menu.selected()));
 
         // --- callsign plate
-        col(PANEL, 0.9f);
-        rect(plateX, PLATE_Y, PLATE_W, PLATE_H);
-        col(CYAN_DIM, 1f);
-        frame(plateX, PLATE_Y, PLATE_W, PLATE_H, 1);
-        ui.shapes.setColor(UiTheme.GOLD_R, UiTheme.GOLD_G, UiTheme.GOLD_B, editing ? 1f : 0.7f);
-        brackets(plateX - 4, PLATE_Y - 4, PLATE_W + 8, PLATE_H + 8, 14, 2);
+        Ornament.panel(ui, plateX, PLATE_Y, PLATE_W, PLATE_H, 6, UiTheme.GOLD_R, UiTheme.GOLD_G, UiTheme.GOLD_B, editing ? 1f : 0.6f, false);
 
         for (int i = 0; i < NAME_LEN; i++) {
             float x = cellsX + i * (CELL_W + CELL_GAP);
@@ -259,10 +254,7 @@ public class ProfileScreen implements FlowState {
         }
 
         // --- ledger panel: ruled rows
-        col(PANEL, 0.9f);
-        rect(ledgerX, ledgerY, LEDGER_W, ledgerH);
-        col(CYAN_DIM, 1f);
-        frame(ledgerX, ledgerY, LEDGER_W, ledgerH, 1);
+        Ornament.panel(ui, ledgerX, ledgerY, LEDGER_W, ledgerH, 7, UiTheme.GOLD_R, UiTheme.GOLD_G, UiTheme.GOLD_B, 0.5f, false);
         for (int i = 1; i < LABELS.length; i++)
             rect(ledgerX + 8, LEDGER_TOP - LEDGER_PAD - i * LEDGER_PITCH, LEDGER_W - 16, 1);
         col(CYAN, 0.9f);

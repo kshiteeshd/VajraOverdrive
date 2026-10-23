@@ -30,6 +30,30 @@ public final class Profile {
     /** THE CODEX: pages this pilot has unlocked across all runs (null until the first fold —
      *  length is set by the first fold, so this file never has to know the page count). */
     public boolean[] codex;
+    /** THE PRIMER: lessons this pilot has been taught (vajra.coach.Lessons ids). Null until the
+     *  first lesson; a lesson learned is learned for good. */
+    public boolean[] lessons;
+    /** THE STORY: the pre-game comic has been read once; it does not replay on every launch. */
+    public boolean storySeen;
+    /** THE SAVED RUN: the solo run left mid-flight, as vajra.world.RunSave's JSON; null when there is
+     *  none. It is what CONTINUE on the title loads; a run that ends (or a new game) clears it. */
+    public String run;
+
+    public boolean hasRun() { return run != null && !run.isBlank(); }
+
+    public boolean learned(int id) {
+        return lessons != null && id >= 0 && id < lessons.length && lessons[id];
+    }
+
+    public void learn(int id) {
+        if (id < 0) return;
+        if (lessons == null || lessons.length <= id) {
+            boolean[] grown = new boolean[Math.max(id + 1, vajra.coach.Lessons.COUNT)];
+            if (lessons != null) System.arraycopy(lessons, 0, grown, 0, lessons.length);
+            lessons = grown;
+        }
+        lessons[id] = true;
+    }
 
     /** A finished run folds into the campaign book: one more run, its kills, its score and
      *  its seconds; `best` keeps only the top single run. An abandoned run still counts —
@@ -74,6 +98,9 @@ public final class Profile {
         public Stats campaign, multiplayer;
         public String settings; // the settings' own JSON, so its clamps stay in one place
         public boolean[] codex; // the codex book, or null on a profile older than the book
+        public boolean[] lessons; // the primer, or null on a profile older than the primer
+        public boolean storySeen;
+        public String run; // the saved solo run's own JSON, or null
     }
 
     public static String serialize(Profile p) {
@@ -83,6 +110,9 @@ public final class Profile {
         d.multiplayer = p.multiplayer;
         d.settings = Settings.serialize(p.settings);
         d.codex = p.codex;
+        d.lessons = p.lessons;
+        d.storySeen = p.storySeen;
+        d.run = p.run;
         return JSON.toJson(d);
     }
 
@@ -99,6 +129,10 @@ public final class Profile {
         if (d.campaign != null) p.campaign.copyFrom(d.campaign);
         if (d.multiplayer != null) p.multiplayer.copyFrom(d.multiplayer);
         if (d.codex != null) p.recordCodex(d.codex);
+        if (d.lessons != null)
+            for (int i = 0; i < d.lessons.length; i++) if (d.lessons[i]) p.learn(i);
+        p.storySeen |= d.storySeen;
+        if (d.run != null && !d.run.isBlank()) p.run = d.run;
         Settings.deserialize(p.settings, d.settings);
     }
 }

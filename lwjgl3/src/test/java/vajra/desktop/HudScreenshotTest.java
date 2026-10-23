@@ -23,7 +23,7 @@ import vajra.screen.Hud;
 import vajra.screen.HudBars;
 import vajra.screen.FxImages;
 import vajra.screen.ShipRenderer;
-import vajra.screen.ShopUi;
+import vajra.screen.BayUi;
 import vajra.screen.Ui;
 import vajra.world.Score;
 import vajra.world.World;
@@ -81,18 +81,21 @@ class HudScreenshotTest {
                     checkBhu(c, failures);
 
                     w.ship.y = 4100; // back into Atala, then dock: the hangar over the run
-                    int[] d = shotShop(w, 0);
+                    w.hangar.coins = 400; // enough to see an affordable card and a short one
+                    w.hangar.forged[0] = true;
+                    w.hangar.forgeCharges[0] = 2;
+                    int[] d = shotShop(w, BayUi.HULLS);
                     writePng(d, "build/hud-scene-shop.png");
                     checkShop(d, failures);
-                    checkSectionTab(d, "BAY", failures);
+                    checkBay(d, "HULLS", failures);
 
-                    int[] p = shotShop(w, 1);
+                    int[] p = shotShop(w, BayUi.ARMS);
                     writePng(p, "build/hud-scene-shop-pattern.png");
-                    checkSectionTab(p, "FLEET", failures);
+                    checkBay(p, "ARMS", failures);
 
-                    int[] t = shotShop(w, 2);
+                    int[] t = shotShop(w, BayUi.ASTRA);
                     writePng(t, "build/hud-scene-shop-tatva.png");
-                    checkSectionTab(t, "REFIT", failures);
+                    checkBay(t, "ASTRA", failures);
 
                     ui.dispose();
                     batch.dispose();
@@ -121,12 +124,13 @@ class HudScreenshotTest {
             }
 
             /** The hangar docked, on one of its three tabs. */
-            int[] shotShop(World w, int tab) {
+            int[] shotShop(World w, int rail) {
                 fbo.begin();
                 Gdx.gl.glClearColor(CLEAR[0] / 255f, CLEAR[1] / 255f, CLEAR[2] / 255f, 1f);
                 Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-                ShopUi ui2 = new ShopUi(ui);
-                ui2.setTab(tab);
+                BayUi ui2 = new BayUi(ui);
+                ui2.syncTo(w);
+                ui2.setRail(rail);
                 hud.render(batch, w, ships, ui2);
                 IntBuffer buf = BufferUtils.newIntBuffer(W * H);
                 Gdx.gl.glReadPixels(0, 0, W, H, GL20.GL_RGBA, GL20.GL_UNSIGNED_BYTE, buf);
@@ -264,55 +268,27 @@ class HudScreenshotTest {
         check(combo == 0, "combo line clears when the chain breaks (" + combo + " px)", f);
     }
 
-    /** The docked hangar: the divider between the columns, the hull preview, a face card on
-     *  every weapon row and the highlighted pattern's stats line. The dim is ink-on-ink over
-     *  the test backdrop, so countClear still finds everything drawn on top of it. */
-    /** The hangar is now opaque and tabbed (ShopUi). These sample the real panel rects, so if
-     *  the layout moves they follow it. Each tab is checked on its own scene. */
+    /** The bay is opaque and carded. These sample the real rects off BayUi's constants, so if the
+     *  layout moves they follow it. */
     private static void checkShop(int[] px, List<String> f) {
         // opaque backdrop: the corner must be the hangar's ink, not the world showing through
         expectNear(px, 6, 714, 13, 13, 26, 16, "opaque hangar backdrop", f);
-        for (int i = 0; i < ShopUi.TAB_NAMES.length; i++) {
-            float y = ShopUi.railY(i);
-            check(countLit(px, (int) ShopUi.RAIL_X, (int) ShopUi.DIV_X,
-                    (int) y - 5, (int) y + 5) > 60,
-                    "tab " + ShopUi.TAB_NAMES[i] + " is drawn", f);
-        }
-        // the purse's right rail now: coins at the corner, then shards, derived from the real
-        // rects — anything hardcoded died the last time the wallet moved.
-        check(countGold(px, (int) (ShopUi.WALLET_X1 - ShopUi.WALLET_COINS_W),
-                (int) ShopUi.WALLET_X1,
-                (int) ShopUi.WALLET_Y, (int) (ShopUi.WALLET_Y + ShopUi.WALLET_H)) > 40,
-                "coins chip", f);
-        int shards = countLit(px,
-                (int) (ShopUi.WALLET_SELL_X + ShopUi.WALLET_SELL_W + ShopUi.WALLET_GAP),
-                (int) (ShopUi.WALLET_SELL_X + ShopUi.WALLET_SELL_W + ShopUi.WALLET_GAP
-                        + ShopUi.WALLET_SHARDS_W),
-                (int) ShopUi.WALLET_Y, (int) (ShopUi.WALLET_Y + ShopUi.WALLET_H));
-        check(shards > 40, "shards chip (" + shards + " px)", f);
-        // the wallet, sampled on its REAL rect. These were hardcoded numbers and the layout
-        // moved right underneath them, so the check went on passing a region that is now empty.
-        // countLit, not countGold: the scene carries 0 shards, so SELL ALL is correctly drawn
-        // DISABLED and its text is dim. The chips are present either way — the badge tick and
-        // the label are what this checks, not their brightness.
-        int sell = countLit(px, (int) ShopUi.WALLET_SELL_X,
-                (int) (ShopUi.WALLET_SELL_X + ShopUi.WALLET_SELL_W),
-                (int) ShopUi.WALLET_Y, (int) (ShopUi.WALLET_Y + ShopUi.WALLET_H));
-        check(sell > 40, "sell-all chip (" + sell + " px)", f);
+        // the three rail names sit centred in the header
+        int rails = countLit(px, 440, 840, (int) BayUi.HEAD_Y - 8, (int) BayUi.HEAD_Y + 18);
+        check(rails > 120, "the rail names are drawn (" + rails + " px)", f);
+        // the purse on the right: a coin and a count
+        int coins = countGold(px, 1120, 1216, (int) BayUi.HEAD_Y - 10, (int) BayUi.HEAD_Y + 18);
+        check(coins > 20, "the coin chip (" + coins + " px)", f);
     }
 
-    /** Every section tab fills its body with drawn ink — cards (BAY, FLEET) or rows and slugs
-     *  (REFIT). Both are full-bright against the ink backdrop, so a lit-pixel count over the
-     *  body's interior, derived off the live BODY_ constants, fails if a tab draws nothing. */
-    private static void checkSectionTab(int[] px, String section, List<String> f) {
-        int body = countLit(px, (int) ShopUi.BODY_X + 8, (int) ShopUi.M1 - 8,
-                (int) ShopUi.BODY_Y + 8, (int) ShopUi.BODY_TOP - 6);
-        check(body > 800, section + " tab draws its body (" + body + " px)", f);
-        // every tab names the run state on the answer line under the body
-        int answer = countClear(px,
-                (int) (ShopUi.BODY_CX - 120), (int) (ShopUi.BODY_CX + 120),
-                (int) (ShopUi.ANSWER_Y - 8), (int) (ShopUi.ANSWER_Y + 8));
-        check(answer > 40, section + " answer line (" + answer + " px)", f);
+    /** Every rail fills its body with drawn ink, and the foot names the run's state. */
+    private static void checkBay(int[] px, String rail, List<String> f) {
+        int body = countLit(px, 80, 1200, 130, (int) BayUi.RULE_Y - 8);
+        check(body > 1500, rail + " rail draws its body (" + body + " px)", f);
+        int status = countLit(px, 380, 900, (int) BayUi.STATUS_Y - 6, (int) BayUi.STATUS_Y + 14);
+        check(status > 80, rail + " status line (" + status + " px)", f);
+        int keys = countLit(px, 300, 980, (int) BayUi.FOOT_Y - 6, (int) BayUi.FOOT_Y + 14);
+        check(keys > 100, rail + " key strip (" + keys + " px)", f);
     }
 
     /** Pixels brighter than the panel ink. The hangar's backdrop and panels are (13,13,26), so

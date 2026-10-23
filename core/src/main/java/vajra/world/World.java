@@ -117,11 +117,56 @@ public class World {
     public float shipBeat, swarmBeat; // this seat's send-cadence debt
     public int shooter;         // whose round/contact is about to hurt someone: a roster id
     int enemySeq, dropSeq;      // the host's id ledgers for foes and ground loot
+    /** How many foes the world was BUILT with (ids 0..garrison-1). RunSave records which of them have
+     *  fallen; everything that spawns later (the warden, a bounty rogue, summons) has a higher id. */
+    public int garrison;
     public java.util.ArrayList<Enemy> enemies = new java.util.ArrayList<>();
     /** THE VOICES: the people of Patala live off the roster — a run's order of battle counts
      *  nothing of them, threatening none of them, and no behaviour law ever mistakes them
      *  for a combatant. They tick in their own pass and render in their own loop. */
     public final java.util.ArrayList<Enemy> voices = new java.util.ArrayList<>();
+    /** People talking mid-flight (bubbles over their hulls) and jobs' words on the HUD (toasts). */
+    public final java.util.ArrayList<Speech> speech = new java.util.ArrayList<>();
+    public final java.util.ArrayList<Toast> toasts = new java.util.ArrayList<>();
+
+    /** A person says a few short lines over their hull while the world keeps moving. */
+    public void say(Enemy who, String... lines) {
+        speech.add(new Speech(who, lines));
+    }
+
+    /** A title and a line on the HUD, for a few seconds. */
+    public void toast(String title, String line) {
+        toasts.add(new Toast(title, line));
+    }
+
+    /** The speeches that are up: for each person only the OLDEST one that is not done - a second
+     *  line for someone already talking waits its turn instead of opening a second box over the first. */
+    public java.util.List<Speech> heads() {
+        java.util.ArrayList<Speech> out = new java.util.ArrayList<>(2);
+        outer:
+        for (Speech s : speech) {
+            if (s.done()) continue;
+            for (Speech o : out) if (o.who == s.who) continue outer;
+            out.add(s);
+        }
+        return out;
+    }
+
+    /** True while this person has something to say right now. */
+    public boolean talking(Enemy who) {
+        for (Speech s : speech) if (s.who == who && !s.done()) return true;
+        return false;
+    }
+
+    private void tickWords(float dt) {
+        for (Speech s : heads()) s.update(dt); // only the one being said ticks; the rest wait
+        for (int i = speech.size() - 1; i >= 0; i--) if (speech.get(i).done()) speech.remove(i);
+        for (int i = toasts.size() - 1; i >= 0; i--) {
+            Toast t = toasts.get(i);
+            t.age += dt;
+            if (t.done()) toasts.remove(i);
+        }
+    }
     public final List<Bullet> bullets = new ArrayList<>();
     public final List<Effect> effects = new ArrayList<>();
     public final List<Pickup> pickups = new ArrayList<>(); // coins + health pops, swept by the hull
@@ -160,17 +205,35 @@ public class World {
      *  solo flight builds the world it always did. A multiplayer session seeds its shadow
      *  runs with one number so every pilot races the same orb spots, loot tables and boss
      *  blinks (terrain is fixed hand-tuned content; it does not vary per seed). */
+    /** Where a fresh run wakes: the camera clamps at the world's floor, so this rides the view's lower edge. */
+    public static final float SPAWN_Y = 90;
+
     public World(long seed) {
         orbRng = seed == 0 ? new Random(21) : new Random(seed ^ 0x004F21L);
         lootRng = seed == 0 ? new Random(90210) : new Random(seed ^ 0x90210L);
         ship = new Ship(width / 2, 800, ShipDef.ALL[0], hangar);
         new WorldGen(this).build();
+        garrison = enemySeq; // the static garrison is ids [0, garrison): what a saved run strikes off
         docking = new DockingSystem(this);
         cacheDirector = new CacheDirector(this);
         enemyDirector = new EnemyDirector(this);
         missions = new Missions(this);
-        Codex.unlock(this, Codex.ATALA);      // the run's opening record: where the pilot is
-        Codex.unlock(this, Codex.VAJRA);      // and what he carries
+        Codex.unlock(this, Codex.ATALA, true);  // the run's opening record: where the pilot is
+        Codex.unlock(this, Codex.VAJRA, true);  // and what he carries (no popup over the first frame)
+        // THE WAKING: low in the open sky, a hair above the bottom of the view, nose straight up
+        ship.x = width / 2f;
+        ship.y = SPAWN_Y;
+        ship.vx = ship.vy = 0;
+        ship.facing = (float) (Math.PI / 2);
+        cue(Cue.OPENING);
+    }
+
+    /** STORY CUES: moments the screen may stage as a cutscene. The world only names them; the
+     *  screen drains the queue (or throws it away, in a shared race). */
+    public final java.util.ArrayDeque<Cue> cues = new java.util.ArrayDeque<>();
+
+    public void cue(Cue c) {
+        cues.add(c);
     }
 
     public World() {
@@ -203,6 +266,18 @@ public class World {
     private boolean[] regionScored;
     private int lastRegion;
 
+    /** The bands whose first crossing has paid, sized on first use (RunSave reads and writes it). */
+    boolean[] regionScored() {
+        if (regionScored == null) {
+            regionScored = new boolean[regionStart.length];
+            regionScored[0] = true;
+        }
+        return regionScored;
+    }
+
+    /** A restored run is standing in the band it saved in: no "first crossing" fires on the first frame. */
+    void settleRegion() { lastRegion = currentRegionIndex(); }
+
     /** True when the WHOLE hull sits inside the marked bay under shop i. */
     public boolean inDockBox(int i, float x, float y) {
         return docking.inDockBox(i, x, y);
@@ -233,6 +308,7 @@ public class World {
                     .color(1f, 0.35f, 0.3f).scale(1.2f).life(1f).intro(0));
         popups.update(dt);
         if (boss == null) enemyDirector.trySpawnBoss(); // the frame the quota fills, he is simply there
+        gazeCheck();
         ship.update(dt, input, this);
         regionEntry();
         for (Orb o : orbs) o.update(dt, this, orbRng);
@@ -247,6 +323,7 @@ public class World {
         }
         // index loop: a summon (boss blink) may append to the roster mid-iteration
         for (int i = 0; i < enemies.size(); i++) enemies.get(i).update(dt, this, clock);
+        separateEnemies(); // bodies never sit on each other
         updateAstra(dt); // the forged weapon's cubes, after the roster has moved
         // Contact: each body shoves the other away along the contact line, opposite directions.
         // Impulses are velocity kicks — ship friction and Brain steering bleed them off naturally.
@@ -293,7 +370,8 @@ public class World {
         cacheDirector.update();
         cacheDirector.resolve();
         for (Enemy v : voices) v.update(dt, this, clock); // THE VOICES hover off the roster
-        Chatter.update(this); // the voices speak on their own events, once per run
+        Chatter.update(this); // the voices meet the pilot on their own events, once per run
+        tickWords(dt);
         missions.update(); // the bounty pays the frame the rogue is spent; wrecks pay as they're carried
         docking.update(dt); // after ship.update, so the bay test sees this frame's position
     }
@@ -570,6 +648,7 @@ public class World {
             regionScored[r] = true;
             score.add(Score.REGION);
             Codex.unlock(this, Codex.DEEPENING); // the descent teaches, the book takes the page
+            if (r == 1) cue(Cue.ATALA_GATE);
             popups.push(new Popups.Spec().text("THE DEEPENING").img("pravesh")
                     .at(ship.x, ship.y + 40).color(1f, 1f, 1f).scale(1.2f).life(1.8f));
         }
@@ -601,6 +680,46 @@ public class World {
     }
 
     private static final float[] ANCHOR = new float[2];
+
+    /** True when a body of half-size half centred here touches no rock and no shop wall. */
+    public boolean openFor(float x, float y, float half) {
+        return !blockedPx(x, y) && !blockedPx(x - half, y - half) && !blockedPx(x + half, y - half)
+                && !blockedPx(x - half, y + half) && !blockedPx(x + half, y + half);
+    }
+
+    /** Every pair of live bodies keeps its distance: two enemies that overlap are eased apart a few
+     *  pixels a frame, each into open air (the push goes through collide, so it never drives a body
+     *  into rock). The ruler and anyone held for a scene do not move; the others yield to them. */
+    private void separateEnemies() {
+        int n = enemies.size();
+        for (int i = 0; i < n; i++) {
+            Enemy a = enemies.get(i);
+            if (a.dead || a.ghost) continue;
+            for (int j = i + 1; j < n; j++) {
+                Enemy b = enemies.get(j);
+                if (b.dead || b.ghost) continue;
+                float need = (a.w + b.w) * 0.5f * 0.92f;
+                float dx = b.x - a.x, dy = b.y - a.y;
+                if (Math.abs(dx) >= need || Math.abs(dy) >= need) continue;
+                float d2 = dx * dx + dy * dy;
+                if (d2 >= need * need) continue;
+                float d = (float) Math.sqrt(d2);
+                if (d < 0.01f) { dx = 1; dy = 0; d = 1; } // an exact stack splits sideways
+                float push = Math.min(3f, (need - d) * 0.5f);
+                boolean fa = a.boss || a.parley, fb = b.boss || b.parley;
+                float sa = fa ? 0f : (fb ? 2f : 1f), sb = fb ? 0f : (fa ? 2f : 1f);
+                nudge(a, -dx / d * push * sa, -dy / d * push * sa);
+                nudge(b, dx / d * push * sb, dy / d * push * sb);
+            }
+        }
+    }
+
+    private void nudge(Enemy e, float dx, float dy) {
+        if (dx == 0 && dy == 0) return;
+        float[] c = collide(e.x + dx - e.w / 2, e.y + dy - e.h / 2, e.w, e.h);
+        e.x = c[0] + e.w / 2;
+        e.y = c[1] + e.h / 2;
+    }
 
     boolean spotClear(float x, float y) {
         return !blockedPx(x, y) && !blockedPx(x + 40, y) && !blockedPx(x - 40, y)
@@ -739,6 +858,9 @@ public class World {
         // DIFFICULTY CURVE: the loka grades every unit it places, hull and fire alike, so a
         // deeper band's roster is meaner without any new behaviour code. An elite's doubling
         // rides on top of this, at placement.
+        float rs = e.rankScale(); // a leader and an elite are bigger bodies than their court
+        e.w *= rs;
+        e.h *= rs;
         float hp = LokaTable.at(lokaIndex).hpScale;
         e.hp = e.maxHp = e.maxHp * hp;
         e.dispHp = e.maxHp;
@@ -812,7 +934,44 @@ public class World {
     /** Ready to START a charge: a release in hand, no charge already running, and no cooldown.
      *  Without the middle term, mashing F would stack twenty cages and queue twenty releases. */
     public boolean forgeReady() {
-        return forgeCd <= 0 && forgeWind <= 0 && hangar.hasForgeCharge(lokaIndex);
+        return forgeCd <= 0 && forgeWind <= 0 && readyAstra() >= 0;
+    }
+
+    // OPEN WORLD: every Astra a pilot has forged is carried on, whichever loka it came from.
+    // X picks which one F spends; a selection that has run dry falls to the deepest one that
+    // still has a release in hand.
+    /** The loka whose Astra the next F spends (chosen with X). */
+    public int astraLoka = 0;
+    /** The loka whose Astra is in flight (colours the cubes, the cage and the impacts). */
+    private int astraFired = 0;
+
+    /** Which loka's Astra would fly now, or -1 when none has a release in hand. */
+    public int readyAstra() {
+        if (hangar.hasForgeCharge(astraLoka)) return astraLoka;
+        for (int l = LokaTable.COUNT - 1; l >= 0; l--) if (hangar.hasForgeCharge(l)) return l;
+        return -1;
+    }
+
+    /** X: step the selection to the next loka whose Astra is forged (wrapping). */
+    public boolean cycleAstra() {
+        for (int step = 1; step <= LokaTable.COUNT; step++) {
+            int l = (astraLoka + step) % LokaTable.COUNT;
+            if (hangar.isForged(l)) {
+                astraLoka = l;
+                float[] c = TATVA_RGB[LokaTable.at(l).shards[0]];
+                popups.push(new Popups.Spec().text(astraName(l) + " x" + hangar.forgeCharges[l])
+                        .at(ship.x, ship.y + 60).color(c[0], c[1], c[2]).scale(1.2f).life(1.4f));
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** The Astra's name, from the tatva its loka pays: AKASHA ASTRA, AGNI ASTRA, ... */
+    public static String astraName(int loka) {
+        String[] t = {"AKASHA", "VAYU", "AGNI", "JALA", "PRITHVI"};
+        int[] pays = LokaTable.at(loka).shards;
+        return pays.length > 1 ? "PANCHA ASTRA" : t[pays[0]] + " ASTRA";
     }
 
     /** Cubes in flight or in the shell, oldest first. The renderer draws them; nothing else
@@ -823,12 +982,14 @@ public class World {
      *  they just have nowhere to go until the wind finishes. False when there is no release in
      *  hand, or one is already winding. */
     public boolean useForge() {
-        if (!forgeReady() || !hangar.spendForgeCharge(lokaIndex)) return false;
+        if (!forgeReady()) return false;
+        astraFired = readyAstra();
+        if (!hangar.spendForgeCharge(astraFired)) return false;
         forgeWind = FORGE_WIND;
         ship.winding = true;
         ship.trauma = Math.max(ship.trauma, 0.35f); // the hull shudders as it loads
 
-        float[] el = elementRgb();
+        float[] el = astraRgb();
         float cr = el[0] + (1f - el[0]) * CREST_LIFT;
         float cg = el[1] + (1f - el[1]) * CREST_LIFT;
         float cb = el[2] + (1f - el[2]) * CREST_LIFT;
@@ -845,7 +1006,7 @@ public class World {
             astra.add(c);
         }
         addEffect(Effect.ring(ship.x, ship.y, WIND_R_OUT, el[0], el[1], el[2]));
-        popups.push(new Popups.Spec().text("THE AKASHA ASTRA").img("taptam")
+        popups.push(new Popups.Spec().text("THE " + astraName(astraFired)).img("taptam")
                 .at(ship.x, ship.y + 70).color(cr, cg, cb).scale(1.6f).life(FORGE_WIND + 0.6f));
         return true;
     }
@@ -864,7 +1025,7 @@ public class World {
         hitStop = RELEASE_FREEZE;
         astraPunch = 1f;
 
-        float[] el = elementRgb();
+        float[] el = astraRgb();
         float cr = el[0] + (1f - el[0]) * CREST_LIFT;
         float cg = el[1] + (1f - el[1]) * CREST_LIFT;
         float cb = el[2] + (1f - el[2]) * CREST_LIFT;
@@ -937,9 +1098,12 @@ public class World {
         }
     }
 
-    public float crestR() { float[] e = elementRgb(); return e[0] + (1f - e[0]) * CREST_LIFT; }
-    public float crestG() { float[] e = elementRgb(); return e[1] + (1f - e[1]) * CREST_LIFT; }
-    public float crestB() { float[] e = elementRgb(); return e[2] + (1f - e[2]) * CREST_LIFT; }
+    /** The colour of the Astra in flight - its own loka's tatva, not the loka the pilot stands in. */
+    public float[] astraRgb() { return TATVA_RGB[LokaTable.at(astraFired).shards[0]]; }
+
+    public float crestR() { float[] e = astraRgb(); return e[0] + (1f - e[0]) * CREST_LIFT; }
+    public float crestG() { float[] e = astraRgb(); return e[1] + (1f - e[1]) * CREST_LIFT; }
+    public float crestB() { float[] e = astraRgb(); return e[2] + (1f - e[2]) * CREST_LIFT; }
 
     /** The ASTRA_CUBES nearest living enemies, nearest first. One pass of insertion into a
      *  caller-sized array: the roster is hundreds long and this runs once per release, so the
@@ -1117,6 +1281,32 @@ public class World {
         return bulletPool.obtain();
     }
 
+    // THE RULER'S GAZE. The ruler of a loka holds a piece of the bolt, and the piece tells him the
+    // loka is his. He feels his people fall through it: a few and he does not mind, more and the
+    // piece warms, enough and he looks up, all of the quota and he walks into the last band and
+    // waits. The player reads it on the HUD bar and in three short scenes.
+    public static final float GAZE_NOTICED = 0.25f, GAZE_WATCHING = 0.6f;
+    public int gazeStage; // 0 unaware, 1 noticed, 2 watching, 3 awake and waiting
+
+    /** 0..1: how much of the ruler's quota of fallen the pilot has already paid. */
+    public float gaze() {
+        if (boss != null) return 1f;
+        int need = 0, have = 0;
+        for (int i = 0; i < quota.length; i++) {
+            need += quota[i];
+            have += Math.min(kills[i], quota[i]);
+        }
+        return need == 0 ? 0f : have / (float) need;
+    }
+
+    private void gazeCheck() {
+        float g = gaze();
+        int stage = boss != null ? 3 : g >= GAZE_WATCHING ? 2 : g >= GAZE_NOTICED ? 1 : 0;
+        if (stage <= gazeStage) return;
+        gazeStage = stage; // a burst of kills that jumps a stage plays only the stage it landed on
+        cue(stage == 1 ? Cue.GAZE_NOTICED : stage == 2 ? Cue.GAZE_WATCHING : Cue.GAZE_ROUSED);
+    }
+
     /** The seal: every kind's kill quota filled — only then does Bala notice the ship. */
     public boolean quotaMet() {
         for (int i = 0; i < quota.length; i++) if (kills[i] < quota[i]) return false;
@@ -1186,6 +1376,7 @@ public class World {
     public void victory(Enemy b) {
         bossDead = true;
         won = true;
+        cue(Cue.BALA_FALLS);
         victoryT = 0;
         score.add(Score.BOSS);
         popups.push(new Popups.Spec().text("BALA SLAIN").img("bala").at(b.x, b.y + 40)
@@ -1195,7 +1386,7 @@ public class World {
                 e.dismissed = true;
                 e.commander = null;
             }
-        hangar.coins += 150;
+        hangar.coins += Math.round(150 * (float) Math.sqrt(LokaTable.at(lokaIndex).hpScale)); // the ruler's purse grows with his loka
         Chatter.wardenFalls(this); // the voices pay what a fall promised: Maya's letter
         for (int c = 72; c <= 88; c++) tileMapBoss.set(c, 93, TileMap.EMPTY);
         addEffect(Effect.ring(WORLD_CX, 20560, 260, 1f, 0.84f, 0.3f));
@@ -1328,7 +1519,7 @@ public class World {
     public void selectWeapon(int i) {
         if (i < 0 || i >= WeaponDef.ALL.length) return;
         hangar.weaponIndex = i;
-        ship.weapon.def = WeaponDef.ALL[i];
+        ship.weapon.def = hangar.weapon(i); // at the rank the pilot has tempered it to
     }
 
     public int currentRegionIndex() {

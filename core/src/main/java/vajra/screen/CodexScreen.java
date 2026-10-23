@@ -43,7 +43,7 @@ public class CodexScreen implements FlowState {
 
     @Override
     public boolean keyDown(int keycode) {
-        if (keycode == Input.Keys.ESCAPE || keycode == Input.Keys.Q) {
+        if (keycode == Input.Keys.ESCAPE) {
             flow.pop();
             return true;
         }
@@ -78,6 +78,7 @@ public class CodexScreen implements FlowState {
         Template.dim(ui, 1f); // opaque: its own screen, nothing bleeds through from below
         Ornament.frame(ui);
         Ornament.titleMarkers(ui, "CODEX", Template.TITLE_Y);
+        Ornament.panel(ui, 190, 290, 900, 210, 8, Template.accentR, Template.accentG, Template.accentB, 0.6f, false);
         ui.shapes.end();
 
         batch.setProjectionMatrix(ui.camera.combined);
@@ -85,16 +86,16 @@ public class CodexScreen implements FlowState {
         Template.title(ui, batch, "CODEX", Template.TITLE_Y, 1);
         Template.sub(ui, batch,
                 "PAGE " + (page + 1) + " OF " + Codex.COUNT + "   " + Codex.TITLE[page],
-                Template.TITLE_Y - 44, 1);
+                Template.TITLE_Y - 26, 1);
         if (seen[page]) {
             String[] lines = Codex.BODY[page].split("\n");
             float y = 470;
             for (String line : lines) {
                 Template.line(ui, batch, line, y, 0.9f);
-                y += PITCH;
+                y -= PITCH; // down the page: the first line first
             }
         } else {
-            Template.line(ui, batch, "STILL SEALED - THE WORLD HAS NOT SPOKEN THIS PAGE.", 470, 0.55f);
+            Template.line(ui, batch, "STILL SEALED - THE WORLD HAS NOT SPOKEN THIS PAGE.", 400, 0.55f);
         }
         Template.keys(ui, batch, Template.FOOT_Y, "W/S or A/D", "FLIP", "CLICK SIDES", "FLIP", "ESC", "BACK");
         batch.end();

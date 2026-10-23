@@ -79,11 +79,12 @@ final class WorldGen {
         buildCompounds(); // clean courtyard + rock compound around each shop: ring wall, door under the bay
         int posted = w.enemies.size();
         for (int i = 0; i < w.checkpoints.length; i++)
-            guards(w.checkpoints[i].x, w.checkpoints[i].y, i + 1);
+            guards(w.checkpoints[i].x, w.checkpoints[i].y, i + 1, Enemy.Kind.DIPAKA);
         for (int i = 0; i < w.shops.length; i++)
-            guards(w.shops[i][0], w.shops[i][1], i + 1);
+            guards(w.shops[i][0], w.shops[i][1], i + 1, Enemy.Kind.VANIJA);
         for (int j = posted; j < w.enemies.size(); j++) // shop/checkpoint guards hold their site:
             w.enemies.get(j).siteGuard = true;         // a cache trigger must never pull them off
+        relax(); // and nobody starts the run standing on anybody
         // TORCHES: each landmark offers candidates; a torch only exists where a wall face is
         // within reach — no wall, no light (the base always has something to sit against).
         // Angle: flame points away from its rock — 0 up, -90 right, 90 left, 180 down.
@@ -163,7 +164,7 @@ final class WorldGen {
         int[] placed = new int[Enemy.Kind.values().length];
         for (Enemy e : w.enemies) placed[e.kind.ordinal()]++;
         for (Enemy.Kind k : Enemy.Kind.values())
-            if (k != Enemy.Kind.BALA)
+            if (k != Enemy.Kind.BALA && !k.keeper()) // keepers hold posts: the ruler's count is of his soldiers
                 w.quota[k.ordinal()] = Math.min(placed[k.ordinal()], Math.max(3, placed[k.ordinal()] / 8));
         // THE VOICES: the people of the wave plan, off the roster, placed after the quota sum
         // so no kind's seal leans on any of them and the order of battle never changes.
@@ -249,7 +250,7 @@ final class WorldGen {
             w.add(e);
         }
         for (int i = 0; i < backups; i++) {
-            Enemy e = new Enemy(ring, ax + (i - (backups - 1) / 2f) * 60, ay - 200);
+            Enemy e = new Enemy(ring, ax + (i - (backups - 1) / 2f) * (Enemy.baseDraw(ring) + 14), ay - 200);
             e.commander = c;
             e.patrolAmp = drift; // same court motion as the ring; they still join the ring slot
             e.orbitRate = patrol / 100f;
@@ -275,10 +276,105 @@ final class WorldGen {
         }
     }
 
+    /** PLACEMENT PASS: after everything is down, ease apart any two bodies that were placed on top of
+     *  each other (the courts, the posts and the gate pairs were laid out before bodies had sizes).
+     *  Every pass reads ONE snapshot and applies all its pushes at once, so a layout that is mirrored
+     *  about the world axis stays mirrored: each half of the pair sees the same overlaps and moves the
+     *  same way. Each move goes through collide, so nobody is nudged into rock, and the spawn and home
+     *  points travel with the body so the leash does not drag it back. */
+    private void relax() {
+        java.util.List<Enemy> es = w.enemies;
+        int n = es.size();
+        float[] px = new float[n], py = new float[n];
+        int[] twin = new int[n]; // the mirror partner of a unit laid out in pairs about the axis, else -1
+        for (int i = 0; i < n; i++) {
+            twin[i] = -1;
+            Enemy a = es.get(i);
+            if (a.guard || Math.abs(a.x - World.WORLD_CX) < 1) continue;
+            for (int j = 0; j < n; j++) {
+                Enemy b = es.get(j);
+                if (j != i && !b.guard && b.kind == a.kind && Math.abs(b.x - (2 * World.WORLD_CX - a.x)) < 1
+                        && Math.abs(b.y - a.y) < 1) {
+                    twin[i] = j;
+                    break;
+                }
+            }
+        }
+        for (int pass = 0; pass < 16; pass++) {
+            java.util.Arrays.fill(px, 0);
+            java.util.Arrays.fill(py, 0);
+            boolean moved = false;
+            for (int i = 0; i < n; i++) {
+                Enemy a = es.get(i);
+                for (int j = i + 1; j < n; j++) {
+                    Enemy b = es.get(j);
+                    float need = (a.w + b.w) * 0.5f + 6;
+                    float dx = b.x - a.x, dy = b.y - a.y;
+                    if (Math.abs(dx) >= need || Math.abs(dy) >= need) continue;
+                    float d2 = dx * dx + dy * dy;
+                    if (d2 >= need * need) continue;
+                    float d = (float) Math.sqrt(d2);
+                    if (d < 0.01f) { // an exact stack: split along the axis, away from the centre line
+                        dx = a.x <= World.WORLD_CX ? 1 : -1;
+                        dy = 0;
+                        d = 1;
+                    }
+                    float push = (need - d) * 0.5f + 0.5f;
+                    px[i] -= dx / d * push;
+                    py[i] -= dy / d * push;
+                    px[j] += dx / d * push;
+                    py[j] += dy / d * push;
+                    moved = true;
+                }
+            }
+            if (!moved) break;
+            for (int i = 0; i < n; i++) { // twins move as mirror images of each other, exactly
+                int j = twin[i];
+                if (j > i) {
+                    float mx = (px[i] - px[j]) * 0.5f, my = (py[i] + py[j]) * 0.5f;
+                    px[i] = mx;
+                    px[j] = -mx;
+                    py[i] = my;
+                    py[j] = my;
+                }
+            }
+            for (int i = 0; i < n; i++)
+                if (px[i] != 0 || py[i] != 0) {
+                    Enemy e = es.get(i);
+                    if (Math.abs(e.x - World.WORLD_CX) < 0.5f) px[i] = 0; // the centre line stays the centre line
+                    if (twin[i] >= 0 && twin[i] < i) continue; // the right-hand twin is set from the left below
+                    shove(e, px[i], py[i]);
+                }
+            for (int i = 0; i < n; i++) { // and the right-hand twin is exactly the mirror image
+                int j = twin[i];
+                if (j >= 0 && j < i) {
+                    Enemy l = es.get(j), r = es.get(i);
+                    r.x = 2 * World.WORLD_CX - l.x;
+                    r.y = l.y;
+                    r.homeX = 2 * World.WORLD_CX - l.homeX;
+                    r.homeY = l.homeY;
+                    r.spawnX = 2 * World.WORLD_CX - l.spawnX;
+                    r.spawnY = l.spawnY;
+                }
+            }
+        }
+    }
+
+    private void shove(Enemy e, float dx, float dy) {
+        float[] c = w.collide(e.x + dx - e.w / 2, e.y + dy - e.h / 2, e.w, e.h);
+        float nx = c[0] + e.w / 2, ny = c[1] + e.h / 2;
+        e.homeX += nx - e.x;
+        e.homeY += ny - e.y;
+        e.spawnX += nx - e.x;
+        e.spawnY += ny - e.y;
+        e.x = nx;
+        e.y = ny;
+    }
+
     /** Region-graded shop/checkpoint guards: a rank-1 leader on the post with two sentries
      *  flanking below it. Region 0 stays open — that is where the player spawns. */
-    private void guards(float x, float y, int region) {
-        Enemy lead = new Enemy(World.GUARD[region][0], x, y + 90);
+    private void guards(float x, float y, int region, Enemy.Kind keeper) {
+        Enemy lead = new Enemy(keeper, x, y + 90); // the keeper of the post leads; the region grades its sentries
         lead.rank = 1;
         lead.sentry = true;
         lead.wakeRange = 700;
@@ -348,12 +444,14 @@ final class WorldGen {
         // GRAND ENTRY: LANCE sentries and HATAKA escorts hovering in the doorway under the arch
         for (float dx : new float[] { -64, 64 }) {
             Enemy e = new Enemy(Enemy.Kind.LANCE, 2600 + dx, 1790);
+            e.parley = true; // the honor guard speaks first (Scenes: ATALA_GATE), then fights
             e.sentry = true;
             e.wakeRange = 700;
             w.add(e);
         }
         for (float dx : new float[] { -150, 150 }) {
             Enemy e = new Enemy(Enemy.Kind.HATAKA, 2600 + dx, 1790);
+            e.parley = true;
             e.wakeRange = 900;
             w.add(e);
         }
@@ -364,7 +462,7 @@ final class WorldGen {
         court(Enemy.Kind.VAKRA, Enemy.Kind.AURIS, 3700, 3550, 6, 4, 70, 55, 900);
 
         // gate 4100: stationed above the doorway
-        guards(2600, 4300, 2);
+        guards(2600, 4300, 2, Enemy.Kind.DVARAPALA);
         // band 2 - Maya Vana: VAKRA courts under BHAVI command, gold seam liars
         sentryPair(2600, 4650);
         court(Enemy.Kind.BHAVI, Enemy.Kind.VAKRA, 2600, 5200, 4, 2, 80, 25, 900);
@@ -375,7 +473,7 @@ final class WorldGen {
         sentryPair(2600, 7100);
 
         // gate 7600
-        guards(2600, 7800, 3);
+        guards(2600, 7800, 3, Enemy.Kind.DVARAPALA);
         // band 3 - Svapna Mandala: MAYAVI illusion tier
         court(Enemy.Kind.MAYAVI, Enemy.Kind.BHAVI, 2600, 8500, 6, 4, 100, 30, 900);
         hatakaPair(2600, 8500);
@@ -385,7 +483,7 @@ final class WorldGen {
         sentryPair(2600, 11500);
 
         // gate 12000
-        guards(2600, 12200, 4);
+        guards(2600, 12200, 4, Enemy.Kind.DVARAPALA);
         // band 4 - Bala Mukha: the heavy approach, elites holding the side roads
         sentryPair(2600, 12550);
         court(Enemy.Kind.MAYAVI, Enemy.Kind.BHAVI, 2600, 13300, 6, 4, 110, 30, 900);
@@ -406,7 +504,7 @@ final class WorldGen {
         sentryPair(2600, 17200);
 
         // gate 17600: the boss gate
-        guards(2600, 17800, 5);
+        guards(2600, 17800, 5, Enemy.Kind.DVARAPALA);
         // band 5 - Boss: Bala: honor guard around the pit
         sentryPair(2600, 18100);
         for (float[] p : new float[][] { { 3000, 19084 }, { 2200, 19084 }, { 2600, 19584 }, { 2600, 18584 } }) {

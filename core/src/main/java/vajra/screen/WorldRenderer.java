@@ -31,6 +31,7 @@ public final class WorldRenderer {
     private final ShopImages shopSign;
     private final NebulaImages nebula;
     private final EnemyImages foes;
+    private final NpcImages people;
     private final BulletImages shots;
     private final FxImages fx;
     private final ShipRenderer shipR;
@@ -49,6 +50,7 @@ public final class WorldRenderer {
         this.shopSign = new ShopImages();
         this.nebula = new NebulaImages();
         this.foes = new EnemyImages();
+        this.people = new NpcImages();
         this.shots = new BulletImages();
         this.fx = new FxImages();
         this.shipR = new ShipRenderer(fx);
@@ -133,10 +135,15 @@ public final class WorldRenderer {
             }
         }
         for (Enemy v : world.voices) { // THE VOICES: people wear the eye's blue, off the roster
-            if (v.x + v.w / 2 > l && v.x - v.w / 2 < l + viewW && v.y + v.h / 2 > b && v.y - v.h / 2 < b + viewH) {
-                batch.setColor(0.55f, 0.95f, 1f, 1f);
-                foes.draw(batch, v, world.time());
-                batch.setColor(1, 1, 1, 1);
+            if (v.x + 40 > l && v.x - 40 < l + viewW && v.y + 60 > b && v.y - 40 < b + viewH) {
+                if (people.has(v)) {
+                    people.draw(batch, world, v);
+                } else { // no art for this person yet: the older tinted soldier body, never silent
+                    batch.setColor(0.55f, 0.95f, 1f, 1f);
+                    foes.draw(batch, v, world.time());
+                    batch.setColor(1, 1, 1, 1);
+                }
+                personTag(v, world);
             }
         }
         for (int i = 0; i < world.orbs.length; i++) {
@@ -393,7 +400,10 @@ public final class WorldRenderer {
         if (world.partner != null) shipR.draw(batch, world.partner, world.time()); // co-op: the other hull
         for (World.SeatHull gh : world.extras) // co-op: the extra hulls
             if (gh.ship != null) shipR.draw(batch, gh.ship, world.time());
-        for (Effect e : world.effects) fx.draw(batch, e);
+        for (Effect e : world.effects) {
+            if (e.type == Effect.DEATH) foes.drawDeath(batch, e);
+            else fx.draw(batch, e);
+        }
         batch.end();
     }
 
@@ -420,6 +430,26 @@ public final class WorldRenderer {
     private void seatBar(ShapeRenderer sh, Ship h, int seat) {
         sh.setColor(SeatColors.of(seat));
         sh.rect(h.x - 14, h.y - 30, 28, 5);
+    }
+
+    /** A person's mark: a gold ! bobbing over them until they have been met, and their name once the
+     *  pilot is near - so nobody has to guess that the blue shape is a person, or who. */
+    private void personTag(Enemy v, vajra.world.World world) {
+        float t = world.time();
+        if (!v.voiceMet) {
+            ui.hud.setColor(1f, 0.84f, 0.2f, 0.9f);
+            ui.hud.draw(batch, "!", v.x - 3, v.y + 52 + (float) Math.sin(t * 3.2f) * 3f);
+        }
+        vajra.ship.Ship hull = world.nearestHull(v.x, v.y);
+        float dx = hull.x - v.x, dy = hull.y - v.y;
+        if (dx * dx + dy * dy < 420f * 420f && !world.talking(v)) {
+            String n = v.voiceName == null || v.voiceName.equals("SCOUT") ? "THE SCOUT"
+                    : v.voiceName.equals("MAYA") ? "THE NINTH MAYA" : "KALIYA";
+            ui.caption.setColor(0.6f, 0.86f, 1f, 0.8f);
+            ui.caption.draw(batch, n, v.x - ui.measure(ui.caption, n) / 2f, v.y - 32);
+        }
+        ui.hud.setColor(1, 1, 1, 1);
+        ui.caption.setColor(1, 1, 1, 1);
     }
 
     /** Floating popups (Popups): world-space, topmost, punch-in scale and end-of-life fade.
@@ -482,6 +512,7 @@ public final class WorldRenderer {
 
     public void dispose() {
         foes.dispose();
+        people.dispose();
         nebula.dispose();
         orbs.dispose();
         loot.dispose();

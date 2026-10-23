@@ -1,0 +1,17 @@
+package vajra.world;
+
+/** A story moment the world has just reached. World only NAMES it (World.cue); the screen
+ *  decides whether to stage it, so logic never imports rendering and a headless test can assert
+ *  "this event fires exactly once". */
+public enum Cue {
+    OPENING,      // the run begins
+    ATALA_GATE,   // first crossing through the grand gate into Atala
+    BALA_WAKES,   // the commander wakes on the crossing into his arena
+    VOICE_SCOUT,  // first meeting: Uparichara's Scout
+    VOICE_MAYA,   // first meeting: the Ninth Maya
+    VOICE_KALIYA, // first meeting: Kaliya the Tide-Pilot
+    GAZE_NOTICED, // the ruler's piece warms: the first of his people have fallen
+    GAZE_WATCHING,// he looks up and speaks to the empty hall
+    GAZE_ROUSED,  // the quota is full: he takes his place in the last band
+    BALA_FALLS    // the ruler's last breath
+}

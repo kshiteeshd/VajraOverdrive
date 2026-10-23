@@ -42,7 +42,7 @@ class BossTest {
         for (Enemy.Kind k : Enemy.Kind.values()) {
             assertTrue(w.quota[k.ordinal()] <= placed[k.ordinal()],
                     k + " quota must fit the roster");
-            if (k != Enemy.Kind.BALA)
+            if (k != Enemy.Kind.BALA && !k.keeper()) // keepers hold posts: the ruler counts soldiers
                 assertTrue(w.quota[k.ordinal()] >= 3, k + " quota too soft to matter");
         }
     }

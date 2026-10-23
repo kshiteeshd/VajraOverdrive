@@ -67,30 +67,22 @@ logo wordmark back; that is an edit to the art and has not been made.
 | Key | Action |
 |---|---|
 | W A S D / arrows | Thrust, **screen-relative**: W is always up, D always right. Never turns the ship |
-| Q / E | Turn the nose by hand — Q counter-clockwise, E clockwise |
-| SPACE / LMB | Fire. SPACE fires along the nose; LMB also swings the nose onto the cursor (twin-stick) |
+| Q / E | Turn the nose by hand — Q counter-clockwise, E clockwise. **Only** the nose: Q no longer cycles hulls |
+| SPACE / LMB | Fire. SPACE fires along the nose; LMB also swings the nose onto the cursor (twin-stick). A pilot who has not been taught to fly is held to the first flight (see Tutorials) |
 | SHIFT | Boost, while thrusting — drains the energy meter |
-| C | Dash in the pushed direction (along the nose if no key held); 0.4 s i-frames — hull ghosts (50% alpha) and smears along the push: W up / S down / A left / D right; the cooldown starts at the **tail** of the smear, not its start, and 55% of the speed you had going in is handed back so a burst flows into the next push; shots pass through |
-| **F** | **Release the Akasha Astra** — spends one forged charge: 20 homing cubes leave the hull, each picks its own enemy and goes for it *through rock*, the hull is made whole, a life comes back, and 20 s of re-forging starts |
-| G / RMB | Shield, drains while held. Its cost scales with what actually lands, so a betray ring is cheap to eat and a Bhavi shell is not |
+| C | Dash in the pushed direction (along the nose if no key held); 0.4 s i-frames — hull ghosts (50% alpha) and smears along the push; shots pass through |
+| **F** | **Release the Astra you have chosen** — spends one forged charge of that loka's Astra: 20 homing cubes leave the hull, each picks its own enemy and goes for it *through rock*, the hull is made whole, a life comes back, and 20 s of re-forging starts |
+| **X** | Choose which loka's Astra F spends. Every Astra you forge is carried on to the next loka |
+| G / RMB | Shield, drains while held. Its cost scales with what actually lands |
 | V / B | Next / previous owned weapon |
-| 1–7 | Switch to that hull — a hull this run has not bought is a no-op |
-| Q / Z | Cycle to the previous / next hull you **own** |
-| H / ENTER | *(no key opens the hangar — docking is automatic, see Shops)* |
-| ESC | Close the hangar |
-| TAB | *(in the hangar)* next section: HULL / PATTERN / ASTRA |
-| Wheel | Zoom in / out, 0.5×–2.0× in 0.1 steps (scroll up = zoom in) |
-| F11 | Toggle fullscreen / back to the windowed size (the game OPENS fullscreen) |
-| F12 | Swap the window between 1280×720 and 1920×1080 |
-| T | Debug: take 15 hull damage on demand |
-| R | New run, after game over |
+| 1–7 / Z | Fit that hull / the next hull you own — a hull this run has not bought is a no-op |
+| ESC | The way out, everywhere: pause in flight, close the hangar, back from a page |
+| R | New run, after game over (a click no longer does it) |
+| F11 / F12 | Fullscreen / swap the window between 1280×720 and 1920×1080 |
 
-Hangar keys (while open): `TAB` next section (HULL / PATTERN / ASTRA), `1-7` select a hull, `B` buy
-the hull or its highlighted upgrade, `V` pattern cursor, `N` buy the highlighted pattern, `W`/`S`
-upgrade row, `X` sell all shards, `ENTER`/`ESC` close. The ASTRA tab has nothing to buy
-on it - shards forge themselves as they land.
-Selecting a hull or pattern takes effect immediately, same as the hotkeys — only owned hulls and
-patterns can be fitted.
+Docking is automatic: fly into a shop bay and hold still.
+
+Bay keys (while open): `TAB` next rail (HULLS / ARMS / ASTRA), `A`/`D` move along the strip, wheel or cards, `W`/`S` between the hull strip and its tier cards, `ENTER` buys or fits, `1-7` jump to a hull, `X` sells every shard, `ESC` closes. See *The bay* below.
 
 **Dynamic zoom — speeding pulls the view BACK, never in.** libGDX's `OrthographicCamera.update()`
 builds its projection as `setToOrtho(zoom * -viewportWidth/2, zoom * +viewportWidth/2, ...)`, so the
@@ -104,6 +96,66 @@ asks for more: ship speed normalized against 520 px/s, or pressure (6+ hostile r
 Nose precedence is **cursor > Q/E > hold heading**: while LMB is held the nose tracks the cursor and
 Q/E does nothing; otherwise Q/E turns it; let go and it keeps the heading it had. Thrust never
 contributes to turning.
+
+## Story, scenes and the ruler's gaze
+
+The pilot is **Indra**, king of the gods, come down from **Swarga**. **Trivikrama**'s third step broke
+the **Vajrayudha** - the bolt made of the sage **Dadhichi**'s bones - into seven pieces and hid one in
+each loka. The ruler of each holds a piece, and a piece tells its holder that the world around him is his.
+Nobody is a villain. The pilot beats each ruler, takes the piece and, in the end, forges the weapon whole.
+The whole script is in `docs/SCRIPT.md`; the plan for the world is `docs/WORLD_PLAN.md`.
+
+**The people** (`docs/NPC_BIBLE.md`): the blue figures on the map are Uparichara's Scout, the Ninth Maya
+and Kaliya - people with sheets of their own (sky blue, lamp eyes, a halo), a gold `!` until met, a first
+meeting that is a short cutscene, jobs kept on a **tracker on the HUD** (a panel of diamonds), a **toast**
+when a job opens or pays, and a speech bubble over their hull for what they say after. Nothing floats
+over the pilot's own hull any more.
+
+**Cutscenes** (`scene/`, `screen/Director.java`): `World` only *names* a story moment
+(`World.cue`); `GameScreen` stages it. While one plays the sim does not step and the HUD hides; two
+black **letterbox bands** slide on, top and bottom. The **narrator speaks in the bottom band**, plain,
+no box. Everyone else gets a **temple-panel bubble** beside them - chamfered corners, a double
+hairline, rangoli diamonds in the cuts, a lotus-and-arch finial, a name tab, kolam dots on the sill -
+sized to its line, so a longer line is a bigger box; the pilot's is a thought, tailed with stepping
+diamonds. Text types at 24 characters a second. ESC skips, any other key reads on. In a shared race
+scenes are skipped and only their effects are settled. Scenes: the opening, the grand gate (four
+guards ring the pilot and ask who they are - **once, on the first entry to a new loka**, and only
+then do they fight), and the gaze stages below.
+
+**The ruler's gaze** (`World.gaze()`, `HudGaze`): the kill quota is no longer hidden. A bar under
+the score fills as the pilot cuts down the ruler's people. At 25% his piece warms (a scene sweeps
+to the empty last band), at 60% he speaks to the empty hall, at 100% he walks into the pit and
+waits. Keepers (below) are not in the quota.
+
+## The bay (the hangar, redesigned)
+
+Temple panels, not menus (`BayUi`, `BayController`). Three rails, `TAB` between them: **HULLS** - a
+strip of seven hull cards and, under it, the three tier cards of the selected hull. **Nothing you do
+not own shows its look**: an unbought hull is a lock and its mark (MK-3), an unbought tier is a lock
+and ???, until you pay. **ARMS** - the weapon wheel; a pattern the pilot's loka does not offer yet is
+a lock, and the hub shows the chosen pattern's bars and its three **ranks** (ENTER on the pattern in
+your guns tempers it: II +25% damage, III +50% and an ability). **ASTRA** - one card per loka. Gold is
+yours, the accent is focus, dim is not yet. Pinned by `BayTest` and `EconomyTest`; prices, scaling
+and the reasoning are in `docs/ECONOMY.md`.
+
+## One UI
+
+Every page wears the same kit (`Ornament`, `Template`, `KeyCaps`): the corner-bracket frame, a
+wide-tracked gold heading flanked by diamonds with one divider under it, the **temple panel**
+(`Ornament.panel`) for every box, W/S to choose, ENTER to confirm, **ESC always the way out**, and the
+same footer key strip. The title menu says MULTIPLAYER and so does the page. `AllScreensTest` renders
+each page into `build/screen-*.png` and checks the frame.
+
+## Enemies: the Atala bible and sheets
+
+`docs/ENEMY_BIBLE.md` says what each of the nine Atala enemies is *for*, how it feels and how it
+moves. They are drawn by hand (`tools/enemy_art/`, run `python tools/gen_enemy_sheets.py`) on
+64×64 sheets, `assets/enemies/atala/<kind>.png`, in Atala's real colour code — pearl, gold, black
+apertures, lavender for illusion, ember only in rage. Each sheet holds idle ×4, rage ×4, hit ×2,
+death ×6 (gold glass) and the same for a leader (crest) and an elite (vents, halo). Beside the six
+soldiers stand three **keepers**, enemies with a job: the **Dvarapala** (gatekeeper) leads every
+interior gate's post, the **Dipaka** (lamp-keeper, mends comrades every 5 s) every checkpoint's, the
+**Vanija** (bay-master) every shop's. `EnemyShowcaseTest` renders them all in the real game.
 
 ## Coordinates
 
@@ -1118,3 +1170,23 @@ magnetism is fixed at 15), ammo/refill, the other six lokas and their bands, aud
 minimap, objective markers, a non-empty Bhu Loka opening, wall line-of-sight light occlusion, the
 home and settings screens still drawing raw text loops instead of the component kit, and art
 beyond the placeholder set.
+
+## The story
+
+The first time a pilot opens the game, after the studio card, the story plays panel by panel: 19 panels over
+three pages, each with the narrator's line typed in a black band beneath (SPACE finishes the line, then turns the
+panel; A goes back; ESC skips; it does not replay). The art is `assets/story/pN-K.png`, cut and cleaned from the
+three source pages in `story_panels/` by `python tools/story/split_panels.py`; the lines are in
+`core/.../screen/StoryScript.java`. In the story, Trivikrama is Vishnu, who asks Indra to lend him the Vajra,
+breaks it in seven and sends a piece to each loka, to test Indra's faith.
+
+## Continue
+
+The title opens on **CONTINUE** when the pilot left a solo run mid-flight, then NEW GAME, MULTIPLAYER and the rest;
+with no save it opens on NEW GAME. A run is parked by SAVE AND QUIT in the pause menu, by closing the window, and
+by a quiet autosave every 20 seconds (never during a cutscene or the hangar). The park is the whole run: the hull
+and where it hangs, the purse and everything bought, score and kills, the foes already fallen, checkpoints, caches
+and wrecks taken, the people already met and the jobs they gave. CONTINUE does not replay the opening or any first
+meeting. Foes still standing wake at full armour. NEW GAME over a save asks once (press ENTER again) before it
+erases it; dying with no lives left, or winning, ends the run and clears it. Multiplayer flights are never parked.
+The save lives in the pilot's `profiles.json` (`run`); tests write theirs under `build/testdata/`.

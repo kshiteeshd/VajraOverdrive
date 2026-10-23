@@ -5,12 +5,14 @@ package vajra.world;
  *  SURGE: an expanding FLOOD — a filled body of water that rushes out, fills its radius and
  *  then dissipates. Not a ring: the ring is the crest on its front, this is the volume behind it. */
 public class Effect {
-    public static final int SPARK = 0, RING = 1, FLASH = 2, SMOKE = 3, SURGE = 4;
+    public static final int SPARK = 0, RING = 1, FLASH = 2, SMOKE = 3, SURGE = 4, DEATH = 5;
     public int type;
     public float x, y, x2, y2;
     public float vx, vy, drag; // SPARK motion: px/s and per-second exponential decay
     public float phase, wobble; // SPARK: sideways sine, amplitude px/s, dies off with age
     public float age, life, radius, r, g, b;
+    /** DEATH: which kind's sheet, and which rank row of it, plays out its six death frames. */
+    public int kind, row;
     /** SURGE: how long the front spends travelling, as a share of `life`. After that the body
      *  holds its full radius and just fades — a wave that reached the walls, not one still going. */
     public float travel = 0.45f;
@@ -53,6 +55,19 @@ public class Effect {
         e.r = r;
         e.g = g;
         e.b = b;
+        return e;
+    }
+
+    /** A body's last six frames, drawn from its own sprite sheet at `size` px. */
+    public static Effect death(int kind, int row, float x, float y, float size) {
+        Effect e = new Effect();
+        e.type = DEATH;
+        e.kind = kind;
+        e.row = row;
+        e.x = x;
+        e.y = y;
+        e.radius = size;
+        e.life = 0.6f;
         return e;
     }
 

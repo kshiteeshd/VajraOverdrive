@@ -51,6 +51,9 @@ class ReproShipBulletsTest {
                     flow = new Flow();
                     flow.set(new HomeScreen(flow, ui, batch));
                     flow.keyDown(com.badlogic.gdx.Input.Keys.ENTER);
+                    { vajra.world.World fw = ((GameScreen) flow.top()).world(); // fly from mid-sky, no opening scene
+                      fw.cues.clear();
+                      fw.ship.y = 800; }
                     for (int i = 0; i < 30; i++) flow.render(1 / 60f); // past the fade
                     for (int i = 0; i < 2; i++) flow.render(1 / 60f);
 

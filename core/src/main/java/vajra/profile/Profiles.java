@@ -63,9 +63,29 @@ public final class Profiles {
         for (int k : w.kills) kills += k;
         Profile p = all.get(sel);
         if (w.multiplayer) p.recordMultiplayer(kills, w.score.points, w.time());
-        else p.recordRun(kills, w.score.points, w.time());
+        else {
+            p.recordRun(kills, w.score.points, w.time());
+            p.run = null; // the run is over: there is nothing left to continue
+        }
         p.recordCodex(w.codex); // the book travels with the pilot, not the run
         SaveGame.finish(w.hangar, w.score.points);
+        save();
+    }
+
+    /** THE SOLO SAVE: park a run in the active pilot so CONTINUE can wake it. A finished, recorded or
+     *  shared run is never parked (it has already ended, or it belongs to the room). */
+    public static synchronized boolean saveRun(World w) {
+        if (w.multiplayer || w.recorded || w.runEnded() || w.clientSeat) return false;
+        load();
+        all.get(sel).run = vajra.world.RunSave.capture(w);
+        save();
+        return true;
+    }
+
+    /** NEW GAME and every run's end: the pilot has no run to continue. */
+    public static synchronized void clearRun() {
+        load();
+        all.get(sel).run = null;
         save();
     }
 
@@ -117,7 +137,11 @@ public final class Profiles {
     /** Wipe the in-memory roster (the tests' fresh start; the file is untouched). */
     static synchronized void resetForTest() { loaded = true; all.clear(); all.add(new Profile()); sel = 0; }
 
-    private static FileHandle file() { return Gdx.app == null ? null : Gdx.files.local("profiles.json"); }
+    /** Where saves live: the working directory, or the folder in -Dvajra.data (the tests point it at
+     *  build/, so a test run never touches a pilot's real profiles.json). */
+    public static final String DATA = System.getProperty("vajra.data", "");
+
+    private static FileHandle file() { return Gdx.app == null ? null : Gdx.files.local(DATA + "profiles.json"); }
 
     private static void load() {
         if (loaded) return;

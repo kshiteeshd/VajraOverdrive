@@ -5,8 +5,9 @@ import vajra.world.LokaTable;
 
 /** The purse, the shard stock, what you own, and what you have forged.
  *
- *  <p>A RUN OWNS NOTHING ON EXIT. Coins, tiers, patterns and pieces are all built
- *  inside a run and die with it — starting a new game resets the hangar to its defaults. The
+ *  <p>A RUN OWNS NOTHING THAT OUTLIVES IT. Coins, tiers, patterns and pieces are all built
+ *  inside a run and die with it (a run left mid-flight is PARKED whole, hangar included, in the pilot's
+ *  profile - vajra.world.RunSave - and CONTINUE wakes it; ending the run discards it) — starting a new game resets the hangar to its defaults. The
  *  only thing that outlives a run is {@link #best}, the high score, which is a record rather
  *  than progress.
  *
@@ -36,6 +37,8 @@ public class Hangar {
     public final boolean[] forged = new boolean[LokaTable.COUNT]; // forged ONCE, permanently
     public final boolean[][] owned = new boolean[ShipDef.ALL.length][3];
     public final boolean[] weaponOwned = new boolean[WeaponDef.ALL.length];
+    /** Each pattern's temper: 0 = rank I, 1 = II, 2 = III (see WeaponDef.ranked). */
+    public final int[] weaponRank = new int[WeaponDef.ALL.length];
     public int shipIndex;
     public int weaponIndex;
 
@@ -63,12 +66,36 @@ public class Hangar {
 
     /** N in the hangar: unlock that pattern at its price. */
     public boolean buyWeapon(int i) {
-        if (i < 0 || i >= weaponOwned.length || weaponOwned[i]) return false;
+        if (i < 0 || i >= weaponOwned.length || weaponOwned[i] || !weaponOffered(i)) return false;
         int cost = WeaponDef.ALL[i].cost;
         if (coins < cost) return false;
         coins -= cost;
         weaponOwned[i] = true;
         return true;
+    }
+
+    /** A pattern is offered once the pilot has reached the loka that forges it - or already owns it. */
+    public boolean weaponOffered(int i) {
+        return i >= 0 && i < weaponOwned.length && (weaponOwned[i] || WeaponDef.ALL[i].minLoka <= loka);
+    }
+
+    /** Temper an owned pattern one rank: coins, and shards for rank III. */
+    public boolean buyRank(int i) {
+        if (i < 0 || i >= weaponOwned.length || !weaponOwned[i]) return false;
+        int r = weaponRank[i];
+        if (r >= WeaponDef.RANKS - 1) return false;
+        WeaponDef d = WeaponDef.ALL[i];
+        int shards = d.rankShards(r);
+        if (coins < d.rankCost(r) || shardCount() < shards) return false;
+        coins -= d.rankCost(r);
+        takeShards(shards);
+        weaponRank[i]++;
+        return true;
+    }
+
+    /** The pattern as the pilot actually fires it: its rank's damage and, at III, its ability. */
+    public WeaponDef weapon(int i) {
+        return WeaponDef.ALL[i].ranked(weaponRank[i]);
     }
 
     /** The next owned pattern in dir (+1/-1), wrapping — what the V/B hotkeys walk. */
@@ -97,13 +124,19 @@ public class Hangar {
         return n;
     }
 
+    /** Shards a hull's third tier takes: the deeper the hull, the more of the loka's metal. */
+    public static int tierShards(ShipDef d) {
+        return SHARD_COST + d.minLoka / 2;
+    }
+
     public boolean buy(ShipDef d, int tier) {
         if (tier < 1 || tier > 2 || !ownsShip(d.id) || owned[d.id][tier]) return false;
+        if (tier == 2 && !owned[d.id][1]) return false; // x.2 before x.3: the chain is the point
         int cost = d.upgrades[tier].cost;
         if (coins < cost) return false;
-        if (tier == 2 && shardCount() < SHARD_COST) return false;
+        if (tier == 2 && shardCount() < tierShards(d)) return false;
         coins -= cost;
-        if (tier == 2) takeShards(SHARD_COST);
+        if (tier == 2) takeShards(tierShards(d));
         owned[d.id][tier] = true;
         return true;
     }

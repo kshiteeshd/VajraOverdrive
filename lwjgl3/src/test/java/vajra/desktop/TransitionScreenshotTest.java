@@ -91,6 +91,9 @@ class TransitionScreenshotTest {
                     // 2. PLAY starts the run at once
                     flow.keyDown(com.badlogic.gdx.Input.Keys.ENTER);
                     check(flow.top() instanceof GameScreen, "PLAY hands over to the run", failures);
+                    { vajra.world.World fw = ((GameScreen) flow.top()).world(); // fly from mid-sky, no opening scene
+                      fw.cues.clear();
+                      fw.ship.y = 800; }
                     for (int i = 0; i < 30; i++) frame(); // 0.5 s > the 0.3 s fade
 
                     // 3. past the white fade: ship centre-screen and the HUD bars drawn

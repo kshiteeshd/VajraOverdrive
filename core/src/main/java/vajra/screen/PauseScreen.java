@@ -22,6 +22,8 @@ import vajra.world.World;
  *  <p>ESC resumes, Q quits, the mouse highlights and clicks. CODEX opens the pilot's page-book. */
 public class PauseScreen implements FlowState {
     static final String[] ROWS = {"RESUME", "SETTINGS", "CODEX", "QUIT TO TITLE"};
+    /** Solo, the last row saves the run for CONTINUE; a shared flight just leaves. */
+    static final String SOLO_QUIT = "SAVE AND QUIT";
     private static final float ROW_Y = 380;   // first row baseline
     private static final float PITCH = 56;    // row pitch
     private static final float HALF_W = 200;  // row hit half-width
@@ -38,7 +40,9 @@ public class PauseScreen implements FlowState {
         this.ui = ui;
         this.batch = batch;
         this.world = world;
-        this.menu = new UiMenu(ROWS, ROW_Y, PITCH, HALF_W, HALF_H);
+        String[] rows = ROWS.clone();
+        if (vajra.net.Net.session == null) rows[rows.length - 1] = SOLO_QUIT;
+        this.menu = new UiMenu(rows, ROW_Y, PITCH, HALF_W, HALF_H);
     }
 
     @Override
@@ -63,10 +67,6 @@ public class PauseScreen implements FlowState {
         if (menu.keyDown(keycode)) return true;
         if (keycode == Input.Keys.ENTER || keycode == Input.Keys.SPACE) {
             activate();
-            return true;
-        }
-        if (keycode == Input.Keys.Q) {
-            quit();
             return true;
         }
         return false;
@@ -96,7 +96,12 @@ public class PauseScreen implements FlowState {
     }
 
     private void quit() {
-        // Abandoning a run is still a run: its score, kills and seconds fold into the pilot's
+        if (vajra.net.Net.session == null) { // solo: the run is PARKED for CONTINUE, not ended
+            vajra.profile.Profiles.saveRun(world);
+            flow.set(new HomeScreen(flow, ui, batch));
+            return;
+        }
+        // A shared flight abandoned is still a run: its score, kills and seconds fold into the pilot's
         // book before dropping it, the same exit the natural end takes.
         vajra.profile.Profiles.endRun(world);
         if (vajra.net.Net.session != null) {
@@ -109,7 +114,6 @@ public class PauseScreen implements FlowState {
             flow.set(new LobbyScreen(flow, ui, batch));
             return;
         }
-        flow.set(new HomeScreen(flow, ui, batch)); // abandon the run
     }
 
     @Override
@@ -122,6 +126,10 @@ public class PauseScreen implements FlowState {
         Ornament.frame(ui);
         Ornament.titleMarkers(ui, "PAUSED", Template.TITLE_Y);
         Ornament.markers(ui, cx, menu.label(menu.selected()), menu.rowY(menu.selected()));
+        if (vajra.world.Codex.unread(world, vajra.profile.Profiles.active().codex) > 0) { // new pages: a lit diamond
+            Ornament.gold(ui, 1f);
+            Ornament.diamond(ui, cx + ui.measure(ui.hud, "CODEX") / 2f + 14, menu.rowY(2) - 5, 4f);
+        }
         ui.shapes.end();
 
         batch.setProjectionMatrix(ui.camera.combined);
@@ -129,7 +137,7 @@ public class PauseScreen implements FlowState {
         Template.title(ui, batch, "PAUSED", Template.TITLE_Y, 1);
         for (int i = 0; i < menu.count(); i++)
             Template.menuRow(ui, batch, menu.label(i), menu.selected(i), menu.rowY(i));
-        Template.keys(ui, batch, Template.FOOT_Y, "W/S", "SELECT", "ENTER", "CONFIRM", "ESC", "RESUME", "Q", "QUIT");
+        Template.keys(ui, batch, Template.FOOT_Y, "W/S", "SELECT", "ENTER", "CONFIRM", "ESC", "RESUME");
         batch.end();
     }
 }

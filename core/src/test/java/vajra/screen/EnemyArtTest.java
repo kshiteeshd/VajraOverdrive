@@ -16,6 +16,7 @@ class EnemyArtTest {
         File root = enemyRoot();
         assertNotNull(root, "no assets/atala/enemies from " + new File(".").getAbsolutePath());
         for (Enemy.Kind k : Enemy.Kind.values()) {
+            if (sheetOf(k) != null) continue; // a kind with a 64x64 sheet needs no idle_N folder
             File dir = new File(root, k.name().toLowerCase());
             assertTrue(dir.isDirectory(), "no folder for " + k);
             File[] idle = dir.listFiles((d, n) -> n.startsWith("idle_") && n.endsWith(".png"));
@@ -40,6 +41,64 @@ class EnemyArtTest {
             }
             assertEquals(n, seen.size(), "animation must touch all " + n + " frames");
         }
+    }
+
+    /** The keepers and the six soldiers wear 64x64 sheets: idle, rage, hit, death, ranked. */
+    @Test
+    void everySheetIsEightByFourCellsOfSixtyFour() throws Exception {
+        int sheets = 0;
+        for (Enemy.Kind k : Enemy.Kind.values()) {
+            File f = sheetOf(k);
+            if (f == null) continue;
+            sheets++;
+            java.awt.image.BufferedImage im = javax.imageio.ImageIO.read(f);
+            assertEquals(512, im.getWidth(), k + " sheet width");
+            assertEquals(256, im.getHeight(), k + " sheet height");
+            for (int col = 0; col < 8; col++) // every cell the game reads must hold a drawn body
+                for (int row = 0; row < 4; row++) {
+                    if (row == 1 && col >= 7) continue; // the last death frame may be nearly empty
+                    int px = 0;
+                    for (int y = 0; y < 64; y++)
+                        for (int x = 0; x < 64; x++)
+                            if ((im.getRGB(col * 64 + x, row * 64 + y) >>> 24) > 0) px++;
+                    assertTrue(px > 0, k + " cell " + col + "," + row + " is empty");
+                }
+        }
+        assertTrue(sheets >= 9, "the nine Atala archetypes ship sheets (found " + sheets + ")");
+    }
+
+    @Test
+    void theKeepersAreEnemiesWithAJob() {
+        assertTrue(Enemy.Kind.DVARAPALA.keeper() && Enemy.Kind.DIPAKA.keeper() && Enemy.Kind.VANIJA.keeper());
+        assertFalse(Enemy.Kind.LANCE.keeper() || Enemy.Kind.BALA.keeper());
+        assertTrue(Enemy.Kind.BALA.ordinal() < Enemy.Kind.DVARAPALA.ordinal(), "older ordinals never move");
+    }
+
+    @Test
+    void theSheetCellFollowsTheUnitsState() {
+        Enemy e = new Enemy(Enemy.Kind.LANCE, 0, 0);
+        int[] idle = EnemyImages.cell(e, 0);
+        assertEquals(0, idle[0]);
+        assertTrue(idle[1] < 4, "plain idle sits in the left half");
+        e.rank = 1;
+        assertEquals(2, EnemyImages.cell(e, 0)[0], "a leader wears the crest row");
+        e.elite = true;
+        assertEquals(3, EnemyImages.cell(e, 0)[0], "an elite wears the vents row");
+        e.hp = 1; // nearly dead: rage
+        assertTrue(EnemyImages.cell(e, 0)[1] >= 4, "rage plays the right half");
+        e.hitFlash = 0.1f;
+        assertEquals(1, EnemyImages.cell(e, 0)[0], "a fresh hit shows the hit row");
+        assertEquals(0, EnemyImages.cell(e, 0)[1]);
+        assertEquals(5, EnemyImages.deathFrame(0.59f, 0.6f));
+        assertEquals(0, EnemyImages.deathFrame(0f, 0.6f));
+    }
+
+    private static File sheetOf(Enemy.Kind k) {
+        for (String p : new String[] { "assets/enemies/atala/", "../assets/enemies/atala/" }) {
+            File f = new File(p + k.name().toLowerCase() + ".png");
+            if (f.isFile()) return f;
+        }
+        return null;
     }
 
     private static File enemyRoot() {

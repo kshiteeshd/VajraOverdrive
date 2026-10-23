@@ -112,7 +112,7 @@ public class Brain {
                 float a = t * SPIN + (float) (slot * 2 * Math.PI / Math.max(1, n));
                 // the boss's ring stands well clear of his 96 px hull
                 float r = e.commander.boss ? 300
-                        : Math.max(SLOT_MIN, n * MATE / (float) (2 * Math.PI));
+                        : Math.max(SLOT_MIN, n * (e.w + 18) / (float) (2 * Math.PI));
                 tx = e.commander.x + (float) Math.cos(a) * r;
                 ty = e.commander.y + (float) Math.sin(a) * r;
             } else {
@@ -198,7 +198,7 @@ public class Brain {
         // separation: mates keep MATE px apart — more from a 96 px hull
         for (Enemy o : w.enemies) {
             if (o == e || o.dead) continue;
-            float need = (o.boss || e.boss) ? 170 : MATE;
+            float need = (o.boss || e.boss) ? 170 : (e.w + o.w) / 2f + 14; // size-aware: a door-ward needs more room than a scout
             float mx = e.x - o.x, my = e.y - o.y;
             float md2 = mx * mx + my * my;
             if (md2 < need * need && md2 > 0.01f) {

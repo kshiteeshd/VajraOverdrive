@@ -60,9 +60,10 @@ class EnemyPlacementTest {
     void hullsUnlockAsTheLokasDeepen() {
         assertTrue(LokaTable.shipUnlocked(0, 1), "Kite opens in Atala");
         assertFalse(LokaTable.shipUnlocked(0, 2), "Mk-3 waits for Vitala");
-        assertTrue(LokaTable.shipUnlocked(1, 3));
-        assertFalse(LokaTable.shipUnlocked(1, 6), "Vajra-7 waits for Talatala");
-        assertTrue(LokaTable.shipUnlocked(3, 6));
+        assertTrue(LokaTable.shipUnlocked(1, 2), "Mk-3 opens at Vitala");
+        assertFalse(LokaTable.shipUnlocked(1, 3), "one hull per loka: Mk-4 waits for Sutala");
+        assertFalse(LokaTable.shipUnlocked(4, 6), "Vajra-7 waits for Rasatala");
+        assertTrue(LokaTable.shipUnlocked(5, 6));
         for (int i = 1; i < ShipDef.ALL.length; i++) {
             int l = ShipDef.ALL[i].minLoka;
             assertTrue(LokaTable.shipUnlocked(l, i), ShipDef.ALL[i].name + " opens at its own loka");

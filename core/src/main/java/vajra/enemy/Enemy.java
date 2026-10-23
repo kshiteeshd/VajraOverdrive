@@ -10,11 +10,20 @@ public class Enemy {
     public enum Kind {
         MAYAVI(90, 4.2f, 105), HATAKA(45, 3.8f, 82), AURIS(35, 3.0f, 100),
         LANCE(50, 2.4f, 90), VAKRA(65, 3.4f, 118), BHAVI(85, 2.6f, 130),
-        BALA(1500, 0f, 110); // fireCd 0 = never auto-fires: BossBrain runs every attack
+        BALA(1500, 0f, 110), // fireCd 0 = never auto-fires: BossBrain runs every attack
+        // THE KEEPERS: enemies with a job. They stand what the world needs standing - a gate, a
+        // checkpoint, a hangar bay - and fight to keep it. Appended after BALA so every wire id
+        // and saved ordinal of the older kinds stays put.
+        DVARAPALA(150, 3.2f, 60), // gatekeeper: armoured door-ward, slow heavy shell
+        DIPAKA(60, 2.4f, 85),     // lamp-keeper: tends a checkpoint, mends its comrades
+        VANIJA(110, 2.9f, 55);    // bay-master: runs a hangar bay, never leaves it
 
         public final float hp;
         public final float fireCd; // 0 = never fires
         public final float speed;  // tier cruise: fodder plods, berserkers run
+
+        /** A keeper holds a post for the world rather than hunting for the ruler's quota. */
+        public boolean keeper() { return this == DVARAPALA || this == DIPAKA || this == VANIJA; }
 
         Kind(float hp, float fireCd, float speed) {
             this.hp = hp;
@@ -55,6 +64,15 @@ public class Enemy {
         GUN[Kind.VAKRA.ordinal()] = WeaponDef.mk("vakra fan")
                 .speed(300).damage(8).bulletSize(6).life(3.5f)
                 .colour(1.00f, 0.45f, 0.15f);                 // one round down the weave
+        GUN[Kind.DVARAPALA.ordinal()] = WeaponDef.mk("dvarapala shell")
+                .speed(250).damage(13).bulletSize(9).life(3.2f)
+                .colour(0.80f, 0.65f, 1.00f);                 // the door-ward's slow violet shell
+        GUN[Kind.DIPAKA.ordinal()] = WeaponDef.mk("dipaka spark")
+                .speed(380).damage(5).bulletSize(4).life(2.5f)
+                .colour(1.00f, 0.88f, 0.55f);                 // a lamp's quick warm spark
+        GUN[Kind.VANIJA.ordinal()] = WeaponDef.mk("vanija toll")
+                .speed(320).damage(9).bulletSize(6).life(3f)
+                .colour(1.00f, 0.80f, 0.30f);                 // the toll: one aimed gold coin
         GUN[Kind.BHAVI.ordinal()] = WeaponDef.mk("bhavi shell")
                 .speed(300).damage(12).bulletSize(9).life(3f)
                 .colour(1.00f, 0.35f, 0.20f);                 // one heavy shell, close range
@@ -72,6 +90,52 @@ public class Enemy {
     public static final float ARMS = 600; // call to arms: hit wakes sleepers this close, top 3 regions only
     public static final float RECOVER = 2f; // straight-home window after a knock, seconds
 
+    // --- SIZE BY HIERARCHY. The sheets are 64 px of art; a body is drawn smaller than that, by kind
+    //  (a scout is a small thing, a door-ward is a big one) and then by rank: a leader is a little
+    //  larger than its court and an elite larger again. The hitbox is the body's core, a bit inside
+    //  the drawn size, and grows with the same rank factor. ---
+    public static final float LEADER_SCALE = 1.12f, ELITE_SCALE = 1.25f;
+
+    /** Drawn size of a plain unit of this kind, px. */
+    public static float baseDraw(Kind k) {
+        switch (k) {
+            case AURIS: return 34;
+            case HATAKA: return 42;
+            case LANCE: return 38;
+            case VAKRA: case BHAVI: case MAYAVI: return 46;
+            case DVARAPALA: return 58;
+            case DIPAKA: return 42;
+            case VANIJA: return 52;
+            default: return 96; // Bala keeps his older art, drawn at his own box
+        }
+    }
+
+    /** Hitbox side of a plain unit of this kind, px. */
+    public static float hitSize(Kind k) {
+        switch (k) {
+            case AURIS: return 28;
+            case HATAKA: return 32;
+            case LANCE: return 28;
+            case VAKRA: return 36;
+            case BHAVI: case MAYAVI: return 38;
+            case DVARAPALA: return 44;
+            case DIPAKA: return 32;
+            case VANIJA: return 40;
+            default: return 96;
+        }
+    }
+
+    /** 1 for the rank and file, a little more for a leader, more again for an elite. The ruler is his own size. */
+    public float rankScale() {
+        return boss ? 1f : elite ? ELITE_SCALE : rank >= 1 ? LEADER_SCALE : 1f;
+    }
+
+    /** The size this unit is drawn at, px. */
+    public float drawSize() {
+        if (voice) return 48; // the people have sheets of their own (NpcImages)
+        return kind == Kind.BALA ? w : baseDraw(kind) * rankScale();
+    }
+
     public Kind kind;
     public float x, y, vx, vy;
     public float homeX, homeY;
@@ -86,6 +150,7 @@ public class Enemy {
     public float recover;   // seconds left of flying straight home after a knock, flair paused
     public boolean sentry;
     public boolean guard;   // stationed post: not part of the mirrored order of battle
+    public boolean parley;    // held at its post for a cutscene: no wake, no fire, until released
     public boolean siteGuard; // stands on a shop or checkpoint: ignores cache triggers
     public boolean elite;
     public boolean hunt;   // a cache ambush: converge straight on the ship, no ring, no leash
@@ -142,9 +207,8 @@ public class Enemy {
         this.homeY = y;
         this.spawnX = x;
         this.spawnY = y;
-        boolean small = kind == Kind.AURIS || kind == Kind.HATAKA || kind == Kind.LANCE;
-        this.w = kind == Kind.BALA ? 96 : (small ? 32 : 48);
-        this.h = kind == Kind.BALA ? 96 : (small ? 32 : 48);
+        this.w = hitSize(kind);
+        this.h = this.w;
         this.hp = this.maxHp = kind.hp;
         this.dispHp = kind.hp;
         this.speed = kind.speed;
@@ -153,7 +217,7 @@ public class Enemy {
     }
 
     public void update(float dt, World world, float t) {
-        if (dead) return;
+        if (dead || parley) return;
         if (fireTimer > 0) fireTimer -= dt;
         if (hitFlash > 0) hitFlash -= dt;
         if (contactCd > 0) contactCd -= dt;
@@ -167,6 +231,7 @@ public class Enemy {
             if (boss) { // the boss wakes on the crossing, not on proximity
                 if (world.deepestHullY() < World.BOSS_WAKE_Y) return;
                 active = true;
+                world.cue(vajra.world.Cue.BALA_WAKES);
                 world.orderRetinue(this);
             } else {
                 vajra.ship.Ship hull = world.nearestHull(homeX, homeY);
@@ -175,13 +240,16 @@ public class Enemy {
                 active = true;
             }
         }
+        if (kind == Kind.DIPAKA && !ghost && !routed) mend(world, dt);
         if (boss) BossBrain.think(this, world, dt, t);
         else Brain.think(this, world, dt, t);
+        float px0 = x, py0 = y;
         x += vx * dt;
         y += vy * dt;
         float[] c = world.collide(x - w / 2, y - h / 2, w, h);
         x = c[0] + w / 2;
         y = c[1] + h / 2;
+        notice(world, dt, px0, py0);
         fire(world);
     }
 
@@ -217,6 +285,66 @@ public class Enemy {
         }
     }
 
+    // AWARE OF ITS SURROUNDINGS: a unit that pushes against rock and goes nowhere for over a second
+    // finds the nearest open air and steps into it, and one that ever ends up inside rock is lifted
+    // out at once. (Overlap with mates is resolved by World.separateEnemies.)
+    private static final float STUCK_AFTER = 1.2f;
+    private float stuckT;
+
+    private void notice(World world, float dt, float px0, float py0) {
+        float want = (float) Math.sqrt(vx * vx + vy * vy);
+        float moved = (float) Math.sqrt((x - px0) * (x - px0) + (y - py0) * (y - py0));
+        if (want > 40 && moved < want * dt * 0.12f) stuckT += dt;
+        else stuckT = Math.max(0, stuckT - dt * 2);
+        if (stuckT > STUCK_AFTER || world.blockedPx(x, y)) unstick(world);
+    }
+
+    /** Step into the nearest open air, ring by ring; failing that, go home. */
+    private void unstick(World world) {
+        stuckT = 0;
+        float half = Math.max(12, w * 0.5f);
+        for (float r = 20; r <= 140; r += 24)
+            for (int k = 0; k < 8; k++) {
+                float a = (float) (k * Math.PI / 4);
+                float nx = x + (float) Math.cos(a) * r, ny = y + (float) Math.sin(a) * r;
+                if (world.openFor(nx, ny, half)) {
+                    x = nx;
+                    y = ny;
+                    vx = 0;
+                    vy = 0;
+                    return;
+                }
+            }
+        x = homeX;
+        y = homeY;
+        vx = 0;
+        vy = 0;
+    }
+
+    // THE LAMP-KEEPER'S WORK: every few seconds the lamp pulses and mends the comrades near it.
+    private static final float MEND_EVERY = 5f, MEND_R = 240f, MEND_FRAC = 0.12f;
+    private float mendT = MEND_EVERY;
+
+    private void mend(World w, float dt) {
+        if ((mendT -= dt) > 0) return;
+        mendT = MEND_EVERY;
+        boolean any = false;
+        for (Enemy o : w.enemies) {
+            if (o == this || o.dead || o.voice || o.ghost || o.hp >= o.maxHp) continue;
+            float dx = o.x - x, dy = o.y - y;
+            if (dx * dx + dy * dy > MEND_R * MEND_R) continue;
+            o.hp = Math.min(o.maxHp, o.hp + o.maxHp * MEND_FRAC);
+            any = true;
+        }
+        if (any) w.addEffect(Effect.ring(x, y, MEND_R, 1f, 0.9f, 0.5f));
+    }
+
+    /** The unit is past caring: badly hurt, hunting, betrayed, or the ruler in his last phase.
+     *  The sprite sheet's rage frames play for exactly this. */
+    public boolean raging() {
+        return hp < maxHp * 0.3f || hunt || betrayed || (boss && bossPhase >= 3);
+    }
+
     /** Which RANK_DAMAGE row this unit fires with: an elite outranks a commander outranks fodder.
      *  Public: the headless test pins which grade a unit fires with. */
     public int rankGrade() {
@@ -237,6 +365,7 @@ public class Enemy {
         // score phantom kills, drop phantom loot and delete the host's real drops.
         if (ghost && w.clientSeat) return false;
         if (boss && (bossInvuln || bossHidden)) return false; // stagger beats and blinks eat hits
+        parley = false; // struck first: the talking is over
         hp = Math.max(0, hp - amount);
         if (boss) bossTook[bossPattern] += amount; // MEMORY: what this pattern cost while it played
         hitFlash = 0.12f; // the hit strobe
@@ -265,6 +394,7 @@ public class Enemy {
         w.countKill(this);
         w.shooter = prev;
         w.addEffect(Effect.ring(x, y, boss ? 500 : 70, 1f, 0.84f, 0.35f));
+        if (!boss) w.addEffect(Effect.death(kind.ordinal(), elite ? 3 : rank >= 1 ? 2 : 0, x, y, drawSize()));
         int bits = boss ? 26 : elite ? 14 : 8; // the debris shower: bigger bodies throw more
         for (int i = 0; i < bits; i++)
             w.debris(x, y, boss ? 260 : 170, 1f, elite ? 0.9f : 0.84f, elite ? 0.2f : 0.35f);
