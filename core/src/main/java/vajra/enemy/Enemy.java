@@ -1,5 +1,7 @@
 package vajra.enemy;
 
+import vajra.audio.Sfx;
+
 import vajra.weapon.WeaponDef;
 import vajra.world.Effect;
 import vajra.world.World;
@@ -121,7 +123,8 @@ public class Enemy {
     // never simulates (the host runs the fight) and glides to its last snapshot truth.
     public int netId;
     public boolean ghost, gone, seen;
-    public float gx, gy;
+    public float gx, gy;        // a ghost's newest truth from the host
+    public float gvx, gvy, gAt; // its measured velocity and the clock it was last heard
     public boolean routed;
     public float routAge; // seconds since this unit started running
     public boolean betrayed; // HATAKA: the betray ring has already vented at half hull
@@ -256,9 +259,11 @@ public class Enemy {
         }
         if (hp > 0) {
             w.addEffect(Effect.spark(x, y, 1f, 0.9f, 0.6f));
+            w.sound(Sfx.HIT_ENEMY, x, y);
             return false;
         }
         dead = true;
+        w.sound(boss ? Sfx.EXPLODE_L : (elite || this.w >= 48) ? Sfx.EXPLODE_M : Sfx.EXPLODE_S, x, y);
         if (kind == Kind.HATAKA) betray(w); // and once more on the way down
         int prev = w.shooter;
         if (owner != 0) w.shooter = owner; // a guest's volley, resolved here: the kill is theirs

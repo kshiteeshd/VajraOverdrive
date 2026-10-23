@@ -1,5 +1,7 @@
 package vajra.weapon;
 
+import vajra.audio.Sfx;
+
 import vajra.enemy.Enemy;
 import vajra.world.Effect;
 import vajra.world.World;
@@ -59,7 +61,10 @@ public class Bullet {
         }
         if (w.blockedPx(x, y)) {
             // enemy fire is stopped by rock too: cover works both ways
-            if (hostile || !pierceWalls) expire(w);
+            if (hostile || !pierceWalls) {
+                if (!hostile) w.sound(Sfx.IMPACT, x, y); // your round strikes rock and whines away
+                expire(w);
+            }
         }
     }
 
@@ -92,6 +97,7 @@ public class Bullet {
         if (hostile) return;
         w.shooter = owner < 0 ? 0 : owner; // an unstamped blast is this seat's own
         if (aoe > 0) {
+            w.sound(Sfx.EXPLODE_M, x, y);
             w.areaDamage(x, y, aoe, damage);
             w.addEffect(Effect.ring(x, y, aoe, r, g, b));
         } else {

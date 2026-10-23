@@ -1,5 +1,8 @@
 package vajra.world;
 
+import vajra.audio.Sfx;
+import vajra.audio.Audio;
+
 import vajra.enemy.Brain;
 import vajra.enemy.Enemy;
 import vajra.ship.Hangar;
@@ -237,14 +240,8 @@ public class World {
         regionEntry();
         for (Orb o : orbs) o.update(dt, this, orbRng);
         clock += dt;
-        if (partner != null) { // the partner glide between packets, like everything else
-            partner.x += partner.vx * dt;
-            partner.y += partner.vy * dt;
-        }
-        for (SeatHull x : extras) if (x.ship != null) { // extras glide too
-            x.ship.x += x.ship.vx * dt;
-            x.ship.y += x.ship.vy * dt;
-        }
+        if (partner != null) glideHull(partner, dt); // the partner glides between packets
+        for (SeatHull x : extras) if (x.ship != null) glideHull(x.ship, dt);
         // index loop: a summon (boss blink) may append to the roster mid-iteration
         for (int i = 0; i < enemies.size(); i++) enemies.get(i).update(dt, this, clock);
         updateAstra(dt); // the forged weapon's cubes, after the roster has moved
@@ -304,6 +301,7 @@ public class World {
     private void collectCheckpoint(Checkpoint c) {
         if (c.collected || !c.touches(ship.x, ship.y)) return;
         c.collected = true;
+        sound(Sfx.CHECKPOINT);
         respawnCp = c;
         score.add(Score.CHECKPOINT);
         popups.push(new Popups.Spec().text("ANCHORED").img("pratishtha")
@@ -327,17 +325,19 @@ public class World {
         regionEntry();
         guestCheckpoints();
         for (Orb o : orbs) o.update(dt, this, orbRng); // the same drift the host's orbs take
-        if (partner != null) {
-            partner.x += partner.vx * dt;
-            partner.y += partner.vy * dt;
-        }
-        for (SeatHull x : extras) if (x.ship != null) { // extras glide here too
-            x.ship.x += x.ship.vx * dt;
-            x.ship.y += x.ship.vy * dt;
-        }
+        if (partner != null) glideHull(partner, dt); // the partner glides between packets
+        for (SeatHull x : extras) if (x.ship != null) glideHull(x.ship, dt);
         clock += dt;
         updateAstra(dt);
         ghostGlide(dt);
+        // THE JOINER'S LEAK: the host loop ages and retires its effects, this seat did not, so
+        // every exhaust puff, smoke wisp, ring and spark this machine added stayed on screen
+        // for ever (the smoke that never went away) and the list grew every frame (the lag).
+        for (int i = effects.size() - 1; i >= 0; i--) {
+            Effect e = effects.get(i);
+            e.update(dt);
+            if (e.done()) effects.remove(i);
+        }
         for (int i = bullets.size() - 1; i >= 0; i--) { // flight and expiry only; combat waits for the swarm
             Bullet b = bullets.get(i);
             b.update(this, dt);
@@ -372,15 +372,28 @@ public class World {
         for (Checkpoint c : checkpoints) collectCheckpoint(c);
     }
 
+    /** A mirrored hull between packets: it coasts on its last velocity and turns toward the
+     *  facing its pilot last reported, so the other pilot's nose is visible and moves smoothly. */
+    private static void glideHull(Ship h, float dt) {
+        h.x += h.vx * dt;
+        h.y += h.vy * dt;
+        if (!Float.isNaN(h.faceGoal))
+            h.facing += wrapAngle(h.faceGoal - h.facing) * (1f - (float) Math.exp(-18f * dt));
+    }
+
     /** Ghost render objects glide toward their last snapshot truth (10 Hz set, 60 Hz flow). */
     private void ghostGlide(float dt) {
-        float k = 1f - (float) Math.exp(-12f * dt);
+        float k = 1f - (float) Math.exp(-20f * dt);
         for (int i = enemies.size() - 1; i >= 0; i--) {
             Enemy g = enemies.get(i);
             if (!g.ghost) continue;
             if (g.gone) {
                 enemies.remove(i);
             } else {
+                if (clock - g.gAt < 0.25f) { // coast on the last truth until the next arrives
+                    g.gx += g.gvx * dt;
+                    g.gy += g.gvy * dt;
+                }
                 g.x += (g.gx - g.x) * k;
                 g.y += (g.gy - g.y) * k;
             }
@@ -398,6 +411,12 @@ public class World {
         for (Enemy e : enemies) {
             if (e.ghost && e.netId == id) {
                 e.gone = false;
+                float span = clock - e.gAt; // snapshot to snapshot: the foe's real velocity
+                if (span > 0.03f && span < 0.5f) {
+                    e.gvx += ((x - e.gx) / span - e.gvx) * 0.6f;
+                    e.gvy += ((y - e.gy) / span - e.gvy) * 0.6f;
+                }
+                e.gAt = clock;
                 e.gx = x;
                 e.gy = y;
                 e.seen = true;
@@ -417,6 +436,7 @@ public class World {
         e.dispHp = e.hp;
         e.gx = x;
         e.gy = y;
+        e.gAt = clock;
         e.seen = true;
         enemies.add(e);
         if (e.boss && boss == null) boss = e; // the warden shows on the guest's bar too
@@ -566,6 +586,7 @@ public class World {
         }
         if (r == lastRegion) return;
         lastRegion = r;
+        sound(Sfx.REGION); // a gate crossed into a new band
         if (!regionScored[r]) {
             regionScored[r] = true;
             score.add(Score.REGION);
@@ -577,6 +598,17 @@ public class World {
 
     /** What a death pays: the whole purse leaves as ONE fanned burst. Called from Enemy.hurt —
      *  retires and stand-downs never pay. */
+    /** A sound in the world, heard from the ship: quieter with distance, placed left or right by
+     *  where it happened. The bus is silence in every headless test. */
+    public void sound(Sfx s, float x, float y) {
+        Audio.at(s, x, y, ship.x, ship.y);
+    }
+
+    /** A sound with no place: the ship's own voice, a pickup under the hull. */
+    public void sound(Sfx s) {
+        Audio.ui(s);
+    }
+
     public void dropLoot(Enemy e) {
         loot.drop(this, lootRng, e);
     }
@@ -825,6 +857,7 @@ public class World {
     public boolean useForge() {
         if (!forgeReady() || !hangar.spendForgeCharge(lokaIndex)) return false;
         forgeWind = FORGE_WIND;
+        sound(Sfx.ASTRA_WIND); // the charge gathers
         ship.winding = true;
         ship.trauma = Math.max(ship.trauma, 0.35f); // the hull shudders as it loads
 
@@ -854,6 +887,8 @@ public class World {
      *  cube gets its own target and goes, the hull is mended, a life comes back, and the screen
      *  is told to freeze and pull back so the moment lands. */
     private void release() {
+        sound(Sfx.ASTRA_RELEASE);
+        if (lives < MAX_LIVES) sound(Sfx.LIFE_UP); // the life that comes back
         forgeCd = FORGE_CD;
         ship.winding = false;
         ship.hp = ship.maxHp();               // the release knits the hull back together
@@ -1071,6 +1106,7 @@ public class World {
         Bullet b = bulletPool.obtain();
         b.init(x, y, angle, def, power, dmgMult, false);
         bullets.add(b);
+        sound(Sfx.forWeapon(def, power), x, y); // the report: one per volley, the player rate-limits
         addEffect(Effect.flash(x, y, x + b.vx * 0.02f, y + b.vy * 0.02f, b.r, b.g, b.b)); // muzzle flash
         if (shotWire != null) shotWire.shot(shotOf(b)); // my round, announced so both skies match
     }
@@ -1092,6 +1128,7 @@ public class World {
         Bullet b = bulletPool.obtain();
         b.init(x, y, angle, def, 1f, dmgScale, true);
         bullets.add(b);
+        sound(Sfx.ENEMY_SHOT, x, y); // a foe fires: quieter with distance, placed by where it is
         addEffect(Effect.flash(x, y, x + b.vx * 0.04f, y + b.vy * 0.04f, b.r, b.g, b.b)); // muzzle flash
         if (shotWire != null) shotWire.shot(shotOf(b)); // hostile fire streams to the guest too
     }
@@ -1184,6 +1221,8 @@ public class World {
     /** Bala falls: the retinue stands down, the ring effect goes up, the purse changes hands,
      *  and the gold gate across the north corridor opens to the next loka. */
     public void victory(Enemy b) {
+        sound(Sfx.BOSS_DEATH);
+        sound(Sfx.VICTORY); // the fanfare opens after a beat of silence of its own
         bossDead = true;
         won = true;
         victoryT = 0;
@@ -1216,6 +1255,7 @@ public class World {
 
     /** Beam: instant line from (x,y) along angle, stops at the first wall or at range, and scalds what it crosses. */
     public void laser(float x, float y, float angle, float range, float r, float g, float b, float damage) {
+        sound(Sfx.SHOT_LASER, x, y);
         float dx = (float) Math.cos(angle), dy = (float) Math.sin(angle);
         float d = wallDist(x, y, dx, dy, range);
         float ex = x + dx * d, ey = y + dy * d;
