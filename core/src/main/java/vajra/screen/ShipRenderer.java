@@ -61,16 +61,19 @@ public class ShipRenderer {
      *  A left, D right (a bare burst follows the nose), squeezed across it.
      *
      *  <p>The hull is drawn {@code Ship.dip} px LOW while it is hit, shielding or bursting and
-     *  eases back up — the press-down that replaced the state ring. There is no halo. */
+     *  eases back up — the press-down that replaced the state ring. There is no halo. The hull
+     *  also RIDES the clips: mark 1's forged sheet plays the hit flash (once, per hull hit —
+     *  it overrides the blink cull, the flash is the feedback) and the bank lean while the
+     *  nose steers, easing back to wings level on the same glide the thrust uses. */
     public void draw(SpriteBatch batch, Ship s, float time) {
-        if (blinking(s)) return;
+        if (blinking(s) && !art.hitClipLive(s)) return; // the fresh hit's clip carries the flash
         boolean dash = s.dashTime > 0;
         float y = drawnY(s);
         // the smear is a world-axis scale, so it rides a transform matrix: batch scale would
         // apply before the hull's rotation and smear along the nose instead of the push
         if (dash) batch.setTransformMatrix(dashDeform(s));
         drawPlume(batch, s, time);
-        TextureRegion r = art.frame(s.def.id, variation(s), time);
+        TextureRegion r = art.frame(s, time);
         if (r != null) {
             float deg = (float) Math.toDegrees(s.facing) - 90f;
             batch.setColor(1, 1, 1, dash ? 0.5f : 1f);

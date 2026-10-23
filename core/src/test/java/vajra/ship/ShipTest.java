@@ -25,6 +25,17 @@ class ShipTest {
     private static final ShipControls NONE = controls(0, 0, 0, false, false, false, false);
 
     @Test
+    void theBankEasesIntoTheTurnAndBackToWingsLevel() {
+        World w = new World();
+        for (int i = 0; i < 62; i++) w.ship.update(0.016f, controls(0, 0, 1, false, false, false, false), w);
+        assertEquals(1f, w.ship.lean, 0.02f, "a held turn leans the bank to its cap");
+        for (int i = 0; i < 7; i++) w.ship.update(0.016f, controls(0, 0, -1, false, false, false, false), w);
+        assertTrue(Math.abs(w.ship.lean) < 0.25f, "crossing the turn releases through level");
+        for (int i = 0; i < 62; i++) w.ship.update(0.016f, NONE, w);
+        assertEquals(0f, w.ship.lean, 0.02f, "and settles back to wings level with no nose input");
+    }
+
+    @Test
     void thrustIsScreenRelative() {
         World w = new World();
         w.ship.facing = 0; // nose east: the old nose-relative scheme sent W east too
