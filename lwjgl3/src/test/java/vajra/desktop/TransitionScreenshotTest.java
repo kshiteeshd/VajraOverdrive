@@ -54,15 +54,15 @@ class TransitionScreenshotTest {
                     flow = new Flow();
                     flow.set(new HomeScreen(flow, ui, batch)); // exactly VajraGame's boot
 
-                    // 1. the idle title: the logo and the gold PLAY row (no ship, no hold)
+                    // 1. the idle title: the bronze name under the ruler and the lit PLAY leaf
                     int[] home = frame();
                     writePng(home, "build/trans-home.png");
-                    check(gold(home, 440, 840, 400, 540) > 50,
-                            "home frame shows the gold logo (" + gold(home, 440, 840, 400, 540) + " px)",
+                    check(gold(home, 330, 950, 600, 650) > 50,
+                            "home frame shows the gold name (" + gold(home, 330, 950, 600, 650) + " px)",
                             failures);
-                    // PLAY is the selected row: its gold text baseline is UI 300 -> screen 420
-                    check(gold(home, 560, 720, 400, 432) > 30,
-                            "home frame shows the gold PLAY row (" + gold(home, 560, 720, 400, 432) + " px)",
+                    // PLAY is the selected row: the pale leaf in hand sits at UI 482-518
+                    check(gold(home, 560, 720, 484, 516) > 30,
+                            "home frame shows the lit PLAY leaf (" + gold(home, 560, 720, 484, 516) + " px)",
                             failures);
 
                     // 1b. the PROFILE row opens the pilot's page; ESC hands back home
@@ -74,13 +74,13 @@ class TransitionScreenshotTest {
                             "PROFILE opens the pilot page", failures);
                     int[] profile = frame();
                     writePng(profile, "build/trans-profile.png");
-                    // the pilot's name in the brand face at UI 508 (bottom-up readback)
-                    check(gold(profile, 400, 880, 500, 545) > 30,
-                            "pilot page shows the name line (" + gold(profile, 400, 880, 500, 545) + " px)",
+                    // the pilot's name, one gold letter per cell at UI 462-496 (bottom-up readback)
+                    check(gold(profile, 400, 880, 458, 500) > 30,
+                            "pilot page shows the name line (" + gold(profile, 400, 880, 458, 500) + " px)",
                             failures);
                     // the ledger lines under it (whitish menu ink): BEST/RUNS/KILLS/POINTS/TIME
-                    check(bright(profile, 400, 880, 380, 475) > 50,
-                            "pilot page shows the ledger lines (" + bright(profile, 400, 880, 380, 475) + " px)",
+                    check(bright(profile, 400, 880, 290, 410) > 50,
+                            "pilot page shows the ledger lines (" + bright(profile, 400, 880, 290, 410) + " px)",
                             failures);
                     flow.keyDown(com.badlogic.gdx.Input.Keys.ESCAPE);
                     check(flow.top() instanceof HomeScreen, "ESC leaves the pilot page", failures);
@@ -100,8 +100,8 @@ class TransitionScreenshotTest {
                     check(shipsBright(game, 616, 664, 336, 384) > 150,
                             "run frame shows the ship at the camera centre (" + shipsBright(game, 616, 664, 336, 384) + " px)",
                             failures);
-                    check(green(game) > 150,
-                            "HUD hull bar still draws after the lights pass (" + green(game) + " px)",
+                    check(hullMeter(game) > 150,
+                            "HUD hull meter still draws after the lights pass (" + hullMeter(game) + " px)",
                             failures);
 
                     // 4. ESC freezes the run under a pause card; ESC again pops straight back
@@ -114,10 +114,10 @@ class TransitionScreenshotTest {
                     // back buffer is unreliable on some drivers): title glyphs land roughly
                     // top-down 145-190, so bottom-up 530-575 after PNG readback.
                     int[] pauseTitle = readPng("build/trans-pause.png");
-                    // paused FROM a run, the line-work wears the loka's colour code: Atala pays
-                    // Akasha, the lavender of TATVA_RGB[0] — not the menu screens' brand gold
-                    check(lav(pauseTitle, 500, 800, 530, 575) > 50,
-                            "PAUSED title in the loka accent (" + lav(pauseTitle, 500, 800, 530, 575) + " px)",
+                    // the menus no longer follow the loka's accent: the pause title is the bronze every
+                    // menu heading wears (the bazaar's one heading colour)
+                    check(gold(pauseTitle, 500, 800, 530, 575) > 50,
+                            "PAUSED title in bronze (" + gold(pauseTitle, 500, 800, 530, 575) + " px)",
                             failures);
                     check(bright(pause, 400, 880, 205, 275) > 100,
                             "run-state lines under the title (" + bright(pause, 400, 880, 205, 275) + " px)",
@@ -175,13 +175,14 @@ class TransitionScreenshotTest {
         return n;
     }
 
-    /** The green hull fill of the top-left bar block. */
-    private static int green(int[] px) {
-        int n = 0;
-        for (int y = 697; y < 707; y++)
-            for (int x = 14; x < 234; x++) {
+    /** The hull meter's fill in the vitals slab: verdigris (94,178,153) while the hull is sound,
+     *  on the hull row's centre line. */
+    private static int hullMeter(int[] px) {
+        int n = 0, y0 = (int) vajra.screen.HudBars.rowY(0) - 4, y1 = y0 + 8;
+        for (int y = y0; y < y1; y++)
+            for (int x = (int) vajra.screen.HudBars.BAR_X; x < (int) (vajra.screen.HudBars.BAR_X + vajra.screen.HudBars.BAR_W); x++) {
                 int p = px[y * W + x];
-                if (Math.abs(r(p) - 34) < 40 && Math.abs(g(p) - 214) < 40 && Math.abs(b(p)) < 40) n++;
+                if (Math.abs(r(p) - 94) < 40 && Math.abs(g(p) - 178) < 40 && Math.abs(b(p) - 153) < 40) n++;
             }
         return n;
     }
