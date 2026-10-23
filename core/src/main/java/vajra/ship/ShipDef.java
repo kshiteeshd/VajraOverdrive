@@ -111,12 +111,12 @@ public class ShipDef {
 
     // Hull ladder: Mk-1 is free, the pair per loka rises in price and in how good it is, so
     // a run's coin finds a decision ("buy the better hull now, or bank toward Vajra-7").
-    // TEST PRICING on the Kite (mark 2): bought for pocket change so its forged sheet is
-    // flyable early — restore 250 / 180 / 360 before the price ladder ships.
+    // TEST PRICING on marks 1-2: bought for pocket change so their forged sheets are
+    // flyable early — restore 120/300 on mark 1 and 250/180/360 on mark 2 before shipping.
     public static final ShipDef[] ALL = {
             ship(0, "Vajra Mk-1", "the first blade", 0, 0, 100, 1850, 375, 180, 1.8f, 1.2f, 1f, 0.84f, 0.3f, 0f,
-                    up("1.2", "Rapid Cycler", 120, 0.82f, 1f, 1f, 0f, 0f, 0f, 0f),
-                    up("1.3", "Aegis Plate", 300, 1f, 1f, 1f, 0f, 0f, 40f, 15f)),
+                    up("1.2", "Rapid Cycler", 10, 0.82f, 1f, 1f, 0f, 0f, 0f, 0f),
+                    up("1.3", "Aegis Plate", 20, 1f, 1f, 1f, 0f, 0f, 40f, 15f)),
             ship(1, "Kite Mk-2", "fast as rumor", 20, 0, 85, 2250, 435, 200, 2.0f, 1.0f, 0.3f, 0.8f, 1f, 0f,
                     up("2.2", "Light Frames", 10, 1f, 1f, 1f, 50f, 10f, 0f, 0f),
                     up("2.3", "Twin Link", 20, 0.80f, 1.25f, 1f, 0f, 0f, 0f, 0f)),
