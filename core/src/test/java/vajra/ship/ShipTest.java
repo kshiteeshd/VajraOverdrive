@@ -251,15 +251,19 @@ class ShipTest {
     }
 
     @Test
-    void damageAppliesInvulnerability() {
+    void damageRetakesHitsAfterTheShortGap() {
         World w = new World();
         Ship s = w.ship;
         float hp0 = s.hp;
         s.damage(15, w);
         assertEquals(hp0 - 15, s.hp, 0.001f);
-        assertTrue(s.invuln > 0);
+        assertTrue(s.invuln > 0, "the hit arms a short swallow (~5 ms)");
         s.damage(15, w);
-        assertEquals(hp0 - 15, s.hp, 0.001f, "invuln blocks the second hit");
+        assertEquals(hp0 - 15, s.hp, 0.001f, "within the gap the same frame doesn't double-count");
+        for (int i = 0; i < 3; i++) s.update(0.016f, NONE, w); // ~48 ms: the gap is long gone
+        s.damage(15, w);
+        assertEquals(hp0 - 30, s.hp, 0.001f, "and the hull takes hits continuously after that");
+        assertEquals(0f, s.hitT, 0.001f, "every hit re-punches the forged hit clock from zero");
     }
 
     @Test

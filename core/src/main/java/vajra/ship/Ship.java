@@ -56,8 +56,12 @@ public class Ship {
     /** THE FORGED BANK: -1..1, eased toward the hull's sideways push (A leans left, D leans
      *  right) — the tilt clip's driver in the mark-1 sheet. */
     public float lean;
-    /** How long damage swallowing lasts after a hull hit; mark 1's hit clip plays inside it. */
-    public static final float HIT_GRACE = 0.6f;
+    /** THE HIT CLOCK: seconds since the last hull hit. Every hit re-punches it from zero, so
+     *  a steady stream plays the forged hit clip continuously — it is not the mercy window. */
+    public float hitT = 99;
+    /** How long the hull swallows damage between hits: ~5 ms. A stream lands continuously,
+     *  and each landing re-punches the hit clock — the sheet's flash is the hit tell. */
+    public static final float HIT_GAP = 0.005f;
     /** True while the Akasha Astra is winding up. The renderer dips the hull further on this. */
     public boolean winding;
 
@@ -81,6 +85,7 @@ public class Ship {
     public void update(float dt, ShipControls in, World w) {
         trauma = Math.max(0, trauma - 1.6f * dt);
         if (invuln > 0) invuln -= dt;
+        hitT += dt; // the hit clock only ever climbs: hits set it back to zero
         if (iFrames > 0) iFrames -= dt;
         if (dashCd > 0) dashCd -= dt;
         boolean wasDashing = dashTime > 0; // the burst ended this frame: hand the speed back
@@ -244,7 +249,8 @@ public class Ship {
         }
         float actual = amount * (1f - def.damageReduction); // tank hulls ignore a fraction
         hp -= actual;
-        invuln = HIT_GRACE;
+        invuln = HIT_GAP;
+        hitT = 0; // every landing re-punches the forged hit clip from its first frame
         trauma = Math.min(1, trauma + 0.6f);
         dipT = DIP_TIME;
         if (hp <= 0) {

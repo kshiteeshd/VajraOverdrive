@@ -19,7 +19,7 @@ public class ShipImages {
     static final int IDLE_N = 8, HIT_N = 4, BANK_N = 3;
     static final int HIT_0 = IDLE_N, BANKL_0 = IDLE_N + HIT_N, BANKR_0 = BANKL_0 + BANK_N;
     static final int FRAME_N = BANKR_0 + BANK_N; // 18
-    static final float HIT_FPS = 12;            // the hit clip plays once: 4 frames, a third of a second
+    static final float HIT_FPS = 12;            // the hit beat: 4 frames, a third of a second
 
     private Texture forgeSheet;                    // mk1's forged sheet
     private final TextureRegion[][] forge = new TextureRegion[VARIATIONS][FRAME_N];
@@ -59,31 +59,30 @@ public class ShipImages {
         return reg[shipId][variation - 1];
     }
 
-    /** THE FLIGHT FRAME, mark 1: the hit clip runs once inside the hull-hit grace, the bank
-     *  clip leans with the hull's eased steering, and everything else idles (the mirage
-     *  sweeps, the primaries flutter). Every other ship keeps its one static PNG. Null when
-     *  the art is missing. */
+    /** THE FLIGHT FRAME, mark 1: hits re-punch the forged hit beat from its first frame
+     *  (a stream reads as continuous flash), the bank clip leans with the hull's strafe,
+     *  and everything else idles (the mirage sweeps, the primaries flutter). Every other
+     *  ship keeps its one static PNG. Null when the art is missing. */
     public TextureRegion frame(Ship s, float time) {
         if (s.def.id != 0 || forgeSheet == null) return get(s.def.id, ShipRenderer.variation(s));
-        int hit = hitFrame(s.invuln);
+        int hit = hitFrame(s.hitT);
         if (hit >= 0) return forge[ShipRenderer.variation(s) - 1][hit];
         int bank = bankFrame(s.lean);
         if (bank >= 0) return forge[ShipRenderer.variation(s) - 1][bank];
         return forge[ShipRenderer.variation(s) - 1][(int) (time * FORGE_FPS) % IDLE_N];
     }
 
-    /** True while the hit clip is live: the renderer lets it override the blink cull —
+    /** True while the hit beat is live: the renderer lets it override the blink cull —
      *  the flash IS the feedback. */
     public boolean hitClipLive(Ship s) {
-        return s.def.id == 0 && forgeSheet != null && hitFrame(s.invuln) >= 0;
+        return s.def.id == 0 && forgeSheet != null && hitFrame(s.hitT) >= 0;
     }
 
     // --- pure clip pickers: cell index into the tier row, or -1 for "not this clip" ---
 
-    static int hitFrame(float invuln) {
-        float age = Ship.HIT_GRACE - invuln;
-        if (invuln <= 0 || age < 0 || age >= HIT_N / HIT_FPS) return -1;
-        return HIT_0 + Math.min(HIT_N - 1, (int) (age * HIT_FPS));
+    static int hitFrame(float hitT) {
+        if (hitT < 0 || hitT >= HIT_N / HIT_FPS) return -1;
+        return HIT_0 + Math.min(HIT_N - 1, (int) (hitT * HIT_FPS));
     }
 
     static int bankFrame(float lean) {

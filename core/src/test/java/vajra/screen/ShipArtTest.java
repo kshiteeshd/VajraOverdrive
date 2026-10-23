@@ -40,19 +40,18 @@ class ShipArtTest {
         assertEquals(3 * 64, img.getHeight(), "one 64px tier row per variation: a, b, c");
     }
 
-    /** The clip pickers, headless: the hit flash plays once inside the hull-hit grace — fresh
-     *  grace walks the clip, past it the art falls back to the bank or the idle. The bank
-     *  picks its side by sign and its strength by thirds of the hull's lean; near-level leans
-     *  idle (a shallow frame adds nothing over the idle flutter). */
+    /** The clip pickers, headless: every hit re-punches the hit beat from its flash frame —
+     *  a stream reads as continuous flash — and past the beat the art falls back to the bank
+     *  or the idle. The bank picks its side by sign and its strength by thirds of the hull's
+     *  lean; near-level leans idle (a shallow frame adds nothing over the idle flutter). */
     @Test
     void theClipPickerReadsTheSheet() {
-        assertEquals(ShipImages.HIT_0, ShipImages.hitFrame(Ship.HIT_GRACE), "fresh hit: the clip starts");
-        assertEquals(ShipImages.HIT_0 + 1, ShipImages.hitFrame(Ship.HIT_GRACE - 0.13f), "second frame");
-        assertEquals(ShipImages.HIT_0 + 3, ShipImages.hitFrame(Ship.HIT_GRACE - 0.3f), "last frame");
-        assertEquals(-1, ShipImages.hitFrame(Ship.HIT_GRACE - 0.4f), "past the clip: idle again");
-        assertEquals(-1, ShipImages.hitFrame(0f), "no grace wins no clip");
+        assertEquals(ShipImages.HIT_0, ShipImages.hitFrame(0f), "fresh hit: straight to the flash");
+        assertEquals(ShipImages.HIT_0 + 1, ShipImages.hitFrame(0.13f), "second frame");
+        assertEquals(ShipImages.HIT_0 + 3, ShipImages.hitFrame(0.3f), "last frame");
+        assertEquals(-1, ShipImages.hitFrame(0.4f), "past the beat: idle again");
         assertEquals(-1, ShipImages.bankFrame(0f), "wings level idles");
-        assertEquals(ShipImages.BANKL_0 + 1, ShipImages.bankFrame(-0.4f), "a left lean leans left");
+        assertEquals(ShipImages.BANKL_0 + 1, ShipImages.bankFrame(-0.4f), "a left glide leans left");
         assertEquals(ShipImages.BANKL_0 + 2, ShipImages.bankFrame(-1f), "full lean reaches the hard bank");
         assertEquals(ShipImages.BANKR_0 + 2, ShipImages.bankFrame(1f), "and the right side is its mirror");
         assertEquals(ShipImages.BANKR_0 + 1, ShipImages.bankFrame(0.4f));
