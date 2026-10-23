@@ -28,10 +28,21 @@ class ShipArtTest {
         }
     }
 
+    /** Mark 1 flies THE FORGED SHEET (ship_forge/ShipForge.java): 64x64 cells, 8 idle frames
+     *  per tier row (a, b, c), the hit and bank clips parked after the idle block. */
+    @Test
+    void theForgedMark1SheetIsTheFlightArt() throws Exception {
+        File f = new File(assetsDir(), "vajra_ships/mk_1/mark1_sheet.png");
+        assertTrue(f.isFile(),
+                "mark 1's sheet is missing: run 'java ship_forge/ShipForge.java tools/forge_out' and copy mark1_sheet.png to assets/vajra_ships/mk_1/");
+        BufferedImage img = ImageIO.read(f);
+        assertEquals(18 * 64, img.getWidth(), "18 frames wide: idle 8, hit 4, bank 3 + 3");
+        assertEquals(3 * 64, img.getHeight(), "one 64px tier row per variation: a, b, c");
+    }
+
     /** Variation tracks the highest bought tier, so the ladder must be 1 -> 2 -> 3. */
     @Test
-    void variationFollowsTheBoughtTiers() {
-        vajra.world.World w = new vajra.world.World();
+    void variationFollowsTheBoughtTiers() {        vajra.world.World w = new vajra.world.World();
         w.hangar.coins = 9999; // test purse: the yard ships with 0
         vajra.ship.Ship s = w.ship;
         assertEquals(1, ShipRenderer.variation(s), "base tier ships with the hull");

@@ -28,6 +28,8 @@ tools/atala_map.png
 tools/gen_*.py
 tools/gen_popup_art.ps1
 tools/fix_wall_tiles.py
+ship_forge/out/
+tools/forge_out/
 
 # generated docs (rebuild with tools\collect-multiplayer.bat)
 code_notes/

@@ -70,7 +70,7 @@ public class ShipRenderer {
         // apply before the hull's rotation and smear along the nose instead of the push
         if (dash) batch.setTransformMatrix(dashDeform(s));
         drawPlume(batch, s, time);
-        TextureRegion r = art.get(s.def.id, variation(s));
+        TextureRegion r = art.frame(s.def.id, variation(s), time);
         if (r != null) {
             float deg = (float) Math.toDegrees(s.facing) - 90f;
             batch.setColor(1, 1, 1, dash ? 0.5f : 1f);
