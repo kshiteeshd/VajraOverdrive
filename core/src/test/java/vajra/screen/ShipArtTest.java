@@ -33,7 +33,7 @@ class ShipArtTest {
      *  block. Marks without a sheet fall back to their static PNGs (the test above). */
     @Test
     void theForgedSheetsAreTheFlightArt() throws Exception {
-        for (int mk = 1; mk <= 3; mk++) {
+        for (int mk = 1; mk <= 5; mk++) {
             File f = new File(assetsDir(), "vajra_ships/mk_" + mk + "/mark" + mk + "_sheet.png");
             assertTrue(f.isFile(),
                     "mark " + mk + "'s sheet is missing: run 'java ship_forge/ShipForge.java --mark " + mk
