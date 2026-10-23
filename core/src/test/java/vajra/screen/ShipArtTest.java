@@ -28,16 +28,20 @@ class ShipArtTest {
         }
     }
 
-    /** Mark 1 flies THE FORGED SHEET (ship_forge/ShipForge.java): 64x64 cells, 8 idle frames
-     *  per tier row (a, b, c), the hit and bank clips parked after the idle block. */
+    /** Every SHEETED MARK flies its forged sheet (ship_forge/ShipForge.java): 64x64 cells,
+     *  8 idle frames per tier row (a, b, c), the hit and bank clips parked after the idle
+     *  block. Marks without a sheet fall back to their static PNGs (the test above). */
     @Test
-    void theForgedMark1SheetIsTheFlightArt() throws Exception {
-        File f = new File(assetsDir(), "vajra_ships/mk_1/mark1_sheet.png");
-        assertTrue(f.isFile(),
-                "mark 1's sheet is missing: run 'java ship_forge/ShipForge.java tools/forge_out' and copy mark1_sheet.png to assets/vajra_ships/mk_1/");
-        BufferedImage img = ImageIO.read(f);
-        assertEquals(18 * 64, img.getWidth(), "18 frames wide: idle 8, hit 4, bank 3 + 3");
-        assertEquals(3 * 64, img.getHeight(), "one 64px tier row per variation: a, b, c");
+    void theForgedSheetsAreTheFlightArt() throws Exception {
+        for (int mk = 1; mk <= 2; mk++) {
+            File f = new File(assetsDir(), "vajra_ships/mk_" + mk + "/mark" + mk + "_sheet.png");
+            assertTrue(f.isFile(),
+                    "mark " + mk + "'s sheet is missing: run 'java ship_forge/ShipForge.java --mark " + mk
+                            + " tools/forge_out' and copy mark" + mk + "_sheet.png to assets/vajra_ships/mk_" + mk + "/");
+            BufferedImage img = ImageIO.read(f);
+            assertEquals(18 * 64, img.getWidth(), "18 frames wide: idle 8, hit 4, bank 3 + 3");
+            assertEquals(3 * 64, img.getHeight(), "one 64px tier row per variation: a, b, c");
+        }
     }
 
     /** The clip pickers, headless: every hit re-punches the hit beat from its flash frame —

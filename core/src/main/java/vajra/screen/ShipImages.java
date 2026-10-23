@@ -6,11 +6,11 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import vajra.ship.ShipDef;
 
-/** Player ship sprites. Mark 1 rides THE FORGED SHEET: ship_forge/ShipForge.java's 64x64
- *  render, 18 frames per tier row (a/b/c) in the sheet layout — idle 0..7, hit 8..11
- *  (flashes and sparks), left bank 12..14, right bank 15..17 — sliced on its own grid, no
- *  atlas needed. Every other ship keeps vajra_ships/mk_<n>/ship_<v>.png (one static
- *  variation per tier). */
+/** Player ship sprites. Any mark rides ITS FORGED SHEET when one exists: ship_forge/ShipForge.java,
+ *  vajra_ships/mk_<n>/mark<n>_sheet.png — 64x64 cells, 18 frames per tier row (a/b/c) in the
+ *  sheet layout — idle 0..7, hit 8..11 (flashes and sparks), left bank 12..14, right bank
+ *  15..17 — sliced on its own grid, no atlas needed. Every mark without a sheet keeps
+ *  vajra_ships/mk_<n>/ship_<v>.png (one static variation per tier). */
 public class ShipImages {
     private static final int VARIATIONS = 3;
     private static final int FORGE_FRAME = 64; // the sheet's cell
@@ -21,21 +21,22 @@ public class ShipImages {
     static final int FRAME_N = BANKR_0 + BANK_N; // 18
     static final float HIT_FPS = 12;            // the hit beat: 4 frames, a third of a second
 
-    private Texture forgeSheet;                    // mk1's forged sheet
-    private final TextureRegion[][] forge = new TextureRegion[VARIATIONS][FRAME_N];
+    private final Texture[] sheets = new Texture[ShipDef.ALL.length];  // one sheet per mark, or null
+    private final TextureRegion[][][] forge = new TextureRegion[ShipDef.ALL.length][VARIATIONS][FRAME_N];
     private final TextureRegion[][] reg = new TextureRegion[ShipDef.ALL.length][VARIATIONS];
 
     public ShipImages() {
-        forgeSheet = ImageKit.texture("vajra_ships/mk_1/mark1_sheet.png", true);
-        if (forgeSheet != null) {
+        for (ShipDef d : ShipDef.ALL) {
+            sheets[d.id] = ImageKit.texture(sheetPath(d.id), true);
+            if (sheets[d.id] == null) continue; // no forge sheet: the static PNGs serve this mark
             for (int t = 0; t < VARIATIONS; t++)
                 for (int f = 0; f < FRAME_N; f++)
-                    forge[t][f] = new TextureRegion(forgeSheet, f * FORGE_FRAME, t * FORGE_FRAME,
-                            FORGE_FRAME, FORGE_FRAME);
+                    forge[d.id][t][f] = new TextureRegion(sheets[d.id], f * FORGE_FRAME,
+                            t * FORGE_FRAME, FORGE_FRAME, FORGE_FRAME);
         }
         for (ShipDef d : ShipDef.ALL) {
+            if (sheets[d.id] != null) continue; // the forged sheet serves this mark
             for (int v = 0; v < VARIATIONS; v++) {
-                if (d.id == 0 && forgeSheet != null) continue; // the forged sheet serves mark 1
                 reg[d.id][v] = load(artPath(d.id, v + 1));
             }
         }
@@ -44,6 +45,11 @@ public class ShipImages {
     /** Ship ids are 0-based, folders are 1-based: mk_1 .. mk_7. */
     public static String artPath(int shipId, int variation) {
         return "vajra_ships/mk_" + (shipId + 1) + "/ship_" + variation + ".png";
+    }
+
+    /** A mark's forged sheet, next to its fallback PNGs: mk_<n>/mark<n>_sheet.png. */
+    public static String sheetPath(int shipId) {
+        return "vajra_ships/mk_" + (shipId + 1) + "/mark" + (shipId + 1) + "_sheet.png";
     }
 
     private TextureRegion load(String path) {
@@ -55,27 +61,28 @@ public class ShipImages {
      *  Tier is 1..3. Null when the art is missing. */
     public TextureRegion get(int shipId, int variation) {
         if (shipId < 0 || shipId >= reg.length || variation < 1 || variation > VARIATIONS) return null;
-        if (shipId == 0 && forgeSheet != null) return forge[variation - 1][0];
+        if (sheets[shipId] != null) return forge[shipId][variation - 1][0];
         return reg[shipId][variation - 1];
     }
 
-    /** THE FLIGHT FRAME, mark 1: hits re-punch the forged hit beat from its first frame
-     *  (a stream reads as continuous flash), the bank clip leans with the hull's strafe,
-     *  and everything else idles (the mirage sweeps, the primaries flutter). Every other
-     *  ship keeps its one static PNG. Null when the art is missing. */
+    /** THE FLIGHT FRAME for a sheeted mark: hits re-punch the forged hit beat from its first
+     *  frame (a stream reads as continuous flash), the bank clip leans with the hull's strafe,
+     *  and everything else idles (the mirage sweeps, the primaries flutter). A mark without
+     *  a sheet keeps its one static PNG. Null when the art is missing. */
     public TextureRegion frame(Ship s, float time) {
-        if (s.def.id != 0 || forgeSheet == null) return get(s.def.id, ShipRenderer.variation(s));
+        int v = ShipRenderer.variation(s) - 1;
+        if (sheets[s.def.id] == null) return get(s.def.id, v + 1);
         int hit = hitFrame(s.hitT);
-        if (hit >= 0) return forge[ShipRenderer.variation(s) - 1][hit];
+        if (hit >= 0) return forge[s.def.id][v][hit];
         int bank = bankFrame(s.lean);
-        if (bank >= 0) return forge[ShipRenderer.variation(s) - 1][bank];
-        return forge[ShipRenderer.variation(s) - 1][(int) (time * FORGE_FPS) % IDLE_N];
+        if (bank >= 0) return forge[s.def.id][v][bank];
+        return forge[s.def.id][v][(int) (time * FORGE_FPS) % IDLE_N];
     }
 
     /** True while the hit beat is live: the renderer lets it override the blink cull —
      *  the flash IS the feedback. */
     public boolean hitClipLive(Ship s) {
-        return s.def.id == 0 && forgeSheet != null && hitFrame(s.hitT) >= 0;
+        return sheets[s.def.id] != null && hitFrame(s.hitT) >= 0;
     }
 
     // --- pure clip pickers: cell index into the tier row, or -1 for "not this clip" ---
@@ -92,10 +99,7 @@ public class ShipImages {
     }
 
     public void dispose() {
-        if (forgeSheet != null) {
-            forgeSheet.dispose();
-            forgeSheet = null;
-        }
+        for (Texture t : sheets) if (t != null) t.dispose();
         for (TextureRegion[] row : reg) {
             for (TextureRegion r : row) {
                 if (r != null) r.getTexture().dispose();

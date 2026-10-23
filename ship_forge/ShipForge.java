@@ -29,7 +29,8 @@ public class ShipForge {
     static final String[] TIER = {"a", "b", "c"};
 
     // ------------------------------------------------------------------ palettes
-    enum Mat { MOON, TRIM, CRYSTAL, GOLD, FLAME }
+    enum Mat { MOON, TRIM, CRYSTAL, GOLD, FLAME, OBSID, FORGE, MOLTEN }
+    static int CUR = 1;   // the mark being rendered
 
     static int[][] ramp(Mat m) {
         switch (m) {
@@ -37,6 +38,9 @@ public class ShipForge {
             case TRIM:    return rgb(0x232845, 0x3d466f, 0x6a749b, 0x9aa4c4, 0xc9d0e6, 0xeef1fa);
             case CRYSTAL: return rgb(0x0b3552, 0x11708f, 0x1fb4cf, 0x6fe3ee, 0xc6f8ff, 0xf4ffff);
             case GOLD:    return rgb(0x4a361f, 0x7d5f2c, 0xb9954a, 0xe3c46e, 0xf7e49c, 0xfff6cf);
+            case OBSID:   return rgb(0x07060c, 0x14121f, 0x25223a, 0x413e5e, 0x74709a, 0xc4c0e6);
+            case FORGE:   return rgb(0x17100d, 0x33251b, 0x58402c, 0x85653f, 0xb8925c, 0xe9cc94);
+            case MOLTEN:  return rgb(0x4d0c04, 0xa02b07, 0xe2620d, 0xffa51c, 0xffdb64, 0xfff7cc);
             default:      return rgb(0x0e4a6b, 0x1a8fb0, 0x3fd0e6, 0x9cf0f6, 0xe2fcff, 0xffffff);
         }
     }
@@ -49,6 +53,16 @@ public class ShipForge {
 
     static final int[][][] RAMPS = new int[Mat.values().length][][];
     static { for (Mat m : Mat.values()) RAMPS[m.ordinal()] = ramp(m); }
+
+    /** the ramp for a material in the mark being rendered (Vitala's exhaust burns molten, not cyan) */
+    static int[][] R(Mat m) { return (CUR == 2 && m == Mat.FLAME) ? RAMPS[Mat.MOLTEN.ordinal()] : RAMPS[m.ordinal()]; }
+
+    /** the glowing material a surface's heat/sheen tints toward, or null */
+    static Mat tintTarget(Mat m) {
+        if (m == Mat.MOON || m == Mat.TRIM) return Mat.CRYSTAL;
+        if (m == Mat.OBSID || m == Mat.FORGE) return Mat.MOLTEN;
+        return null;
+    }
 
     // ------------------------------------------------------------------ parts
     static final class Part {
@@ -100,9 +114,30 @@ public class ShipForge {
         float ghost = 1.5f; // ghost spread in px
         float ghostA = 0.30f;
         int sparks = -1;    // hit frame index for sparks
+        float loop;         // 0..1 position in the idle loop (embers ride it)
+        float embers = 0;   // ember density
+    }
+
+    static final float[] HEART = {1.0f, 0.62f, 0.42f, 0.85f, 0.58f, 0.40f, 0.34f, 0.5f}; // double-beat of the forge
+
+    static Pose idle2(int i) {
+        Pose p = new Pose();
+        p.t = (float) (2 * Math.PI * i / IDLE);
+        p.loop = i / (float) IDLE;
+        p.bob = 0.42f * (float) Math.sin(p.t);
+        p.sx = 1 + 0.018f * (float) Math.sin(p.t + 0.5);
+        p.sy = 1 - 0.008f * (float) Math.sin(p.t + 0.5);
+        p.flap = 0.05f;
+        p.flame = 7.2f + 1.5f * (float) Math.sin(2 * p.t + 0.5) + 0.7f * (float) Math.sin(3 * p.t);
+        p.glow = HEART[i];
+        p.band = -1;
+        p.ghost = 0;
+        p.embers = 1;
+        return p;
     }
 
     static Pose idle(int i) {
+        if (CUR == 2) return idle2(i);
         Pose p = new Pose();
         p.t = (float) (2 * Math.PI * i / IDLE);
         p.bob = 0.55f * (float) Math.sin(p.t);
@@ -117,6 +152,16 @@ public class ShipForge {
     static Pose hit(int i) {
         Pose p = idle(0);
         p.sparks = i;
+        if (CUR == 2) {  // the forge flares, goes dark as the armour cracks, then re-lights
+            float[][] hv = {{0.92f, 2.0f, 1.07f, 0.93f, 0.12f, 1.6f, 2.5f}, {0.4f, 1.6f, 1.04f, 0.96f, 0.2f, 0.15f, 3f},
+                            {0f, 0.7f, 0.99f, 1.01f, 0.08f, 0.45f, 5f}, {0f, 0.2f, 1f, 1f, 0.02f, 0.8f, 6.5f}};
+            float[] h = hv[i];
+            p.flash = h[0]; p.bob = h[1]; p.sx = h[2]; p.sy = h[3]; p.sweep = h[4]; p.glow = h[5]; p.flame = h[6];
+            p.embers = i == 0 ? 3 : i == 1 ? 2 : 1;
+            p.loop = i * 0.21f;
+            p.ghost = 0;
+            return p;
+        }
         switch (i) {
             case 0: p.flash = 0.92f; p.bob = 2.0f; p.sx = 1.07f; p.sy = 0.93f; p.sweep = 0.20f; p.glow = 1.3f; p.flame = 3; p.ghost = 6f; p.ghostA = 0.5f; break;
             case 1: p.flash = 0.45f; p.bob = 1.6f; p.sx = 1.04f; p.sy = 0.96f; p.sweep = 0.30f; p.glow = 0.2f; p.flame = 4; p.ghost = 4.2f; p.ghostA = 0.35f; break;
@@ -131,7 +176,7 @@ public class ShipForge {
         p.bank = bank;
         p.sweep = 0.05f + 0.10f * Math.abs(bank);
         p.flame = 6.4f;
-        p.ghost = 1.2f + 2.6f * Math.abs(bank);  // the mirage smears sideways when it banks
+        p.ghost = CUR == 1 ? 1.2f + 2.6f * Math.abs(bank) : 0;  // the mirage smears sideways when it banks
         return p;
     }
 
@@ -222,6 +267,113 @@ public class ShipForge {
             pair(l, gp);
             Part fin = cap(0, 13f, 0, 19f, 0.5f, 0.2f, 6.2f, 0.8f, Mat.GOLD);
             l.add(fin);
+        }
+        return l;
+    }
+
+    static List<Part> build(Pose p, int tier) { return CUR == 2 ? mark2(p, tier) : mark1(p, tier); }
+
+    static float[] rotTip(float rx, float ry, float tx, float ty, float ang) {
+        float dx = tx - rx, dy = ty - ry, c = (float) Math.cos(ang), s = (float) Math.sin(ang);
+        return new float[]{rx + dx * c - dy * s, ry + dx * s + dy * c};
+    }
+
+    // ------------------------------------------------------------------ MARK 2 : VITALA
+    // Hatakeshvara's forge-realm, the river of hataka gold. Obsidian armour, molten veins, a heartbeat.
+    static List<Part> mark2(Pose p, int tier) {
+        List<Part> l = new ArrayList<>();
+        float g = p.glow;
+        float grow = tier == 2 ? 1.05f : 1f;
+        float rock = p.flap * (float) Math.sin(p.t);
+
+        // armour slabs (rock gently about their roots, like a breathing flank)
+        float[][] slabs = {{6, -2, 22, 8, 6.0f, 3.0f}, {6, 7, 20, 19, 5.0f, 2.4f}};
+        List<float[]> sl = new ArrayList<>();
+        for (float[] a : slabs) sl.add(a);
+        if (tier >= 1) sl.add(new float[]{7, -9, 17.5f, -4.5f, 3.6f, 2.0f});
+        for (int i = 0; i < sl.size(); i++) {
+            float[] a = sl.get(i);
+            float ang = p.sweep + rock * (i % 2 == 0 ? 1 : -1);
+            float[] t = rotTip(a[0], a[1], a[0] + (a[2] - a[0]) * grow, a[3] + (a[3] - a[1]) * 0 + (a[3] - a[1]) * (grow - 1), ang);
+            Part slab = cap(a[0], a[1], t[0], t[1], a[4], a[5], 1.2f, 2.4f, Mat.OBSID);
+            slab.groove = 0.25f;
+            pair(l, slab);
+            // the vein that runs down the middle of each slab
+            float[] v1 = {a[0] + (t[0] - a[0]) * 0.12f, a[1] + (t[1] - a[1]) * 0.12f};
+            float[] v2 = {a[0] + (t[0] - a[0]) * 0.80f, a[1] + (t[1] - a[1]) * 0.80f};
+            Part vein = cap(v1[0], v1[1], v2[0], v2[1], 0.75f, 0.4f, 3.45f, 0.5f, Mat.MOLTEN);
+            vein.emis = 0.85f * g + 0.15f;
+            pair(l, vein);
+        }
+        if (tier >= 2) { // outer horns
+            float[] t = rotTip(10, -6, 20f * grow, -23.5f, p.sweep * 0.8f);
+            Part h = cap(10, -6, t[0], t[1], 3.4f, 0.7f, 2.2f, 2.4f, Mat.OBSID);
+            pair(l, h);
+            Part hg = cap(10 + (t[0] - 10) * 0.45f, -6 + (t[1] + 6) * 0.45f, t[0], t[1], 1.0f, 0.3f, 4.2f, 0.4f, Mat.GOLD);
+            pair(l, hg);
+        }
+
+        // torso: broad, armoured, narrowing to the prow
+        Part front = cap(0, -19, 0, -2, 1.6f, 8.4f, 2f, 5.2f, Mat.OBSID);
+        front.groove = 0.3f;
+        Part back = cap(0, -2, 0, 16, 8.4f, 6.4f, 2f, 5.0f, Mat.OBSID);
+        back.groove = 0.3f;
+        l.add(front);
+        l.add(back);
+
+        // tusks: the horned prow of the beast
+        float sway = 0.04f * (float) Math.sin(p.t + 1f) + p.sweep * 0.5f;
+        float[] tt = rotTip(4.5f, -8, 8.6f, -26.5f, sway);
+        pair(l, cap(4.5f, -8, tt[0], tt[1], 3.0f, 0.6f, 3.2f, 2.6f, Mat.OBSID));
+        Part tg = cap(4.5f + (tt[0] - 4.5f) * 0.55f, -8 + (tt[1] + 8) * 0.55f, tt[0], tt[1] + 0.6f, 1.0f, 0.3f, 5.5f, 0.35f, Mat.MOLTEN);
+        tg.emis = 0.7f * g + 0.3f;
+        pair(l, tg);
+
+        // shoulders
+        pair(l, cap(9.5f, -6.5f, 9.5f, -2.5f, 3.4f, 3.0f, 3.4f, 3.0f, Mat.FORGE));
+
+        // spine vein
+        Part sp = cap(0, -12, 0, -4.5f, 0.55f, 0.8f, 7.15f, 0.4f, Mat.MOLTEN);
+        sp.emis = 0.9f * g + 0.1f;
+        l.add(sp);
+        Part sp2 = cap(0, 2.5f, 0, 13, 0.9f, 0.5f, 7.15f, 0.4f, Mat.MOLTEN);
+        sp2.emis = 0.8f * g + 0.1f;
+        l.add(sp2);
+
+        // the forge heart: a core that grows with the tier
+        float cr = tier == 0 ? 2.6f : tier == 1 ? 3.1f : 3.4f;
+        Part core = ell(0, -1f, cr, cr * 1.25f, 7.2f, 1.5f, Mat.MOLTEN);
+        core.emis = 0.85f * g + 0.15f;
+        l.add(core);
+
+        // twin exhausts, flickering out of step
+        pair(l, cap(3.6f, 14, 3.6f, 22, 2.8f, 2.2f, 1f, 2.4f, Mat.FORGE));
+        for (int side = -1; side <= 1; side += 2) {
+            float len = p.flame + side * 0.9f * (float) Math.sin(p.t * 2 + 1.1f);
+            Part fl = cap(side * 3.6f, 22, side * 3.6f, 22 + Math.max(2, len), 2.2f, 0.2f, 0.6f, 1.2f, Mat.FLAME);
+            fl.emis = Math.max(0.3f, g);
+            l.add(fl);
+        }
+
+        if (tier >= 1) {
+            pair(l, cap(8f, 10f, 11.5f, 21f, 2.8f, 1.4f, 1.4f, 2.0f, Mat.FORGE));   // exhaust sponsons
+            l.add(cap(0, -22, 0, -8, 0.8f, 1.9f, 7.1f, 1.0f, Mat.FORGE));          // prow ridge
+            pair(l, cap(2.9f, 5.5f, 2.9f, 11, 1.25f, 1.1f, 7.0f, 1.7f, Mat.FORGE)); // dorsal stacks
+            Part sg = ell(2.9f, 5.4f, 0.9f, 1.0f, 9.0f, 0.5f, Mat.MOLTEN);
+            sg.emis = 0.6f * g + 0.4f;
+            pair(l, sg);
+            // veins branching from the heart to the shoulders
+            Part b1 = cap(0, 2f, 4f, 3.4f, 0.65f, 0.55f, 6.5f, 0.4f, Mat.MOLTEN);
+            b1.emis = 0.75f * g + 0.15f;
+            pair(l, b1);
+            Part b2 = cap(4f, 3.4f, 7.4f, 5.4f, 0.55f, 0.45f, 5.0f, 0.4f, Mat.MOLTEN);
+            b2.emis = 0.75f * g + 0.15f;
+            pair(l, b2);
+        }
+        if (tier >= 2) {
+            l.add(ring(0, -1f, 6.4f, 7.0f, 0.74f, 8.4f, Mat.GOLD));                  // the hearth rim
+            pair(l, ell(9.5f, -4.5f, 2.3f, 3.2f, 6.4f, 1.0f, Mat.GOLD));              // gilded pauldrons
+            l.add(cap(0, -26.5f, 0, -22, 0.35f, 1.0f, 8f, 0.8f, Mat.GOLD));           // gilded crest
         }
         return l;
     }
@@ -326,7 +478,15 @@ public class ShipForge {
                 float avg = (nb(b, i - d, hc) + nb(b, i + d, hc) + nb(b, i - d * W, hc) + nb(b, i + d * W, hc)) * 0.25f;
                 t -= Math.min(0.28f, Math.max(0, (avg - hc) * 0.18f));
                 float tint = b.tint[i];
-                if (m == Mat.MOON || m == Mat.TRIM) {
+                if (m == Mat.OBSID) {   // volcanic glass: nearly black, hard glints, ember heat at the rim
+                    t = 0.07f + 0.26f * diff + 0.7f * Math.max(0, diff - 0.76f) / 0.24f;
+                    tint = Math.max(tint, (float) Math.pow(1 - nz, 1.7) * 0.9f);
+                    t -= Math.min(0.0f, 0);
+                } else if (m == Mat.FORGE) {
+                    t = 0.10f + 0.80f * diff;
+                } else if (m == Mat.MOLTEN) {
+                    t = Math.min(0.9f, 0.16f + b.em[i] * 0.52f + diff * 0.10f);
+                } else if (m == Mat.MOON || m == Mat.TRIM) {
                     // adularescence: blue sheen at grazing angles
                     float fr = 1 - nz;
                     if (m == Mat.MOON) tint = Math.max(tint, (float) Math.pow(fr, 1.4) * 1.1f);
@@ -368,17 +528,18 @@ public class ShipForge {
                     filled++;
                     int m = b.mat[i];
                     cnt[m]++; st[m] += b.t[i]; sti[m] += b.tint[i];
-                    if (m == Mat.CRYSTAL.ordinal() || m == Mat.FLAME.ordinal()) emi += b.em[i];
+                    if (m == Mat.CRYSTAL.ordinal() || m == Mat.FLAME.ordinal() || m == Mat.MOLTEN.ordinal()) emi += b.em[i];
                 }
                 if (filled * 2 < S * S) continue;
                 int best = 0;
                 for (int m = 1; m < cnt.length; m++) if (cnt[m] > cnt[best]) best = m;
                 float t = st[best] / cnt[best], tin = sti[best] / cnt[best];
-                int[][] r = RAMPS[best];
+                int[][] r = R(Mat.values()[best]);
                 int idx = Math.round(t * (r.length - 1));
                 int[] c = r[idx];
-                if (tin > 0.08f && (best == Mat.MOON.ordinal() || best == Mat.TRIM.ordinal())) {
-                    int[][] cy = RAMPS[Mat.CRYSTAL.ordinal()];
+                Mat tt = tintTarget(Mat.values()[best]);
+                if (tin > 0.08f && tt != null) {
+                    int[][] cy = R(tt);
                     float q = Math.round(tin * 3) / 3f;          // three tint levels keep the palette tight
                     int[] cc = cy[Math.min(cy.length - 1, idx + 1)];
                     c = new int[]{(int) (c[0] + (cc[0] - c[0]) * q * 0.75f), (int) (c[1] + (cc[1] - c[1]) * q * 0.75f), (int) (c[2] + (cc[2] - c[2]) * q * 0.75f)};
@@ -406,10 +567,14 @@ public class ShipForge {
             boolean dark = (x + 1 >= N || !solid[i + 1]) || (y + 1 >= N || !solid[i + N]);
             boolean lit = (x == 0 || !solid[i - 1]) || (y == 0 || !solid[i - N]);
             if (dark && !lit) copy[i] = mul(out[i], 0.55f);
-            else if (lit && !dark) copy[i] = mul(out[i], 1.08f);
+            else if (lit && !dark) copy[i] = CUR == 2 ? lift(out[i], 30) : mul(out[i], 1.08f);
             else if (dark) copy[i] = mul(out[i], 0.78f);
         }
         System.arraycopy(copy, 0, out, 0, out.length);
+    }
+
+    static int lift(int c, int a) {
+        return 0xFF000000 | Math.min(255, (c >> 16 & 255) + a) << 16 | Math.min(255, (c >> 8 & 255) + a * 3 / 4) << 8 | Math.min(255, (c & 255) + a / 2);
     }
 
     static int mul(int c, float f) {
@@ -427,14 +592,14 @@ public class ShipForge {
                 int xx = x + dx, yy = y + dy;
                 if (xx < 0 || yy < 0 || xx >= N || yy >= N) continue;
                 float f = 1f - (float) Math.sqrt(dx * dx + dy * dy) / 3.6f;
-                if (f > 0) g[yy * N + xx] += e * f * 0.22f;
+                if (f > 0) g[yy * N + xx] += e * f * (CUR == 2 ? 0.30f : 0.22f);
             }
         }
         int[] res = out.clone();
         // ghosts: the mirage. Hollow cyan copies that drift and spread.
         int[][] gh = {{1, 0}, {-1, 0}, {0, 1}};
         float[] gm = {1f, -1f, 0.6f};
-        for (int k = 0; k < 3; k++) {
+        for (int k = 0; k < 3 && CUR == 1; k++) {
             if (k == 2 && po.ghost < 1.5f) continue;
             float ox = gm[k] * po.ghost, oy = (k == 2 ? 0.6f : 0.25f * gm[k]) * po.ghost;
             int ix = Math.round(ox), iy = Math.round(oy);
@@ -458,7 +623,19 @@ public class ShipForge {
             int add = (int) (Math.min(0.30f, g[i]) * 255);
             if (add > 12) {
                 int old = res[i] >>> 24;
-                if (old < add) res[i] = add << 24 | 0x45d4ee;
+                if (old < add) res[i] = add << 24 | (CUR == 2 ? 0xff7a1a : 0x45d4ee);
+            }
+        }
+        // embers shed from the exhausts, falling away behind the ship (Vitala)
+        if (po.embers > 0) {
+            int n = (int) (6 * po.embers);
+            for (int k = 0; k < n; k++) {
+                float ph = (po.loop + k / (float) n * 1.0f + (k % 2) * 0.11f) % 1f;
+                float x0 = 32 + (((k * 37) % 13) - 6) * 0.95f + (float) Math.sin((ph + k) * 5.1) * 1.4f + po.bank * 2.5f;
+                float y = 52 + ((k * 5) % 4) + ph * 11f;
+                int a = (int) (255 * (1 - ph) * (1 - ph * 0.3f));
+                int col = ph < 0.3f ? 0xffe27a : ph < 0.6f ? 0xff8f26 : 0xc2421a;
+                put(res, Math.round(x0), Math.round(y), a << 24 | col);
             }
         }
         // hit flash
@@ -480,8 +657,8 @@ public class ShipForge {
                 {{17, 14}, {47, 20}},
                 {}
             };
-            for (int[] s : sp[po.sparks]) put(res, s[0], s[1], 0xFFFFFFFF);
-            if (po.sparks <= 1) for (int[] s : sp[po.sparks]) { put(res, s[0] + 1, s[1], 0xCC7be6f0); put(res, s[0], s[1] + 1, 0x997be6f0); }
+            for (int[] s : sp[po.sparks]) put(res, s[0], s[1], CUR == 2 ? 0xFFFFE9A8 : 0xFFFFFFFF);
+            if (po.sparks <= 1) for (int[] s : sp[po.sparks]) { put(res, s[0] + 1, s[1], CUR == 2 ? 0xCCff8f26 : 0xCC7be6f0); put(res, s[0], s[1] + 1, CUR == 2 ? 0x99ff8f26 : 0x997be6f0); }
         }
         BufferedImage img = new BufferedImage(N, N, BufferedImage.TYPE_INT_ARGB);
         img.setRGB(0, 0, N, N, res, 0, N);
@@ -496,11 +673,11 @@ public class ShipForge {
     static BufferedImage[] frames(int tier) {
         BufferedImage[] f = new BufferedImage[FRAMES];
         int k = 0;
-        for (int i = 0; i < IDLE; i++) f[k++] = render(mark1(idle(i), tier), idle(i));
-        for (int i = 0; i < HIT; i++) f[k++] = render(mark1(hit(i), tier), hit(i));
+        for (int i = 0; i < IDLE; i++) f[k++] = render(build(idle(i), tier), idle(i));
+        for (int i = 0; i < HIT; i++) f[k++] = render(build(hit(i), tier), hit(i));
         float[] bank = {0.28f, 0.58f, 0.88f};
-        for (int i = 0; i < TILT; i++) { Pose p = tilt(-bank[i]); f[k++] = render(mark1(p, tier), p); }   // left
-        for (int i = 0; i < TILT; i++) { Pose p = tilt(bank[i]); f[k++] = render(mark1(p, tier), p); }    // right
+        for (int i = 0; i < TILT; i++) { Pose p = tilt(-bank[i]); f[k++] = render(build(p, tier), p); }   // left
+        for (int i = 0; i < TILT; i++) { Pose p = tilt(bank[i]); f[k++] = render(build(p, tier), p); }    // right
         return f;
     }
 
@@ -518,28 +695,46 @@ public class ShipForge {
         return frame - IDLE - HIT - TILT;
     }
 
-    public static void main(String[] args) throws Exception {
-        BufferedImage[][] all = new BufferedImage[3][];
-        for (int t = 0; t < 3; t++) all[t] = frames(t);
-        if (args.length > 0 && args[0].equals("--play")) { play(all); return; }
+    static final String[] LOKA = {"", "Atala", "Vitala"};
+    static final int MARKS = 2;
 
-        File dir = new File(args.length > 0 ? args[0] : "out");
+    public static void main(String[] args) throws Exception {
+        int only = 0;
+        boolean play = false;
+        String out = "out";
+        for (int i = 0; i < args.length; i++) {
+            if (args[i].equals("--play")) play = true;
+            else if (args[i].equals("--mark")) only = Integer.parseInt(args[++i]);
+            else out = args[i];
+        }
+        if (play) { playAll(); return; }
+        File dir = new File(out);
         dir.mkdirs();
+        for (int mk = 1; mk <= MARKS; mk++) {
+            if (only != 0 && mk != only) continue;
+            CUR = mk;
+            BufferedImage[][] all = new BufferedImage[3][];
+            for (int t = 0; t < 3; t++) all[t] = frames(t);
+            exportMark(mk, all, dir);
+        }
+    }
+
+    static void exportMark(int mk, BufferedImage[][] all, File dir) throws Exception {
+        String base = "mark" + mk;
         BufferedImage sheet = new BufferedImage(N * FRAMES, N * 3, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = sheet.createGraphics();
         for (int t = 0; t < 3; t++) for (int f = 0; f < FRAMES; f++) g.drawImage(all[t][f], f * N, t * N, null);
         g.dispose();
-        ImageIO.write(sheet, "png", new File(dir, "mark1_sheet.png"));
-
-        try (PrintWriter w = new PrintWriter(new File(dir, "mark1.atlas"))) {
+        ImageIO.write(sheet, "png", new File(dir, base + "_sheet.png"));
+        try (PrintWriter w = new PrintWriter(new File(dir, base + ".atlas"))) {
             w.println();
-            w.println("mark1_sheet.png");
+            w.println(base + "_sheet.png");
             w.println("size: " + sheet.getWidth() + ", " + sheet.getHeight());
             w.println("format: RGBA8888");
             w.println("filter: Nearest, Nearest");
             w.println("repeat: none");
             for (int t = 0; t < 3; t++) for (int f = 0; f < FRAMES; f++) {
-                w.println("m1_" + TIER[t] + "/" + name(f));
+                w.println("m" + mk + "_" + TIER[t] + "/" + name(f));
                 w.println("  rotate: false");
                 w.println("  xy: " + f * N + ", " + t * N);
                 w.println("  size: " + N + ", " + N);
@@ -548,9 +743,10 @@ public class ShipForge {
                 w.println("  index: " + index(f));
             }
         }
-        preview(all, new File(dir, "mark1_preview.png"));
+        preview(all, new File(dir, base + "_preview.png"));
+        System.out.print("mark " + mk + " (" + LOKA[mk] + "): ");
         overlap(all);
-        System.out.println("wrote " + dir.getAbsolutePath());
+        System.out.println("wrote " + new File(dir, base + "_sheet.png").getAbsolutePath());
     }
 
     /** how much of tier A's silhouette survives in B and C: the "same ship, upgraded" metric. */
@@ -582,10 +778,16 @@ public class ShipForge {
     }
 
     // ------------------------------------------------------------------ player
-    static void play(BufferedImage[][] all) {
+    static void playAll() {
+        BufferedImage[][][] all = new BufferedImage[MARKS + 1][][];
+        for (int mk = 1; mk <= MARKS; mk++) {
+            CUR = mk;
+            all[mk] = new BufferedImage[3][];
+            for (int t = 0; t < 3; t++) all[mk][t] = frames(t);
+        }
         javax.swing.SwingUtilities.invokeLater(() -> {
-            javax.swing.JFrame fr = new javax.swing.JFrame("ShipForge - Mark 1 Atala (click: cycle clip, T: tier)");
-            final int[] st = {0, 0, 0}; // clip, tier, frame
+            javax.swing.JFrame fr = new javax.swing.JFrame("ShipForge - click: clip | T: tier | M: mark");
+            final int[] st = {0, 0, 0, 1}; // clip, tier, frame, mark
             int[][] clips = {{0, 8}, {8, 4}, {12, 3}, {15, 3}};
             javax.swing.JPanel pn = new javax.swing.JPanel() {
                 protected void paintComponent(Graphics g0) {
@@ -594,7 +796,7 @@ public class ShipForge {
                     g.fillRect(0, 0, getWidth(), getHeight());
                     g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
                     int[] c = clips[st[0]];
-                    g.drawImage(all[st[1]][c[0] + st[2] % c[1]], 40, 40, 384, 384, null);
+                    g.drawImage(all[st[3]][st[1]][c[0] + st[2] % c[1]], 40, 40, 384, 384, null);
                 }
             };
             pn.setPreferredSize(new Dimension(464, 464));
@@ -602,7 +804,10 @@ public class ShipForge {
                 public void mousePressed(java.awt.event.MouseEvent e) { st[0] = (st[0] + 1) % clips.length; st[2] = 0; }
             });
             fr.addKeyListener(new java.awt.event.KeyAdapter() {
-                public void keyPressed(java.awt.event.KeyEvent e) { if (e.getKeyCode() == java.awt.event.KeyEvent.VK_T) st[1] = (st[1] + 1) % 3; }
+                public void keyPressed(java.awt.event.KeyEvent e) {
+                    if (e.getKeyCode() == java.awt.event.KeyEvent.VK_T) st[1] = (st[1] + 1) % 3;
+                    if (e.getKeyCode() == java.awt.event.KeyEvent.VK_M) st[3] = st[3] % MARKS + 1;
+                }
             });
             fr.add(pn);
             fr.pack();
