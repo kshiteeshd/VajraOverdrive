@@ -14,7 +14,9 @@ import vajra.ship.Ship;
  *  under the hull and the charge glow over it, so they are drawn separately from both. */
 public class ShipRenderer {
     private static final float HALF = Ship.W / 2f;   // COLLISION half — not where the art ends
-    private static final float SIZE = 40;             // render scale; collision stays 24x24
+    // 42.67: the 64px cell lands exactly 1 screen pixel per texel at the home window —
+    // world 1280 x 1.5 = 1920 (1080p). Collision stays 24x24.
+    private static final float SIZE = 128 / 3f;
     private static final float ART_HALF = SIZE / 2f;  // where the hull ART actually ends
     private static final float PLUME_SCALE = 2;
     private static final float DASH_STRETCH = 1.6f, DASH_SQUASH = 0.7f; // smear into the push

@@ -11,7 +11,7 @@ import vajra.ship.Hangar;
  *
  *  <p>The plume is anchored by hand and was wrong in three ways that no screenshot caught
  *  clearly enough to notice: it anchored on the COLLISION box's half (12 px) rather than the
- *  drawn art's (20 px at SIZE 40), so it was drawn underneath the hull; it subtracted a
+ *  drawn art's (21.33 px at the 1-px-per-texel SIZE of 128/3), so it was drawn underneath the hull; it subtracted a
  *  screen-space "drop" outside the rotation term, so on a downward-facing ship it shoved the
  *  flame back into the hull instead of holding the tail; and it ignored the dip, so a hit or a
  *  shield slid the hull 5 px away from its own flame.
@@ -87,7 +87,7 @@ class PlumeAnchorTest {
     /** The anchor must clear the drawn hull, not the collision box — that was the original bug. */
     @Test
     void theFlameClearsTheDrawnArtNotJustTheHitBox() {
-        float artHalf = 40f / 2f; // ShipRenderer.SIZE / 2
+        float artHalf = 128 / 3f / 2f; // ShipRenderer.SIZE / 2 — the 1-px-per-texel flight size
         assertTrue(ShipRenderer.PLUME_ANCHOR > artHalf,
                 "the anchor (" + ShipRenderer.PLUME_ANCHOR + ") is past the art's edge (" + artHalf + ")");
         assertTrue(ShipRenderer.PLUME_ANCHOR > Ship.W / 2f, "and past the collision half");
