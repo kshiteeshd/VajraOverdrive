@@ -63,8 +63,8 @@ public class ShipRenderer {
      *  <p>The hull is drawn {@code Ship.dip} px LOW while it is hit, shielding or bursting and
      *  eases back up — the press-down that replaced the state ring. There is no halo. The hull
      *  also RIDES the clips: mark 1's forged sheet plays the hit flash (once, per hull hit —
-     *  it overrides the blink cull, the flash is the feedback) and the bank lean while the
-     *  nose steers, easing back to wings level on the same glide the thrust uses. */
+     *  it overrides the blink cull, the flash is the feedback) and the strafe lean — A banks
+     *  left, D banks right, and the wings relevel when the push goes. */
     public void draw(SpriteBatch batch, Ship s, float time) {
         if (blinking(s) && !art.hitClipLive(s)) return; // the fresh hit's clip carries the flash
         boolean dash = s.dashTime > 0;

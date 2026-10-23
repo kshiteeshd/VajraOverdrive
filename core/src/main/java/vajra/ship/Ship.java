@@ -53,8 +53,8 @@ public class Ship {
     public float dip;               // 0..1 hull press-down: hit / shield / dash, no halo needed
     public float dipT;
     public float trauma;
-    /** THE FORGED BANK: -1..1, eased toward the hull's steering (mouse-ease or key turn) —
-     *  the tilt clip's driver in the mark-1 sheet. */
+    /** THE FORGED BANK: -1..1, eased toward the hull's sideways push (A leans left, D leans
+     *  right) — the tilt clip's driver in the mark-1 sheet. */
     public float lean;
     /** How long damage swallowing lasts after a hull hit; mark 1's hit clip plays inside it. */
     public static final float HIT_GRACE = 0.6f;
@@ -111,26 +111,24 @@ public class Ship {
         boostEnergy = Math.max(0, Math.min(100, boostEnergy));
 
         // Nose: the cursor wins, then Q/E. Thrust never turns the ship — WASD is pure translation.
-        float turn = 0; // rad/s the nose steered this frame; the bank leans into it
         if (in.mouseAim()) {
             float aim = (float) Math.atan2(in.aimY() - y, in.aimX() - x);
-            float step = World.wrapAngle(aim - facing) * (1f - (float) Math.exp(-AIM_EASE * dt));
-            facing += step;
-            turn = step / Math.max(dt, 1e-5f);
+            facing += World.wrapAngle(aim - facing) * (1f - (float) Math.exp(-AIM_EASE * dt));
         } else if (in.rotate() != 0) {
             facing += in.rotate() * turnRate() * dt;
-            turn = in.rotate() * turnRate();
         }
-        // THE BANK: lean eased toward the normalized steering, and eased back to wings-level
-        // when the nose is still — the same glide law the thrust uses, so the tilt never pops.
-        float leanWant = Math.max(-1f, Math.min(1f, turn / turnRate()));
-        lean += (leanWant - lean) * (1f - (float) Math.exp(-8f * dt));
 
         // THRUST EASE: the push ramps in and out instead of snapping, so taps and direction
         // changes glide — the ship never lurches. The dash and the plume use the raw input.
         float ease = 1f - (float) Math.exp(-THRUST_EASE * dt);
         moveX += (tx - moveX) * ease;
         moveY += (ty - moveY) * ease;
+
+        // THE BANK: tilting is the STRAFE'S tell — gliding left (A) leans left, gliding right
+        // (D) leans right, riding the same ease as the push itself; a nose turn or pure W/S
+        // flight stays wings level.
+        float leanWant = Math.max(-1f, Math.min(1f, tx));
+        lean += (leanWant - lean) * ease;
 
         boolean d = in.dash() && !winding;      // the charge owns the dash
         if (d && !prevDash && dashCd <= 0) {
