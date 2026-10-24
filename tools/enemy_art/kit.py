@@ -12,6 +12,7 @@ from PIL import Image
 
 S = 64
 CX = 31.5  # the mirror axis
+N = 8      # idle / rage frames per row: a one-second loop at 8 fps
 
 # ----------------------------------------------------------------- the colour code ---------
 # Atala: pearl and gold.  Everything below is sampled from the shipped Atala art (the old enemy
@@ -111,7 +112,7 @@ class Canvas:
 
     def mpoly(self, pts, ramp="WPSD", light="sym"):
         """A polygon and its mirror image, shaded as one body."""
-        self.solid(self._poly(pts) | self._poly([(63 - x, y) for x, y in pts]), ramp, light)
+        self.solid(self._poly(pts) | self._poly([((S - 1) - x, y) for x, y in pts]), ramp, light)
 
     def flat(self, mask, letter):
         self.g[mask] = IDX[letter]
@@ -120,7 +121,7 @@ class Canvas:
         self.flat(self._poly(pts), letter)
 
     def fmpoly(self, pts, letter):
-        self.flat(self._poly(pts) | self._poly([(63 - x, y) for x, y in pts]), letter)
+        self.flat(self._poly(pts) | self._poly([((S - 1) - x, y) for x, y in pts]), letter)
 
     def fellipse(self, cx, cy, rx, ry, letter):
         self.flat(self._ellipse(cx, cy, rx, ry), letter)
@@ -144,7 +145,7 @@ class Canvas:
                     continue
                 self.px(x + i, y + j, ch)
                 if mirror:
-                    self.px(63 - (x + i), y + j, ch)
+                    self.px((S - 1) - (x + i), y + j, ch)
 
     def stamp_c(self, rows, y, mirror=True):
         """Stamp left-half rows flush against the centre line."""
@@ -335,8 +336,8 @@ def death(arr):
 # ----------------------------------------------------------------- assembling a sheet ----
 def build_sheet(enemy):
     """enemy: object with .draw(canvas, t, rage) -> dict(top, left, right, mid) for rank placement
-    and .bob(t).  Returns the 512x256 sheet."""
-    sheet = Image.new("RGBA", (8 * S, 4 * S), (0, 0, 0, 0))
+    and .bob(t).  Returns the 1024x256 sheet: idle x8 + rage x8 on rows 0, 2, 3; hit x2 + death x6 on row 1."""
+    sheet = Image.new("RGBA", (2 * N * S, 4 * S), (0, 0, 0, 0))
 
     def put(arr, col, row):
         sheet.alpha_composite(Image.fromarray(arr, "RGBA"), (col * S, row * S))
@@ -346,8 +347,9 @@ def build_sheet(enemy):
         info = enemy.draw(c, t, rage)
         rank_layers(c, rank, info["top"], info["left"], info["right"], info["mid"])
         c.outline()
+        enemy.fx(c, t, rage)                                    # loose motes and glints: past the outline
         arr = c.rgba(rage=rage)
-        dx = [0, 1, 0, -1][t] if rage else 0                   # the rage shudder
+        dx = [0, 1, 0, -1, 0, 1, 0, -1][t] if rage else 0                   # the rage shudder
         dy = enemy.bob(t)
         arr = shift(arr, dx, dy)
         if rage:
@@ -357,9 +359,9 @@ def build_sheet(enemy):
         return arr
 
     for rank, row in ((0, 0), (1, 2), (2, 3)):
-        for t in range(4):
+        for t in range(N):
             put(frame(t, False, rank), t, row)
-            put(frame(t, True, rank), 4 + t, row)
+            put(frame(t, True, rank), N + t, row)
     base = frame(0, False, 0)
     put(shift(white(base, 1.0), 0, -2), 0, 1)
     put(scorch(shift(white(base, 0.35), 0, -1)), 1, 1)
@@ -383,28 +385,31 @@ class EnemyArt:
     name = ""
     cracks = []    # rage: ember polylines, hand-placed, left half (mirrored): [(x0, y0, x1, y1), ...]
     flames = ()    # rage: (x, y) of each flame's top-left, left half (mirrored)
-    hover = (0, -1, -1, 0)
+    hover = (0, 0, -1, -1, -1, -1, 0, 0)
 
     def bob(self, t):
-        return self.hover[t]
+        return self.hover[t * len(self.hover) // N]
 
     def draw(self, c, t, rage):
         raise NotImplementedError
+
+    def fx(self, c, t, rage):
+        """Loose, unoutlined bits painted over the finished hull: orbiting motes, sparks, travelling glints."""
 
     def rage_overlay(self, arr, t):
         c = Canvas()
         for x0, y0, x1, y1 in self.cracks:
             for sx in (0, 1):
-                xa, xb = (x0, x1) if not sx else (63 - x0, 63 - x1)
+                xa, xb = (x0, x1) if not sx else ((S - 1) - x0, (S - 1) - x1)
                 c.line(xa, y0, xb, y1, "E")
         # a hot core travels along each crack, one step per frame
         for x0, y0, x1, y1 in self.cracks:
-            f = (t + 1) / 5.0
+            f = (t % N + 1) / (N + 1.0)
             px, py = round(x0 + (x1 - x0) * f), round(y0 + (y1 - y0) * f)
             c.px(px, py, "G")
-            c.px(63 - px, py, "G")
+            c.px((S - 1) - px, py, "G")
         for fx, fy in self.flames:
-            c.stamp(FLAME[t], fx, fy - (t % 2), True)
+            c.stamp(FLAME[t % 4], fx, fy - (t // 2 % 2), True)
         over = c.rgba(rage=True)
         # ember overlay only where the hull is (cracks) or in the air (flames)
         m = over[:, :, 3] > 0

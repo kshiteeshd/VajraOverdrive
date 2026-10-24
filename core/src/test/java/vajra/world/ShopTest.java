@@ -20,7 +20,6 @@ class ShopTest {
         public float rotate() { return 0; }
         public boolean fire() { return false; }
         public boolean boost() { return false; }
-        public boolean dash() { return false; }
         public boolean shield() { return false; }
         public boolean mouseAim() { return false; }
         public float aimX() { return 0; }

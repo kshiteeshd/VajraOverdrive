@@ -82,7 +82,7 @@ public final class Missions {
         if (salvageTaken >= SALVAGE_NEED) {
             salvage = DONE;
             world.hangar.coins += 200;
-            world.hangar.addShard(0, 0); // Atala mints Akasha: the forge's first feed
+            world.hangar.addShard(0); // Atala mints Akasha: the first fuel
             Codex.unlock(world, Codex.RETEMPER);
             Chatter.salvageDone(world);
         }

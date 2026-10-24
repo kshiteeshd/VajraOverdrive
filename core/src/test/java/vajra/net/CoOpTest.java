@@ -150,7 +150,6 @@ class CoOpTest {
         public float rotate() { return 0; }
         public boolean fire() { return false; }
         public boolean boost() { return false; }
-        public boolean dash() { return false; }
         public boolean shield() { return false; }
         public boolean mouseAim() { return false; }
         public float aimX() { return 0; }
@@ -163,7 +162,6 @@ class CoOpTest {
         public float rotate() { return 0; }
         public boolean fire() { return false; }
         public boolean boost() { return true; }
-        public boolean dash() { return false; }
         public boolean shield() { return false; }
         public boolean mouseAim() { return false; }
         public float aimX() { return 0; }
@@ -268,7 +266,7 @@ class CoOpTest {
         r.settle(30, idle, idle);
         assertFalse(r.clientW.runEnded());
 
-        r.hostW.gameOver = true; // the hub's own hull spent its lives
+        r.hostW.vajraDone = true; // the hub's run is over
         r.settle(60, idle, idle); // one swarm is enough to carry the bit
 
         assertTrue(r.clientW.runEnded(), "the guest's run ends with the host's");

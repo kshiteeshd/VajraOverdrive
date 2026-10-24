@@ -17,7 +17,9 @@ import vajra.world.World;
  *  <p>A person HAILS (halo widening, a gold mark over their head) until the pilot has met them,
  *  TALKS while a bubble is up, WORKS while their job is open, and otherwise idles. */
 public final class NpcImages {
-    public static final String[] NAMES = {"scout", "maya", "kaliya"};
+    public static final String[] NAMES = {"scout", "maya", "kaliya", "seller", "maid"};
+    /** The people of Vitala draw from their own folder. */
+    private static String folder(int i) { return i >= 3 ? "vitala" : "atala"; }
     public static final int IDLE = 0, TALK = 1, WORK = 2, HAIL = 3;
     static final int CELL = 64;
     static final float DRAW = 48; // drawn at 3/4 of the cell
@@ -27,7 +29,7 @@ public final class NpcImages {
 
     public NpcImages() {
         for (int i = 0; i < NAMES.length; i++) {
-            String path = "npcs/atala/" + NAMES[i] + ".png";
+            String path = "npcs/" + folder(i) + "/" + NAMES[i] + ".png";
             if (!Gdx.files.internal(path).exists()) continue;
             Texture t = ImageKit.texture(path, false);
             if (t == null) continue;

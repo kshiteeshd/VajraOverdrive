@@ -5,6 +5,8 @@ public class TileMap {
     public static final int TILE = 32;
     public static final int EMPTY = 0, ROCK = 1, GOLD = 2, DARK = 3;
 
+    /** Which wall palette this map is drawn in: 0 Atala's ivory, 1 Vitala's basalt. */
+    public int skin;
     public final float ox;
     public final float oy;
     public final int cols, rows;
@@ -18,9 +20,32 @@ public class TileMap {
         this.cells = new int[cols * rows];
     }
 
+    private boolean[] ghost;                 // MIRAGES: tiles that are drawn but are nothing (null until some are marked)
+
+    /** The tile, as the world sees it: a mirage is EMPTY (nothing stops a hull or a round there). */
     public int get(int tx, int ty) {
         if (tx < 0 || ty < 0 || tx >= cols || ty >= rows) return EMPTY;
+        int i = ty * cols + tx;
+        return ghost != null && ghost[i] ? EMPTY : cells[i];
+    }
+
+    /** The tile as it is DRAWN: a mirage still shows. */
+    public int raw(int tx, int ty) {
+        if (tx < 0 || ty < 0 || tx >= cols || ty >= rows) return EMPTY;
         return cells[ty * cols + tx];
+    }
+
+    public boolean isGhost(int tx, int ty) {
+        return ghost != null && tx >= 0 && ty >= 0 && tx < cols && ty < rows && ghost[ty * cols + tx];
+    }
+
+    public boolean hasGhosts() { return ghost != null; }
+
+    /** Turn a solid tile into a mirage: it keeps its picture and loses its body. */
+    public void markGhost(int tx, int ty) {
+        if (tx < 0 || ty < 0 || tx >= cols || ty >= rows || cells[ty * cols + tx] == EMPTY) return;
+        if (ghost == null) ghost = new boolean[cols * rows];
+        ghost[ty * cols + tx] = true;
     }
 
     public void set(int tx, int ty, int v) {

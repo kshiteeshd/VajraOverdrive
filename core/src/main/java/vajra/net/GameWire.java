@@ -27,7 +27,7 @@ public final class GameWire {
     public static final int SWARM = 4;   // host -> guests, 10 Hz: foes + ground loot + run bits
     public static final int PAIN = 5;    // hub -> owner: a bullet touch, a shove, a kill credit
     public static final int TAKE = 6;    // guest -> hub: I swept loot id N on my machine
-    public static final int ASTRA = 7;   // guest -> hub: my release named these foes; arm them
+    public static final int ASTRA = 7;   // guest -> hub: I loosed this astra at these foes; loose it there
 
     public static final int PAIN_BULLET = 0, PAIN_SHOVE = 1, PAIN_KILL = 2;
 
@@ -59,7 +59,7 @@ public final class GameWire {
         w.shotWire = shot -> sendShot(s, shot); // my rounds announce themselves at the chokes
         w.painWire = pain -> sendPain(s, pain); // bullet touches / shoves / kills call home
         if (!s.isHost()) // a guest's release is armed by the hub, where the fight lives
-            w.astraWire = (ids, n) -> sendAstra(s, ids, n);
+            w.astraWire = (kind, power, ids, n) -> sendAstra(s, kind, power, ids, n);
 
         w.shipBeat -= dt;
         if (w.shipBeat <= 0) {
@@ -245,19 +245,27 @@ public final class GameWire {
         s.sendPlane(TAKE, out);
     }
 
-    /** A release on a guest seat: the foes it aimed at, by the host's own ids. The hub arms
-     *  the same volley there — the Astra is a real weapon on every seat. */
-    static void sendAstra(Session s, int[] targetIds, int count) {
+    /** A release on a guest seat: which astra, how hard it was loosed (0..1), and the foes it locked, by the host's
+     *  own ids. The hub looses the same volley there - the astra is a real weapon on every seat.
+     *  Layout: [kind u8][power u8][count u8][ids u16 x count]. */
+    static void sendAstra(Session s, int kind, float power, int[] targetIds, int count) {
+        s.sendPlane(ASTRA, packAstra(s.myId(), kind, power, targetIds, count));
+    }
+
+    /** The wire bytes of one release: [tag][sender][kind][power][count][ids]. Pure, so a test can round-trip it. */
+    static byte[] packAstra(int sender, int kind, float power, int[] targetIds, int count) {
         int n = Math.min(Math.min(count, targetIds.length), 255);
-        byte[] out = new byte[2 + 1 + n * 2];
+        byte[] out = new byte[2 + 3 + n * 2];
         out[0] = (byte) ASTRA;
-        out[1] = (byte) s.myId();
-        out[2] = (byte) n;
+        out[1] = (byte) sender;
+        out[2] = (byte) kind;
+        out[3] = (byte) Math.round(Math.max(0f, Math.min(1f, power)) * 255f);
+        out[4] = (byte) n;
         for (int i = 0; i < n; i++) {
-            out[3 + i * 2] = (byte) (targetIds[i] & 0xFF);
-            out[4 + i * 2] = (byte) (targetIds[i] >> 8);
+            out[5 + i * 2] = (byte) (targetIds[i] & 0xFF);
+            out[6 + i * 2] = (byte) (targetIds[i] >> 8);
         }
-        s.sendPlane(ASTRA, out);
+        return out;
     }
 
     // ---- inbound -------------------------------------------------------------------------------
@@ -396,17 +404,20 @@ public final class GameWire {
         w.expireMissingGhosts();
     }
 
-    /** A guest's release named the foes it aimed at: the hub arms the same volley there, so
-     *  the Astra is a real weapon on every seat and the kill pays the pilot who fired it. */
+    /** A guest's release named the astra, its power and the foes it locked: the hub looses the same volley there, so
+     *  the astra is a real weapon on every seat and the kill pays the pilot who fired it. */
     static void applyAstra(World w, int sender, byte[] body, int o, int len) {
-        int count = body[o] & 0xFF;
-        int r = o + 1;
+        if (len < 3) return;
+        int kind = body[o] & 0xFF;
+        float power = (body[o + 1] & 0xFF) / 255f;
+        int count = body[o + 2] & 0xFF;
+        int r = o + 3;
         int[] ids = new int[count];
         for (int i = 0; i < count && r + 2 <= o + len; i++) {
             ids[i] = (body[r] & 0xFF) | (body[r + 1] & 0xFF) << 8;
             r += 2;
         }
-        w.astraFor(sender, ids);
+        w.astraFor(sender, kind, power, ids);
     }
 
     static void applyPain(World w, byte[] body, int o) {

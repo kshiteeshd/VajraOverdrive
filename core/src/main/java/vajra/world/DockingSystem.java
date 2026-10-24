@@ -38,6 +38,7 @@ public final class DockingSystem {
                         world.shopState[i] = World.UNDOCKED;
                         break;
                     }
+                    draw(i, dt);
                     world.shopTimer[i] += dt;
                     if (world.shopTimer[i] >= World.DOCK_TIME) {
                         world.shopTimer[i] = World.DOCK_TIME;
@@ -51,6 +52,21 @@ public final class DockingSystem {
                     break; // DOCKED: waits for the screen to open, then closeDocked()
             }
         }
+    }
+
+    /** The berth's centre against the shop's own: the middle of the marked square. */
+    public static final float CENTRE_DX = (BAY_X0 + BAY_X1) / 2f, CENTRE_DY = (BAY_Y0 + BAY_Y1) / 2f;
+
+    /** While a hull docks, the berth draws it gently to its centre (the clamps' pull): its speed bleeds off and it slides home. It never
+     *  leaves the marked square, so a pull cannot cancel the dock it is helping. */
+    private void draw(int i, float dt) {
+        float cx = world.shops[i][0] + CENTRE_DX, cy = world.shops[i][1] + CENTRE_DY, k = Math.min(1f, 7f * dt);
+        Ship s = world.ship;
+        s.x += (cx - s.x) * k;
+        s.y += (cy - s.y) * k;
+        float damp = (float) Math.exp(-9f * dt);
+        s.vx *= damp;
+        s.vy *= damp;
     }
 
     /** A docking just finished — the screen opens the hangar on this. */

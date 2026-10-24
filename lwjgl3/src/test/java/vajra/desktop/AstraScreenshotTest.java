@@ -63,9 +63,9 @@ class AstraScreenshotTest {
                     gs = (GameScreen) flow.top();
                     w = gs.world();
 
-                    // a crowd to aim at, and a full release in hand
-                    w.hangar.forged[0] = true;
-                    w.hangar.forgeCharges[0] = 1;
+                    // a crowd to aim at, and the fuel for a release in the pile
+                    w.hangar.shards[0] = 5;
+                    w.ship.facing = (float) (Math.PI / 2);
                     for (int i = 0; i < 18; i++) {
                         vajra.enemy.Enemy e = new vajra.enemy.Enemy(
                                 vajra.enemy.Enemy.Kind.MAYAVI,
@@ -75,14 +75,18 @@ class AstraScreenshotTest {
                         w.enemies.add(e);
                     }
 
-                    // --- 1. the charge, caught part-way: the cage should be up and tightening
-                    w.useForge();
-                    check(w.winding(), "the charge is running", failures);
-                    int held = countHeld(w);
-                    check(held == World.ASTRA_CUBES,
-                            "twenty cubes held in the cage (" + held + ")", failures);
+                    // --- 1. HOLD F: the invocation, caught part-way: the cage is up, filling and tightening
+                    flow.keyDown(com.badlogic.gdx.Input.Keys.F);
+                    check(w.winding(), "the invocation is running", failures);
+                    for (int i = 0; i < 6; i++) frame();
+                    int early = countHeld(w);
                     float wide = shellRadius(w);
-                    for (int i = 0; i < 70; i++) frame();
+                    for (int i = 0; i < 90; i++) frame();   // 1.5 s: full strength
+                    int held = countHeld(w);
+                    check(held > early, "the cage fills as F is held (" + early + " -> " + held + ")", failures);
+                    check(held == vajra.world.Astra.CUBES[vajra.world.Astra.AKASHA],
+                            "the cage is whole at full strength (" + held + ")", failures);
+                    check(w.astraLockCount > 0, "foes in front of the nose are locked (" + w.astraLockCount + ")", failures);
                     float tight = shellRadius(w);
                     check(tight < wide, "the cage tightened over the charge: "
                             + (int) wide + " -> " + (int) tight, failures);
@@ -91,10 +95,10 @@ class AstraScreenshotTest {
                     check(violet(charge) > 150, "the cage is drawn, in Akasha violet ("
                             + violet(charge) + " px)", failures);
 
-                    // --- 2. the release: run the charge out, then catch them in flight
-                    int guard = 0;
-                    while (w.winding() && guard++ < 600) frame();
-                    check(!w.winding(), "the charge completed", failures);
+                    // --- 2. LET GO: the release, then catch them in flight
+                    flow.keyUp(com.badlogic.gdx.Input.Keys.F);
+                    check(!w.winding(), "letting go loosed it", failures);
+                    check(w.hangar.shards[0] == 0, "and the five shards were paid then", failures);
                     for (int i = 0; i < 14; i++) frame();
                     int[] volley = frame();
                     writePng(volley, "build/astra-2-released.png");

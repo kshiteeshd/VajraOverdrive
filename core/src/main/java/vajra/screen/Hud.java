@@ -34,6 +34,7 @@ public final class Hud {
     private final WeaponCards cards = new WeaponCards();   // the 15 weapon face cards
     private final ShardGauge shards;                       // bottom-right shard + forge readout
     private final HudCompass compass;                      // bottom-left
+    private final VedicHud vedic;                          // the alternative instruments (Settings.hudStyle == 1)
     private final GlyphLayout measure = new GlyphLayout();
 
     // --- WEAPON PLATE: the fitted pattern's face card, bottom-right, riding directly on the
@@ -89,14 +90,19 @@ public final class Hud {
     /** Yojana reading: depth below the grand gate, so 0 at the gate and 10,000 at the ceiling.
      *  Bhu Loka (below the gate) clamps to 0 — the tape stays hidden there anyway. */
     static int yojanaAt(float worldY) {
-        return (int) Math.round(Math.max(0, worldY - World.ATALA_Y) / YOJANA_PX);
+        if (worldY > vajra.world.Hataki.Y0) return vajra.world.Hataki.yojana(worldY);   // Vitala has its own ten thousand, from its own floor
+        return Math.min(10000, (int) Math.round(Math.max(0, worldY - World.ATALA_Y) / YOJANA_PX));
     }
 
     /** Offset of pip i down the column for a given depth into Atala: climbing increases it
      *  (the tape falls down the screen), dropping decreases it (the tape rises), wrapping
      *  end to end. */
     static float pipY(int i, float depth) {
-        float v = i * PIP_GAP + depth * (PIP_GAP / (PIP_YOJANA * YOJANA_PX));
+        return pipY(i, depth, YOJANA_PX);
+    }
+
+    static float pipY(int i, float depth, float pxPerYojana) {
+        float v = i * PIP_GAP + depth * (PIP_GAP / (PIP_YOJANA * pxPerYojana));
         return v - (float) Math.floor(v / COL_H) * COL_H;
     }
 
@@ -104,6 +110,7 @@ public final class Hud {
         this.ui = ui;
         this.shards = new ShardGauge(ui);
         this.compass = new HudCompass(ui);
+        this.vedic = new VedicHud(ui, shards, cards);
     }
 
     // =================================================================================
@@ -113,7 +120,7 @@ public final class Hud {
     /** The hangar draws its own OPAQUE backdrop and its own text. The flight HUD is NOT drawn
      *  over it: bars, score, the loka readout, the weapon plate and the vitals line are all noise
      *  on a menu screen — the yojana tape in particular drew straight through the panels.
-     *  Game over still gets a translucent dimmer — there the frozen world IS the point. */
+     *  (There is no game over screen: a spent last life wakes at the last lamp.) */
     public void render(SpriteBatch batch, World world, ShipRenderer ships, BayUi shopUi) {
         boolean hangar = shopUi != null;
         boolean over = world.runEnded();
@@ -130,11 +137,13 @@ public final class Hud {
         batch.end();
     }
 
+    /** Where the crew block starts: its classic place, or lower in the vedic set (the medallion is above it). */
+    private static float crewY() { return vedicOn() ? VedicHud.CREW_Y : CREW_Y; }
+
+    /** Is the alternative (vedic) instrument set the pilot's choice? One setting, read each frame. */
+    private static boolean vedicOn() { return vajra.profile.Profiles.active().settings.hudStyle == 1; }
+
     private void shapePass(World w, boolean hangar, boolean over, BayUi shopUi) {
-        if (!hangar && w.gameOver) {
-            ui.shapes.setColor(0, 0, 0, 0.78f);
-            ui.shapes.rect(0, 0, Ui.UI_W, Ui.UI_H);
-        }
         if (over) { // the results card: ink plate + the shared border, both in this pass
             ui.shapes.setColor(UiTheme.INK_R, UiTheme.INK_G, UiTheme.INK_B, 0.92f);
             ui.shapes.rect(END_X, END_Y, END_W, END_H);
@@ -145,34 +154,49 @@ public final class Hud {
             return;
         }
         shards.update(w);
-        gaze.shapes(ui, w, 1 / 60f);
+        boolean v = vedicOn();
+        if (!v) gaze.shapes(ui, w, 1 / 60f);
         jobs.shapes(ui, w);
         toast.shapes(ui, w);
-        bars.shapes(ui.shapes, w);
+        if (!v) bars.shapes(ui.shapes, w);
         crewShapes(w);
-        depthTape(w);
-        compass.shapes(ui.shapes, w);
-        shards.shapes(w);
+        if (v) {
+            depthTape(w); // the world meter stays the classic one in this set too
+            vedic.shapes(w, 1 / 60f); // health tube, weapon medallion, lives, gaze, minimap with shield and boost, astra dial
+        } else {
+            depthTape(w);
+            compass.shapes(ui.shapes, w);
+            shards.shapes(w);
+        }
     }
 
     private void batchPass(SpriteBatch batch, World w, boolean hangar, boolean over,
                            ShipRenderer ships, BayUi shopUi) {
         if (!hangar) {
+            boolean v = vedicOn();
             drawScore(batch);
-            gaze.label(ui, batch, w);
+            if (!v) gaze.label(ui, batch, w);
             jobs.text(ui, batch, w);
             toast.text(ui, batch, w);
-            drawIndicator(batch, w);
-            compass.label(batch, w);
-            drawWeapon(batch, w);
+            drawIndicator(batch, w); // the classic world meter's words, in both sets
+            if (!v) {
+                compass.label(batch, w);
+                drawWeapon(batch, w);
+            }
             drawVitals(batch);
             drawCrew(batch, w);
-            shards.draw(batch, w);
+            if (v) vedic.labels(batch, w);
+            else shards.draw(batch, w);
         }
         if (w.victoryT >= 0 && w.victoryT < World.VICTORY_LAP) {
             float a = w.victoryT < 3f ? 1 : World.VICTORY_LAP - w.victoryT;
-            Template.title(ui, batch, "ATALA CONQUERED", Template.CARD_Y, a);
-            Template.sub(ui, batch, "the first piece answers - below, Vitala burns gold", Template.CARD_SUB_Y, a);
+            boolean vit = w.stage >= 1;
+            Template.title(ui, batch, vit ? "VITALA CONQUERED" : "ATALA CONQUERED", Template.CARD_Y, a);
+            Template.sub(ui, batch, vit ? "the second piece answers - beyond the gold door, Sutala is yet to come"
+                    : "the first piece answers - below, Vitala burns gold", Template.CARD_SUB_Y, a);
+        } else if (w.campaign && w.ship.y > vajra.world.Hataki.HEIGHT + 200f) {
+            Template.title(ui, batch, "SUTALA", Template.CARD_Y, 1);                     // the hall past the gold door: the next loka is not built yet
+            Template.sub(ui, batch, "coming soon", Template.CARD_SUB_Y, 1);
         }
         if (over) drawEndCard(batch, w);
         if (hangar) shopUi.draw(batch, w, ships, cards);
@@ -297,10 +321,10 @@ public final class Hud {
         vajra.net.Session s = Net.session;
         if (s == null || !Net.active() || w.runEnded() || crewIds.length == 0) return;
         ui.shapes.setColor(CREW_BACKDROP);
-        ui.shapes.rect(CREW_X - 4, CREW_Y - CREW_PITCH * (crewIds.length - 1) - 12, CREW_W,
+        ui.shapes.rect(CREW_X - 4, crewY() - CREW_PITCH * (crewIds.length - 1) - 12, CREW_W,
                 CREW_PITCH * (crewIds.length - 1) + 20);
         for (int i = 0; i < crewIds.length; i++) {
-            float y = CREW_Y - i * CREW_PITCH;
+            float y = crewY() - i * CREW_PITCH;
             ui.shapes.setColor(SeatColors.of(crewIds[i]));
             ui.shapes.rect(CREW_X, y - 9, 9, 9);
         }
@@ -313,7 +337,7 @@ public final class Hud {
         vajra.net.Session s = Net.session;
         if (s == null || !Net.active() || w.runEnded() || crewIds.length == 0) return;
         for (int i = 0; i < crewIds.length; i++) {
-            float y = CREW_Y - i * CREW_PITCH;
+            float y = crewY() - i * CREW_PITCH;
             ui.hud.setColor(SeatColors.of(crewIds[i]));
             ui.hud.draw(batch, crewNames[i], CREW_X + 16, y);
             int p = s.pingTo(crewIds[i]); // your own row reads '-' (a delay to yourself)
@@ -366,10 +390,12 @@ public final class Hud {
      *  Bhu Loka has no tape — it starts at the grand gate, where the meter reads 0. */
     private void depthTape(World w) {
         if (w.currentRegionIndex() == 0) return;
-        float depth = w.ship.y - World.ATALA_Y;
+        boolean vit = w.ship.y > vajra.world.Hataki.Y0;
+        float depth = w.ship.y - (vit ? vajra.world.Hataki.Y0 : World.ATALA_Y);
+        float pxy = vit ? vajra.world.Hataki.YOJANA_PX : YOJANA_PX;
         ui.shapes.setColor(1, 1, 1, 0.35f);
         for (int i = 0; i < 30; i++)
-            ui.shapes.rect(RIGHT - PIP_W, COL_TOP - pipY(i, depth), PIP_W, PIP_H);
+            ui.shapes.rect(RIGHT - PIP_W, COL_TOP - pipY(i, depth, pxy), PIP_W, PIP_H);
     }
 
     /** The indicator mid-screen beside the tape: loka name, region name, then the yojana
@@ -426,7 +452,8 @@ public final class Hud {
      *  "which hull am I flying" and "what can I spend". */
     private void drawVitals(SpriteBatch batch) {
         ui.hud.setColor(1, 1, 1, 0.7f);
-        ui.hud.draw(batch, vitalsStr, HudBars.X, VITALS_Y);
+        boolean v = vedicOn(); // under the medallion in the vedic set
+        ui.hud.draw(batch, vitalsStr, v ? VedicHud.M : HudBars.X, v ? VedicHud.VITALS_Y : VITALS_Y);
         ui.hud.setColor(1, 1, 1, 1);
     }
 
@@ -436,10 +463,9 @@ public final class Hud {
 
     private void drawEndCard(SpriteBatch batch, World w) {
         Template.title(ui, batch,
-                w.gameOver ? "GAME OVER" : w.vajraDone ? "THE VAJRA IS WHOLE" : "ATALA CONQUERED",
+                w.vajraDone ? "THE VAJRA IS WHOLE" : "ATALA CONQUERED",
                 END_TITLE_Y, 1);
-        Template.sub(ui, batch, w.gameOver ? "all lives spent"
-                        : w.vajraDone ? "seven bands, one blade — the run is won"
+        Template.sub(ui, batch, w.vajraDone ? "seven bands, one blade — the run is won"
                         : "the pit is yours — Bala has fallen",
                 END_SUB_Y, 1);
         for (int i = 0; i < resultLines.length; i++)

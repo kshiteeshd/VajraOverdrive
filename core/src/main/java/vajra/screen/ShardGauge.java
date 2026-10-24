@@ -119,6 +119,12 @@ public final class ShardGauge {
         return age < 0 || age > FLASH ? 0f : 1f - age / FLASH;
     }
 
+    /** The element's gem art, for HUDs that lay the gauge out their own way. */
+    TextureRegion gem(int t) { return reg[t]; }
+
+    /** The pickup pop for element t: 1 at the drop, easing to 0. */
+    float flashOf(World w, int t) { return flash(w, t); }
+
     /** Progress toward the next release, in segment units (so 1.0 is a full track).
      *
      *  <p>It reads the shard PILE, not `forgeProgress`. Forging banks shards; it never spends
@@ -130,10 +136,9 @@ public final class ShardGauge {
      *  <p>Every element the loka pays feeds the same forge, so a row's own count is its share
      *  of the progress - which is why Rasatala's two rows both move. */
     public static float progress(Hangar h, World w, int t) {
-        int need = h.forgeNeed(w.lokaIndex);
-        // shards/need is the fraction of the COST, and SEGMENTS is the whole track - so a full
-        // cost is a full track, and because need == SEGMENTS each segment is one shard.
-        return need <= 0 ? SEGMENTS : h.shards[t] / (float) need * SEGMENTS;
+        // shards/COST is the fraction of one release, and SEGMENTS is the whole track - so five shards
+        // are a full track, and because COST == SEGMENTS each segment is one shard.
+        return h.shards[t] / (float) vajra.world.Astra.COST * SEGMENTS;
     }
 
     // --- pass 1: shapes (the charge track, the READY hairline) ---------------------------
@@ -141,8 +146,7 @@ public final class ShardGauge {
     public void shapes(World w) {
         int[] paid = paidElements(w);
         Hangar h = w.hangar;
-        boolean ready = h.forgeCharges[w.lokaIndex] > 0;
-        boolean forged = h.isForged(w.lokaIndex);
+        boolean forged = true; // a release is five shards in the pile: the cells are always the filling kind
 
         // The block grows UP from the bottom margin; rows stack above the margin.
         int rows = paid.length;
@@ -157,6 +161,7 @@ public final class ShardGauge {
             float rowBottom = rowsTop - (row + 1) * ROW_H - row * ROW_GAP;
             float segY = rowBottom + (ROW_H - SEG_H) / 2f;
             float[] c = World.TATVA_RGB[t];
+            boolean ready = vajra.world.Astra.canLoose(h, t); // a release in hand for this element
             float p = Math.min(SEGMENTS, progress(h, w, t));
             int whole = (int) p;
 

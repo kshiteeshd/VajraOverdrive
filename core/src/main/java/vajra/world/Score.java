@@ -19,6 +19,13 @@ public final class Score {
     public static final int BOSS = 5000;   // Bala himself (on top of his kill value)
 
     public long points;
+
+    /** Carry another ledger over (a run going on into the next loka). */
+    public void copyFrom(Score o) {
+        points = o.points;
+        combo = o.combo;
+        comboT = o.comboT;
+    }
     public int combo;     // kills in the current chain
     public float comboT;  // seconds left of it
 

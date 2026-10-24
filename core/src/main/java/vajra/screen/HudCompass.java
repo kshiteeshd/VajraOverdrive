@@ -5,6 +5,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import vajra.world.Checkpoint;
+import vajra.world.Chest;
 import vajra.world.World;
 
 /** The compass, the bottom-left corner. NORTH-UP: a world bearing lands straight on the ring
@@ -45,11 +46,12 @@ final class HudCompass {
     private static final int MAP_N = 24;
     private static final float[] ROCKC = { 0.91f, 0.90f, 0.88f }; // the tiles' off-white
 
-    private static final int GATE = 0, SHOP = 1, CHECK = 2;
+    private static final int GATE = 0, SHOP = 1, CHECK = 2, CHEST = 3;
     private static final float[] NORTH = { 0.5f, 0.5f, 1f };
     private static final float[] GOLD = HudBars.GOLD;           // the gate arches' gold
     private static final float[] SHOPC = World.TATVA_RGB[3];    // the readout cyan (Jala)
     private static final float[] CHECKC = { 1f, 0.45f, 0.85f }; // the collector's pink
+    private static final float[] CHESTC = { 1f, 0.78f, 0.25f };  // a coffer's gold
 
     private static final int RING_N = 32;
     private static final float[] RING_COS = new float[RING_N + 1], RING_SIN = new float[RING_N + 1];
@@ -97,7 +99,7 @@ final class HudCompass {
             if (gy <= w.ship.y) continue;
             if (gy < best) {
                 best = gy;
-                out[0] = GATE_X;
+                out[0] = w.axisX;
                 out[1] = gy;
                 found = true;
             }
@@ -171,6 +173,30 @@ final class HudCompass {
         }
         if (anchor != null && !anchorDrawn) // the dim filled cross: from anywhere in the run
             mark(s, w, CHECK, CHECKC, 0.55f, anchor.x, anchor.y, true);
+        chests(s, w);
+    }
+
+    /** TREASURE (docs/TREASURE_CHESTS.md): every unopened chest inside the window is a gold coffer on the dial; once the pilot has met the person who
+     *  knows the loka's hoards (the Scout for Atala's, the Gold-Seller for Vitala's) the NEAREST unopened chest of the hull's own loka is marked even
+     *  beyond the window, resting on its edge like a gate. */
+    private void chests(ShapeRenderer s, World w) {
+        float reach = MAP_LIM / MAP_SCALE;
+        Chest nearest = null;
+        float best = Float.MAX_VALUE;
+        for (int i = 0; i < w.chests.size(); i++) {
+            Chest c = w.chests.get(i);
+            if (c.open) continue;
+            float dx = c.x - w.ship.x, dy = c.y - w.ship.y, d2 = dx * dx + dy * dy;
+            if (d2 <= reach * reach) mark(s, w, CHEST, CHESTC, 1f, c.x, c.y, false);
+            else if (d2 < best && c.loka == w.lokaAt(w.ship.y) && senses(w, c)) { best = d2; nearest = c; }
+        }
+        if (nearest != null) mark(s, w, CHEST, CHESTC, 0.8f, nearest.x, nearest.y, false);
+    }
+
+    /** Has the pilot met the one who knows where this loka's treasure lies. */
+    static boolean senses(World w, Chest c) {
+        vajra.enemy.Enemy who = vajra.world.Chatter.person(w, c.loka == 0 ? "SCOUT" : "SELLER");
+        return who != null && who.voiceMet;
     }
 
     /** The minimap: solid rock in a one-screen window around the ship, snapped to the world
@@ -179,14 +205,22 @@ final class HudCompass {
         float sx = MathUtils.round(w.ship.x / MAP_STEP) * MAP_STEP;
         float sy = MathUtils.round(w.ship.y / MAP_STEP) * MAP_STEP;
         float r2 = MAP_R * MAP_R;
-        float pw = MAP_STEP * MAP_SCALE; // one rock dot fills its sample's pitch
-        s.setColor(ROCKC[0], ROCKC[1], ROCKC[2], 0.5f);
+        float pw = MAP_STEP * MAP_SCALE; // one land cell fills its sample's pitch
+        s.setColor(UiTheme.INK_R, UiTheme.INK_G, UiTheme.INK_B, 1f); // opaque: an ink disc, then the real land on it
+        s.circle(CX, CY, MAP_R, 48);
+        WorldThumb thumb = WorldThumb.of(w);
+        float[] land = new float[3];
         for (int i = -MAP_N; i <= MAP_N; i++)
             for (int j = -MAP_N; j <= MAP_N; j++) {
                 float mx = i * MAP_STEP * MAP_SCALE, my = j * MAP_STEP * MAP_SCALE;
                 if (mx * mx + my * my > r2) continue; // the ring holds the window round
-                if (w.blockedPx(sx + i * MAP_STEP, sy + j * MAP_STEP))
-                    s.rectLine(CX + mx - pw / 2, CY + my, CX + mx + pw / 2, CY + my, pw);
+                thumb.sample(sx + i * MAP_STEP, sy + j * MAP_STEP, land);
+                s.setColor(land[0] * 0.9f, land[1] * 0.9f, land[2] * 0.9f, 1f);
+                s.rect(CX + mx - pw / 2 - 0.3f, CY + my - pw / 2 - 0.3f, pw + 0.6f, pw + 0.6f);
+                if (thumb.rock(sx + i * MAP_STEP, sy + j * MAP_STEP)) { // the wall tiles stand on the land (baked)
+                    s.setColor(ROCKC[0], ROCKC[1], ROCKC[2], 0.92f);
+                    s.rect(CX + mx - pw / 2 - 0.3f, CY + my - pw / 2 - 0.3f, pw + 0.6f, pw + 0.6f);
+                }
             }
     }
 
@@ -218,6 +252,13 @@ final class HudCompass {
                 s.rectLine(x + 3, y - 3, x + 3, y + 3, 1.75f);
                 s.rectLine(x + 3, y + 3, x - 3, y + 3, 1.75f);
                 s.rectLine(x - 3, y + 3, x - 3, y - 3, 1.75f);
+                break;
+            case CHEST: // a coffer: a box and its lid line
+                s.rectLine(x - 3, y - 2.5f, x + 3, y - 2.5f, 1.75f);
+                s.rectLine(x + 3, y - 2.5f, x + 3, y + 2f, 1.75f);
+                s.rectLine(x + 3, y + 2f, x - 3, y + 2f, 1.75f);
+                s.rectLine(x - 3, y + 2f, x - 3, y - 2.5f, 1.75f);
+                s.rectLine(x - 3, y, x + 3, y, 1.2f);
                 break;
             default: // checkpoint: cross
                 s.rectLine(x - 3, y - 3, x + 3, y + 3, 1.75f);

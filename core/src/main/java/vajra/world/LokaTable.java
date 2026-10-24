@@ -55,7 +55,7 @@ public final class LokaTable {
             // Namuchi and the naga Kaliya here. Sunless, jewel-walled, full of naga water.
             new Loka("Atala", "Bala", new int[] { 0 }, 1.0f, 1.0f, 1, 11),
             // Vitala — the ember deep: fire, serpents of flame, the first loka that hurts.
-            new Loka("Vitala", "Agnihotra", new int[] { 2 }, 1.35f, 1.2f, 2, 21),
+            new Loka("Vitala", "Bhairava", new int[] { 2 }, 1.35f, 1.2f, 2, 21),
             // Sutala — the water-deep. Kaliya's lake-country; the dampest rock in Patala.
             new Loka("Sutala", "Takshaka", new int[] { 3 }, 1.75f, 1.45f, 3, 31),
             // Talatala — stone and weight. Heavy, slow, patient.

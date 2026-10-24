@@ -87,7 +87,7 @@ class CutsceneTest {
 
     @Test
     void everyCueHasAScript() {
-        World w = new World();
+        World w = new World(0, World.CAMPAIGN);                                    // (the people of Vitala live in the campaign world)
         for (Cue c : Cue.values())
             if (c != Cue.BALA_WAKES && c != Cue.BALA_FALLS)
                 assertFalse(Scenes.build(c, w).isEmpty(), c.name());
@@ -139,5 +139,40 @@ class CutsceneTest {
         p.press();
         p.advance(0.2f, 0, 0, 1f);
         assertFalse(p.text().isEmpty(), "the second line starts at once");
+    }
+
+    private static vajra.ship.ShipControls idle() {
+        return new vajra.ship.ShipControls() {
+            public float thrustY() { return 0; }
+            public float thrustX() { return 0; }
+            public float rotate() { return 0; }
+            public boolean fire() { return false; }
+            public boolean boost() { return false; }
+            public boolean shield() { return false; }
+            public boolean mouseAim() { return false; }
+            public float aimX() { return 0; }
+            public float aimY() { return 0; }
+        };
+    }
+
+    @Test
+    void vitalaHasItsOwnWordsForEachRulerAndItsTwoPeople() {
+        World w = World.vitala(0);
+        java.util.List<Shot> noticed = Scenes.build(Cue.GAZE_NOTICED, w);
+        assertTrue(String.join(" ", noticed.get(0).lines).contains("BHAIRAVA"), "the second stage's gaze scenes speak of Bhairava");
+        World a = new World(0, World.CAMPAIGN);
+        assertTrue(String.join(" ", Scenes.build(Cue.GAZE_NOTICED, a).get(0).lines).contains("BALA"), "the first stage's of Bala");
+        assertFalse(Scenes.build(Cue.VITALA_ENTER, w).isEmpty());
+        assertTrue(Scenes.build(Cue.VOICE_SELLER, w).size() >= 3);
+        assertTrue(Scenes.build(Cue.VOICE_MAID, w).size() >= 3);
+        assertFalse(Scenes.build(Cue.BHAIRAVA_FALLS, w).isEmpty());
+        // the people meet the pilot once, and the Codex takes their pages
+        vajra.enemy.Enemy seller = vajra.world.Chatter.person(w, "SELLER");
+        assertTrue(seller != null && vajra.world.Chatter.person(w, "MAID") != null, "both people stand in Vitala");
+        w.cues.clear();
+        w.ship.x = seller.x;
+        w.ship.y = seller.y - 100f;
+        w.update(1 / 60f, idle());
+        assertTrue(w.cues.contains(Cue.VOICE_SELLER) && w.codex[vajra.world.Codex.SELLER], "the Gold-Seller is met");
     }
 }

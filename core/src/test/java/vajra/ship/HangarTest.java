@@ -134,30 +134,22 @@ class HangarTest {
         assertEquals(15f, h.magnet, 0.0001f, "fixed at 15 for dev builds");
     }
 
-    /** Shards have exactly one use now: forging the loka's Astra. Every one this loka pays
-     *  banks it, and nothing else can be spent on anything. */
+    /** Shards are the astras' fuel: every set of five is one more release, and a shard of any element feeds
+     *  the pile (the loka decides what drops, so the purity is in the loot, not in the pile). */
     @Test
-    void everyShardYouHoldIsForgingTheAstra() {
+    void everyFifthShardCompletesARelease() {
         Hangar h = new Hangar();
-        int need = h.forgeNeed(0);
-        assertTrue(need > 0, "there is always a next thing to bank toward");
-        for (int i = 0; i < need - 1; i++) {
-            h.addShard(Hangar.AKASHA, 0);
-            assertFalse(h.isForged(0), "not forged at " + h.shards[Hangar.AKASHA]);
-        }
-        h.addShard(Hangar.AKASHA, 0);
-        assertTrue(h.isForged(0), "the last one forges it");
+        for (int i = 1; i < vajra.world.Astra.COST; i++) assertFalse(h.addShard(Hangar.AKASHA), "no release at " + i);
+        assertTrue(h.addShard(Hangar.AKASHA), "the last of five completes one");
+        assertEquals(1, vajra.world.Astra.releases(h, Hangar.AKASHA));
     }
 
-    /** The purity rule survives the removal of tempering: shards of an element this loka does
-     *  NOT pay stock up and never forge anything. */
     @Test
-    void shardsThisLokaDoesNotPayNeverForge() {
+    void shardsOfOtherElementsDoNotFuelAnAstraTheyAreNotFor() {
         Hangar h = new Hangar();
-        for (int i = 0; i < 40; i++) h.addShard(Hangar.AGNI, 0);   // Atala pays Akasha alone
-        assertEquals(40, h.shards[Hangar.AGNI], "they still stock up, to sell");
-        assertFalse(h.isForged(0), "and never forge the Astra");
-        assertEquals(0, h.forgeCharges[0]);
+        for (int i = 0; i < 40; i++) h.addShard(Hangar.AGNI);
+        assertEquals(40, h.shards[Hangar.AGNI], "they stock up (to sell, or to loose the Agni astra)");
+        assertFalse(vajra.world.Astra.canLoose(h, Hangar.AKASHA), "and never fuel the Akasha astra");
     }
 
     @Test

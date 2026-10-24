@@ -66,33 +66,27 @@ class ShardGaugeTest {
         assertEquals(ShardGauge.SEGMENTS * ShardGauge.SEG_W
                         + (ShardGauge.SEGMENTS - 1) * ShardGauge.SEG_GAP,
                 ShardGauge.TRACK_W, 0.01f, "one segment per shard");
-        assertEquals(Hangar.CHARGE_COST, ShardGauge.SEGMENTS,
+        assertEquals(vajra.world.Astra.COST, ShardGauge.SEGMENTS,
                 "the track is exactly as wide as a release costs, so the count reads off it");
     }
 
-    /** The track is progress toward the next Astra release, and it reads the loka's OWN
-     *  element only - the purity rule the forge already obeys. */
+    /** The track is progress toward the next astra release: the pile of that element over what a release costs. */
     @Test
-    void theTrackReadsForgeProgress() {
+    void theTrackReadsTheShardPile() {
         World w = new World();
         Hangar h = w.hangar;          // the world's own hangar: hangar is final
         int t = Hangar.AKASHA;
         assertEquals(0f, ShardGauge.progress(h, w, t), 0.001f, "nothing banked");
 
-        // in SEGMENT units, and SEGMENTS == CHARGE_COST: so one segment is one shard, and
-        // three of five fills three segments. Fed through addShard, the only route a pickup takes.
-        for (int i = 0; i < 3; i++) h.addShard(t, 0);
+        // in SEGMENT units, and SEGMENTS == COST: so one segment is one shard, and three of five fills three
+        // segments. Fed through addShard, the only route a pickup takes.
+        for (int i = 0; i < 3; i++) h.addShard(t);
         assertEquals(3f, ShardGauge.progress(h, w, t), 0.001f, "three of five");
-        assertFalse(h.isForged(0), "not forged at three");
+        assertFalse(vajra.world.Astra.canLoose(h, t), "not enough to loose at three");
 
-        for (int i = 0; i < 2; i++) h.addShard(t, 0);
-        assertTrue(h.isForged(0), "the fifth forges it");
-        assertEquals(1, h.forgeCharges[0], "forging hands you the first release");
-        // The track reads the shard PILE, and forging never spends shards - it banks them.
-        // So a full track after forging is correct: it means "this pile is worth a release",
-        // and the next five carry on from there.
-        assertEquals(ShardGauge.SEGMENTS, ShardGauge.progress(h, w, t), 0.001f,
-                "the pile is intact: forging banks, it does not spend");
+        for (int i = 0; i < 2; i++) h.addShard(t);
+        assertTrue(vajra.world.Astra.canLoose(h, t), "the fifth pays for a release");
+        assertEquals(ShardGauge.SEGMENTS, ShardGauge.progress(h, w, t), 0.001f, "a full track");
         h.sellShards();                       // selling DOES spend them
         assertEquals(0f, ShardGauge.progress(h, w, t), 0.001f,
                 "and selling pulls the track back down, which is the only way to lose ground");

@@ -62,15 +62,15 @@ public final class CacheDirector {
      *  at the cache is the only mark it leaves — no label, no marker, no announcement. */
     private void payout(int i) {
         world.cacheState[world.slot][i] = World.CACHE_DONE;
-        world.hangar.coins += Math.round(100 * (float) Math.sqrt(vajra.world.LokaTable.at(world.lokaIndex).hpScale));
+        world.hangar.coins += Balance.cacheCoins(world.lokaOfRegion[world.cacheRegion[i]]);
         world.lives++;
         world.addEffect(Effect.ring(world.caches[i][0], world.caches[i][1], 160, 1f, 0.84f, 0.3f));
         world.addEffect(Effect.spark(world.caches[i][0], world.caches[i][1], 1f, 0.84f, 0.3f));
         if (i == 1) Chatter.beaconRaised(world); // index 1 = band 2: the Scout's beacon speaks
     }
 
-    private boolean inBand(Enemy e, int band) { // cache 0..4 lives in regions 1..5
-        int r = band + 1;
+    private boolean inBand(Enemy e, int band) { // a cache lives in the region World.cacheRegion names
+        int r = world.cacheRegion[band];
         return e.homeY >= world.regionStart[r] && e.homeY < world.regionEnd[r];
     }
 }

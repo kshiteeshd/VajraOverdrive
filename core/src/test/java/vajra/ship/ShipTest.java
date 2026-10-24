@@ -7,14 +7,13 @@ import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
 
 class ShipTest {
-    private static ShipControls controls(float tx, float ty, float rot, boolean fire, boolean boost, boolean dash, boolean shield) {
+    private static ShipControls controls(float tx, float ty, float rot, boolean fire, boolean boost, boolean shield) {
         return new ShipControls() {
             public float thrustX() { return tx; }
             public float thrustY() { return ty; }
             public float rotate() { return rot; }
             public boolean fire() { return fire; }
             public boolean boost() { return boost; }
-            public boolean dash() { return dash; }
             public boolean shield() { return shield; }
             public boolean mouseAim() { return false; }
             public float aimX() { return 0; }
@@ -22,18 +21,18 @@ class ShipTest {
         };
     }
 
-    private static final ShipControls NONE = controls(0, 0, 0, false, false, false, false);
+    private static final ShipControls NONE = controls(0, 0, 0, false, false, false);
 
     @Test
     void theBankLeansWithTheStrafeAndFliesLevelWhenThePushGoes() {
         World w = new World();
-        for (int i = 0; i < 92; i++) w.ship.update(0.016f, controls(-1, 0, 0, false, false, false, false), w);
+        for (int i = 0; i < 92; i++) w.ship.update(0.016f, controls(-1, 0, 0, false, false, false), w);
         assertEquals(-1f, w.ship.lean, 0.02f, "gliding left (A) leans the bank left to its cap");
-        for (int i = 0; i < 3; i++) w.ship.update(0.016f, controls(1, 0, 0, false, false, false, false), w);
+        for (int i = 0; i < 3; i++) w.ship.update(0.016f, controls(1, 0, 0, false, false, false), w);
         assertTrue(Math.abs(w.ship.lean) < 0.25f, "crossing the strafe releases through level");
         for (int i = 0; i < 92; i++) w.ship.update(0.016f, NONE, w);
         assertEquals(0f, w.ship.lean, 0.02f, "and the wings level when the push goes");
-        for (int i = 0; i < 62; i++) w.ship.update(0.016f, controls(0, 0, 1, false, false, false, false), w);
+        for (int i = 0; i < 62; i++) w.ship.update(0.016f, controls(0, 0, 1, false, false, false), w);
         assertEquals(0f, w.ship.lean, 0.02f, "turning the nose alone never banks: tilt is the strafe's tell");
     }
 
@@ -41,7 +40,7 @@ class ShipTest {
     void thrustIsScreenRelative() {
         World w = new World();
         w.ship.facing = 0; // nose east: the old nose-relative scheme sent W east too
-        w.ship.update(0.016f, controls(0, 1, 0, false, false, false, false), w);
+        w.ship.update(0.016f, controls(0, 1, 0, false, false, false), w);
         assertTrue(w.ship.vy > 0, "W is north, whatever the nose is doing");
         assertEquals(0f, w.ship.vx, 0.001f, "and nothing sideways");
     }
@@ -50,7 +49,7 @@ class ShipTest {
     void strafeIsScreenRelative() {
         World w = new World();
         w.ship.facing = 0;
-        w.ship.update(0.016f, controls(1, 0, 0, false, false, false, false), w);
+        w.ship.update(0.016f, controls(1, 0, 0, false, false, false), w);
         assertTrue(w.ship.vx > 0, "D is east");
         assertEquals(0f, w.ship.vy, 0.001f);
     }
@@ -59,7 +58,7 @@ class ShipTest {
     @Test
     void thrustHoldAccumulatesWhileHeldAndResets() {
         World w = new World();
-        ShipControls up = controls(0, 1, 0, false, false, false, false);
+        ShipControls up = controls(0, 1, 0, false, false, false);
         for (int i = 0; i < 25; i++) w.ship.update(0.016f, up, w);
         assertEquals(0.4f, w.ship.thrustHold, 0.02f, "held keys bank plume time");
         for (int i = 0; i < 5; i++) w.ship.update(0.016f, NONE, w);
@@ -71,7 +70,7 @@ class ShipTest {
     void wasdNeverTurnsTheNose() {
         World w = new World();
         w.ship.facing = 1.2f;
-        for (int i = 0; i < 90; i++) w.ship.update(0.016f, controls(1, 0, 0, false, false, false, false), w);
+        for (int i = 0; i < 90; i++) w.ship.update(0.016f, controls(1, 0, 0, false, false, false), w);
         assertEquals(1.2f, w.ship.facing, 0.01f, "pushing right must not turn the ship");
         assertTrue(w.ship.vx > 0, "but it still pushes");
     }
@@ -87,7 +86,7 @@ class ShipTest {
     @Test
     void qTurnsTheNoseCounterClockwise() {
         World w = new World();
-        for (int i = 0; i < 30; i++) w.ship.update(0.016f, controls(1, 0, 1, false, false, false, false), w);
+        for (int i = 0; i < 30; i++) w.ship.update(0.016f, controls(1, 0, 1, false, false, false), w);
         assertTrue(w.ship.facing > 0, "Q turns left even while pushing, facing " + w.ship.facing);
     }
 
@@ -95,47 +94,8 @@ class ShipTest {
     void rotateTurnsTheNose() {
         World w = new World();
         float f0 = w.ship.facing;
-        w.ship.update(0.5f, controls(0, 0, -1, false, false, false, false), w);
+        w.ship.update(0.5f, controls(0, 0, -1, false, false, false), w);
         assertTrue(w.ship.facing < f0, "E turns right");
-    }
-
-    @Test
-    void dashGrantsIFramesThenCoolsDown() {
-        World w = new World();
-        Ship s = w.ship;
-        ShipControls push = controls(0, 1, 0, false, false, true, false);
-        s.update(0.016f, push, w);
-        assertTrue(s.iFrames > 0, "dash gives i-frames");
-        assertEquals(0f, s.dashCd, 0.001f,
-                "the wait starts at the TAIL of the smear — the burst is movement, not dead time");
-        assertTrue(Math.sqrt(s.vx * s.vx + s.vy * s.vy) > 900,
-                "no ease-in: the burst opens at full speed");
-        float peak = 0, last = 0;
-        for (int i = 0; i < 22; i++) {
-            s.update(0.016f, push, w);
-            float sp = (float) Math.sqrt(s.vx * s.vx + s.vy * s.vy);
-            if (sp > peak) peak = sp;
-            last = sp;
-        }
-        assertTrue(peak > 900, "dash is a swift burst, got " + peak);
-        assertTrue(last < peak / 2, "and settles back down, got " + last);
-        assertTrue(s.dashCd > 0, "holding C must not re-dash");
-        for (int i = 0; i < 100; i++) s.update(0.016f, NONE, w);
-        assertTrue(s.dashCd <= 0, "cooldown expires, was " + s.dashCd);
-        s.update(0.016f, controls(0, 1, 0, false, false, false, false), w); // release frame
-        s.update(0.016f, controls(0, 1, 0, false, false, true, false), w);
-        assertTrue(s.iFrames > 0, "can dash again after cooldown");
-    }
-
-    /** Dash is a ghost move: it must not throw a particle trail behind it. */
-    @Test
-    void dashLeavesNoParticles() {
-        World w = new World();
-        ShipControls dash = controls(1, 0, 0, false, false, true, false);
-        w.ship.update(0.016f, dash, w);
-        for (int i = 0; i < 5; i++) w.ship.update(0.016f, dash, w);
-        assertTrue(w.ship.dashTime > 0, "the dash is still running");
-        assertTrue(w.effects.isEmpty(), "and left nothing behind");
     }
 
     /** Thrusting drops a short exhaust trail; a dying hull trails smoke. Both always leave from
@@ -143,7 +103,7 @@ class ShipTest {
     @Test
     void exhaustAndSmokeSparks() {
         World w = new World();
-        w.ship.update(0.016f, controls(1, 0, 0, false, false, false, false), w);
+        w.ship.update(0.016f, controls(1, 0, 0, false, false, false), w);
         assertFalse(w.effects.isEmpty(), "the drive sparks while it pushes");
         assertTrue(w.effects.get(0).y < w.ship.y, "exhaust leaves from behind, never the nose");
         w.effects.clear();
@@ -154,26 +114,11 @@ class ShipTest {
         assertTrue(w.effects.get(0).y < w.ship.y, "smoke too — rear of the hull, always");
     }
 
-    /** The deform follows the push: a dash remembers which way it went. */
-    @Test
-    void dashStoresItsDirection() {
-        World w = new World();
-        Ship s = w.ship;
-        s.update(0.016f, controls(1, 0, 0, false, false, true, false), w); // push east
-        assertEquals(1f, s.dashDirX, 0.01f, "east push remembers east");
-        assertEquals(0f, s.dashDirY, 0.01f, "no phantom vertical");
-        for (int i = 0; i < 100; i++) s.update(0.016f, NONE, w); // wait out any cooldown
-        s.facing = (float) Math.PI / 2; // nose north
-        s.update(0.016f, controls(0, 0, 0, false, false, true, false), w); // bare burst
-        assertEquals(0f, s.dashDirX, 0.01f, "no keys: burst goes along the nose");
-        assertEquals(1f, s.dashDirY, 0.01f, "which is north");
-    }
-
     @Test
     void boostDrainsAndRegenerates() {
         World w = new World();
         Ship s = w.ship;
-        s.update(0.5f, controls(0, 1, 0, false, true, false, false), w);
+        s.update(0.5f, controls(0, 1, 0, false, true, false), w);
         assertTrue(s.boosting, "boosting while held with energy");
         assertTrue(s.boostEnergy < 100, "boost drains energy");
         float afterUse = s.boostEnergy;
@@ -190,7 +135,7 @@ class ShipTest {
     void boostLastsLongEnoughToMatter() {
         World w = new World();
         Ship s = w.ship;
-        ShipControls push = controls(0, 1, 0, false, true, false, false);
+        ShipControls push = controls(0, 1, 0, false, true, false);
         s.update(0.016f, push, w);
         float t = 0;
         while (s.boosting && t < 20) {
@@ -205,7 +150,7 @@ class ShipTest {
     void shieldCostScalesWithTheHit() {
         World w = new World();
         Ship s = w.ship;
-        ShipControls guard = controls(0, 0, 0, false, false, false, true);
+        ShipControls guard = controls(0, 0, 0, false, false, true);
         s.update(0.016f, guard, w);
         float full = s.shieldEnergy;
         s.damage(5, w);                       // a Hataka ring pellet
@@ -242,7 +187,7 @@ class ShipTest {
         s.boostEnergy = 1;
         boolean everBoosted = false;
         for (int i = 0; i < 10; i++) {
-            s.update(0.016f, controls(0, 1, 0, false, true, false, false), w);
+            s.update(0.016f, controls(0, 1, 0, false, true, false), w);
             if (s.boosting) everBoosted = true;
             else break;
         }
@@ -284,7 +229,7 @@ class ShipTest {
     void thrustEasesInAndOut() {
         World w = new World();
         Ship s = w.ship;
-        ShipControls push = controls(1, 0, 0, false, false, false, false);
+        ShipControls push = controls(1, 0, 0, false, false, false);
         s.update(0.016f, push, w);
         float first = s.vx;
         assertTrue(first > 0, "the ramp starts moving at once");
@@ -302,7 +247,7 @@ class ShipTest {
     void thrustConvergesToMaxSpeed() {
         World w = new World();
         Ship s = w.ship;
-        ShipControls push = controls(1, 0, 0, false, false, false, false);
+        ShipControls push = controls(1, 0, 0, false, false, false);
         for (int i = 0; i < 300; i++) s.update(0.016f, push, w); // 4.8 s: far past settling
         float sp = (float) Math.hypot(s.vx, s.vy);
         assertEquals(s.maxSpeed(), sp, 1f, "cruise matches the SPD figure, got " + sp);
@@ -322,7 +267,6 @@ class ShipTest {
             public float rotate() { return 0; }
             public boolean fire() { return false; }
             public boolean boost() { return false; }
-            public boolean dash() { return false; }
             public boolean shield() { return false; }
             public boolean mouseAim() { return true; }
             public float aimX() { return 600; }

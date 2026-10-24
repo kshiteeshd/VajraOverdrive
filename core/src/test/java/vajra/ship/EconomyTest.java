@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.Test;
 import vajra.weapon.WeaponDef;
+import vajra.world.Balance;
 import vajra.world.LokaTable;
 import vajra.world.World;
 
@@ -11,12 +12,12 @@ import vajra.world.World;
  *  loka's pay, ranks add power and an ability, and a pilot's best damage keeps pace with the hull
  *  the enemy carries (docs/ECONOMY.md has the reasoning and the tables). */
 class EconomyTest {
-    /** Coins a thoroughly cleared loka pays, by the model in docs/ECONOMY.md. */
+    /** Coins a thoroughly cleared loka pays, by the model in docs/ECONOMY.md (vajra.world.Balance; BalanceTest measures the built lokas against it). */
     private static double income(int loka) {
-        return 1250 * Math.sqrt(LokaTable.at(loka).hpScale);
+        return Balance.gross(loka);
     }
 
-    private static double keep(int loka) { return income(loka) * 0.65; } // a pilot never takes it all
+    private static double keep(int loka) { return Balance.keep(loka); } // a typical pilot never takes it all
 
     private static double dps(WeaponDef d) {
         return d.damage * d.count * Math.max(1, d.burst) / Math.max(0.05f, d.cooldown + d.chargeTime);

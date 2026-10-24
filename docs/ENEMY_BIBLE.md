@@ -92,3 +92,22 @@ gold flame crown. *Motion:* the flames lick up and down out of step; the belly g
 *Job:* runs a hangar bay and never leaves it. *Feel:* shrewd, welcoming, armed. *Shape:* a broad
 pearl hull, a gold scale-beam above with two pans, a ring of coins below, a lavender-gold eye.
 *Motion:* the pans tip alternately; the eye takes in the pilot.
+
+## HOLD YOUR POST (a rule for every loka, after the pilot found the garrison "coming crazy")
+
+An enemy belongs to the band it was placed in and to the place it was put. What the analysis found (a hull parked in each band for 30 s, `PostsTest`) before the
+rules: **42,000 px of drift** - whole courts from the top of Vitala flying down the world to the hull - and units in Bhu Loka. The causes, and the rules that replaced
+them:
+
+| cause | rule now |
+|---|---|
+| a **dive** landed beside the hull from anywhere and moved the unit's post there (Atala's scouts and skirmishers), so a court migrated with the pilot | a dive is only taken when the hull is within 900 px of the post, only lands within 380 px of it, and never inside another band; Vitala's units do not dive at all (they have Dhuma's smoke) |
+| a **vent's flame** hurt sleeping enemies, and a hurt unit wakes its neighbours (call to arms): the whole Hearth Deep woke at the first frame | vents burn the pilot only; sleepers are not carried by the river either |
+| an awake unit had **no reason to stop**: it fought wherever the hull was | **stand down**: when the hull is farther than 1.7 wake ranges from a unit's own spawn it flies home (round the rock), is set down on its post, and **sleeps there, its formation restored** |
+| nothing kept a unit **inside its band** | every unit has `bandMin/bandMax` (its region's floor and ceiling, a margin in from the gates): it cannot cross a gate or enter Bhu Loka |
+| formations and leashes were loose | a hard **tether** of 760 px from the spawn for everyone; Vitala leaders stalk within 480 px of the post and followers within 600; a court takes the fight to the hull only while the hull is within 900 px of its post (`VitalaBrain.ENGAGE`), otherwise it holds its formation at the post (a pincer or a circle round a hull that is not there falls back to a wedge) |
+
+After: drift never above 760 px, **no unit in Bhu Loka, none outside its band**, and a court that woke is home and asleep 30 s after the hull leaves.
+
+**Placement audit** (`PostsTest.thePlacementOfTheGarrisonIsClean`): per region 0 / 45 / 51 / 53 / 62 / 16 in Atala and 57 / 88 / 86 / 97 / 13 in Vitala (Bhu Loka none);
+no spawn in rock, none outside its band, none on top of another, none crowding a gate: all zero.

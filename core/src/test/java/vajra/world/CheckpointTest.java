@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
 
 /** Checkpoints: one per Atala band (Bhu Loka has none), touching the pink collector spends it,
- *  the most recent one collected is the respawn anchor, and lives run out into game over. */
+ *  the most recent one collected is the respawn anchor, and lives run out into nothing worse than a restart at the lamp. */
 class CheckpointTest {
     private static final ShipControls NONE = new ShipControls() {
         public float thrustX() { return 0; }
@@ -16,7 +16,6 @@ class CheckpointTest {
         public float rotate() { return 0; }
         public boolean fire() { return false; }
         public boolean boost() { return false; }
-        public boolean dash() { return false; }
         public boolean shield() { return false; }
         public boolean mouseAim() { return false; }
         public float aimX() { return 0; }
@@ -71,24 +70,20 @@ class CheckpointTest {
     }
 
     @Test
-    void allLivesSpentEndsTheRun() {
+    void thereIsNoGameOverTheLastLifeWakesAtTheLamp() {
         World w = new World();
         Ship s = w.ship;
         for (int i = 0; i < 2; i++) {
             s.hp = 1;
             s.invuln = 0;
             s.damage(999, w);
-            assertFalse(w.gameOver, "lives remain after death " + (i + 1));
+            assertTrue(s.hp > 0, "the hull wakes after death " + (i + 1));
         }
         s.hp = 1;
         s.invuln = 0;
         s.damage(999, w);
-        assertTrue(w.gameOver, "third death empties the last life");
-        assertEquals(0, w.lives);
-        assertEquals(0f, s.hp, 0.001f, "the hull stays where it fell");
-        s.invuln = 0;
-        s.damage(999, w);
-        assertEquals(0, w.lives, "no damage after game over");
-        assertFalse(w.gameOver && s.hp > 0, "hull stays at zero");
+        assertEquals(0, w.lives, "the third death empties the counter");
+        assertTrue(s.hp > 0, "and the hull still wakes");
+        assertFalse(w.runEnded(), "no game over");
     }
 }

@@ -12,7 +12,7 @@ import vajra.flow.FlowState;
 import vajra.update.Updater;
 
 /** The title screen: an opaque ink field, the pixel logo, a temple divider, and its text rows:
- *  CONTINUE (only when the pilot left a run mid-flight) / NEW GAME / MULTIPLAYER / TUTORIALS /
+ *  CONTINUE (only when the pilot left a run mid-flight) / NEW GAME / MULTIPLAYER / TEST AREA / TUTORIALS /
  *  PROFILE / SETTINGS / UPDATE / QUIT.
  *
  *  <p>The look is a vector-display take on temple geometry, all in the theme's one gold on ink:
@@ -28,13 +28,13 @@ import vajra.update.Updater;
 public class HomeScreen implements FlowState {
     /** The rows with no save to continue: NEW GAME leads. */
     static final String[] MENU =
-            {"NEW GAME", "MULTIPLAYER", "TUTORIALS", "PROFILE", "SETTINGS", "UPDATE", "QUIT"};
+            {"NEW GAME", "MULTIPLAYER", "TEST AREA", "VITALA", "TUTORIALS", "PROFILE", "SETTINGS", "UPDATE", "QUIT"};
     static final String CONTINUE = "CONTINUE";
     static final String SURE = "ERASE SAVE?  ENTER AGAIN";
-    private static final float MENU_Y = 284;  // first row baseline: up to eight rows, tighter pitch
-    private static final float PITCH = 28;    // row pitch (rows abut at HALF_H 14, no dead zone)
+    private static final float MENU_Y = 292;  // first row baseline: up to nine rows, tighter pitch
+    private static final float PITCH = 26;    // row pitch (rows abut at HALF_H 13, no dead zone)
     private static final float HALF_W = 200;  // row hit half-width
-    private static final float HALF_H = 14;   // row hit half-height
+    private static final float HALF_H = 13;   // row hit half-height
 
     /** The rows for a pilot: CONTINUE on top when a run is parked. */
     static String[] rows(boolean hasRun) {
@@ -122,14 +122,17 @@ public class HomeScreen implements FlowState {
             flow.set(GameScreen.resume(batch, flow, ui, vajra.profile.Profiles.active().run));
             return;
         }
-        int sel = row();
-        if (sel == 0) newGame();
-        else if (sel == 1) flow.push(new NetScreen(flow, ui, batch));
-        else if (sel == 2) flow.push(new TutorialScreen(flow, ui, batch));
-        else if (sel == 3) flow.push(new ProfileScreen(flow, ui, batch));
-        else if (sel == 4) flow.push(new SettingsScreen(flow, ui, batch));
-        else if (sel == 5) updater.begin();
-        else Gdx.app.exit();
+        switch (MENU[row()]) {
+            case "NEW GAME": newGame(); break;
+            case "MULTIPLAYER": flow.push(new NetScreen(flow, ui, batch)); break;
+            case "TEST AREA": flow.push(new TestAreaScreen(flow, ui, batch)); break; // world variant two: layered walls, free flight
+            case "VITALA": flow.set(GameScreen.vitala(batch, flow, ui)); break; // the second loka, straight from the menu (test build)
+            case "TUTORIALS": flow.push(new TutorialScreen(flow, ui, batch)); break;
+            case "PROFILE": flow.push(new ProfileScreen(flow, ui, batch)); break;
+            case "SETTINGS": flow.push(new SettingsScreen(flow, ui, batch)); break;
+            case "UPDATE": updater.begin(); break;
+            default: Gdx.app.exit(); break;
+        }
     }
 
     /** NEW GAME. Over a parked run it asks once: the first press arms the row, the second erases. */
@@ -140,7 +143,8 @@ public class HomeScreen implements FlowState {
             return;
         }
         vajra.profile.Profiles.clearRun();
-        flow.set(new GameScreen(batch, flow, ui));
+        // the story first, then the run (straight to the run when there is no art, or in a test)
+        flow.set(ComicScreen.before(flow, ui, batch, () -> new GameScreen(batch, flow, ui)));
     }
 
     @Override

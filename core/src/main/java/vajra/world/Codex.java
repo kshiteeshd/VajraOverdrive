@@ -9,19 +9,21 @@ package vajra.world;
  *  missions, the warden, his fall, and what waits below. Wave 2+ pages add themselves as
  *  lokas open; COUNT grows, older page ids never move. */
 public final class Codex {
-    public static final int COUNT = 12;
+    public static final int COUNT = 17;
 
     // page ids: stable, never renumbered
     public static final int ATALA = 0, VAJRA = 1, DEEPENING = 2,
             SCOUT = 3, MAYA = 4, KALIYA = 5,
             BEACON = 6, ROGUE = 7, RETEMPER = 8,
-            BALA = 9, LETTER = 10, FIFTH = 11;
+            BALA = 9, LETTER = 10, FIFTH = 11,
+            VITALA = 12, SELLER = 13, MAID = 14, BHAIRAVA = 15, HATAKI = 16;
 
     public static final String[] TITLE = {
             "ATALA", "THE VAJRAYUDHA", "THE DEEPENING",
             "UPARICHARA'S SCOUT", "THE NINTH MAYA", "KALIYA THE TIDE-PILOT",
             "THE BEACON", "DAMBHA THE ROGUE", "THE RETEMPERING",
-            "BALA, RULER OF ATALA", "MAYA'S LETTER", "THE FIFTH STEP"
+            "BALA, RULER OF ATALA", "MAYA'S LETTER", "THE FIFTH STEP",
+            "VITALA", "THE GOLD-SELLER", "GAURI'S MAID", "BHAIRAVA, HERALD OF CINDERS", "THE HATAKI"
     };
 
     public static final String[] BODY = {
@@ -60,7 +62,22 @@ public final class Codex {
             + "GO DEEPER, INDRA. THE HAMMER WAITS. - M., SOMETIME OF MAYA VANA",
             "TRIVIKRAMA TOOK THREE STEPS. A FOURTH IS WRITTEN, NEVER TAKEN.\n"
             + "IT STANDS BELOW THE SEVENTH LOKA, AND HE STANDS ON IT.\n"
-            + "ATALA IS ONLY THE STAIRS."
+            + "ATALA IS ONLY THE STAIRS.",
+            "THE SECOND LOKA: BLACK STONE, AND FIRE. HARA AND GAURI KEEP IT.\n"
+            + "ITS SOIL IS BLACK, ITS RIVER IS GOLD, AND ITS WALLS ARE FORGES.\n"
+            + "NOBODY IN IT IS A SOLDIER BY TRADE. EVERYONE IN IT IS LIT FROM INSIDE.",
+            "A BHUTA OF HARA'S COURT, PALE AND SMILING, WITH A BALANCE ON HIS BACK.\n"
+            + "HE WEIGHS HATAKA GOLD AND KNOWS WHERE EVERY VAULT IS CUT.\n"
+            + "ASK HIM, AND THE COMPASS POINTS AT TREASURE.",
+            "A LAMP-BEARER OF GAURI'S, SMALL, WITH LOTUS PETALS FOR WINGS.\n"
+            + "LIGHT ONE OF HER LAMPS AND THE BAND HOLDS ITS BREATH FOR SIX SECONDS.\n"
+            + "HER WELLS MEND WHAT THE FIRE BREAKS. DRINK WHEN YOU ARE BROKEN.",
+            "HARA AT THE CREMATION GROUND, LORD OF BURNING GOLD, HOLDER OF THE SECOND PIECE.\n"
+            + "HE LEAVES ASH THAT BURNS AND A FLOOR THAT SHRINKS.\n"
+            + "HIS THIRD EYE OPENS A LITTLE MORE EVERY TIME HIS FIRE IS TESTED.",
+            "THE RIVER OF LIQUID GOLD THAT RUNS THE LENGTH OF VITALA, BORN WHERE HARA AND GAURI MEET.\n"
+            + "FIRE DRINKS IT AND SPITS HATAKA GOLD. IT CARRIES EVERYTHING ON IT, UP.\n"
+            + "IN THE RAPIDS IT CARRIES YOU WHETHER YOU WILL OR NO."
     };
 
     private Codex() {}

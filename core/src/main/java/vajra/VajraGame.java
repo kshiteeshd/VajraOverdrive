@@ -25,6 +25,11 @@ public class VajraGame extends Game {
         ui = new Ui();
         flow = new Flow();
         flow.ui(ui); // so it can keep the UI viewport current for states with none of their own
+        flow.bind(Input.Keys.F9, () -> { // the HUD swap: classic <-> vedic, kept per pilot
+            Settings st = vajra.profile.Profiles.active().settings;
+            st.hudStyle = 1 - st.hudStyle;
+            vajra.profile.Profiles.save();
+        });
         flow.bind(Input.Keys.F11, this::toggleFullscreen);
         flow.bind(Input.Keys.F12, this::cycleWindowed);
         Gdx.input.setInputProcessor(flow); // every key, mouse and wheel event lands on the stack

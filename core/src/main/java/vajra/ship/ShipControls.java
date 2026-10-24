@@ -9,7 +9,6 @@ public interface ShipControls {
     float rotate();     // +1 counter-clockwise (Q), -1 clockwise (E); thrust never turns the ship
     boolean fire();     // SPACE or mouse LMB held
     boolean boost();    // SHIFT held
-    boolean dash();     // C held (edge-detected in Ship)
     boolean shield();   // F or mouse RMB held
     boolean mouseAim(); // LMB held: the nose tracks the cursor instead of travel
     float aimX();       // cursor in world coords
@@ -23,7 +22,6 @@ public interface ShipControls {
         public float rotate() { return 0; }
         public boolean fire() { return false; }
         public boolean boost() { return false; }
-        public boolean dash() { return false; }
         public boolean shield() { return false; }
         public boolean mouseAim() { return false; }
         public float aimX() { return 0; }

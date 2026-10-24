@@ -10,6 +10,13 @@ import org.junit.jupiter.api.Test;
 /** The grand structure: Bhu Loka is bare, the five gate walls stand except at their doors,
  *  and a ship-sized hull can fly from the spawn to the boss arena through every doorway. */
 class GateTest {
+    // These tests are about the rock the world was built with; the default world has none (World.walls).
+    @org.junit.jupiter.api.BeforeAll
+    static void rockOn() { World.walls = true; }
+
+    @org.junit.jupiter.api.AfterAll
+    static void rockOff() { World.walls = true; }
+
     /** y, door half-width in tiles, grand arch? — mirrors World's gateWall list. */
     private static final float[][] GATES = {
             { 1600, 7, 1 }, { 4100, 4, 0 }, { 7600, 4, 0 }, { 12000, 4, 0 }, { 17600, 6, 1 }

@@ -33,14 +33,14 @@ class ShipArtTest {
      *  block. Marks without a sheet fall back to their static PNGs (the test above). */
     @Test
     void theForgedSheetsAreTheFlightArt() throws Exception {
-        for (int mk = 1; mk <= 5; mk++) {
+        for (int mk = 1; mk <= 7; mk++) {
             File f = new File(assetsDir(), "vajra_ships/mk_" + mk + "/mark" + mk + "_sheet.png");
             assertTrue(f.isFile(),
-                    "mark " + mk + "'s sheet is missing: run 'java ship_forge/ShipForge.java --mark " + mk
+                    "mark " + mk + "'s sheet is missing: run 'java ship_forge/ShipForge_7.java --mark " + mk
                             + " tools/forge_out' and copy mark" + mk + "_sheet.png to assets/vajra_ships/mk_" + mk + "/");
             BufferedImage img = ImageIO.read(f);
-            assertEquals(18 * 64, img.getWidth(), "18 frames wide: idle 8, hit 4, bank 3 + 3");
-            assertEquals(3 * 64, img.getHeight(), "one 64px tier row per variation: a, b, c");
+            assertEquals(ShipImages.FRAME_N * 128, img.getWidth(), "34 frames wide: idle 12, hit 6, boost 8, bank 4 + 4");
+            assertEquals(3 * 128, img.getHeight(), "one 128px tier row per variation: a, b, c");
         }
     }
 
@@ -51,14 +51,23 @@ class ShipArtTest {
     @Test
     void theClipPickerReadsTheSheet() {
         assertEquals(ShipImages.HIT_0, ShipImages.hitFrame(0f), "fresh hit: straight to the flash");
-        assertEquals(ShipImages.HIT_0 + 1, ShipImages.hitFrame(0.13f), "second frame");
-        assertEquals(ShipImages.HIT_0 + 3, ShipImages.hitFrame(0.3f), "last frame");
+        assertEquals(ShipImages.HIT_0 + 2, ShipImages.hitFrame(0.13f), "third frame");
+        assertEquals(ShipImages.HIT_0 + 5, ShipImages.hitFrame(0.32f), "last frame");
         assertEquals(-1, ShipImages.hitFrame(0.4f), "past the beat: idle again");
         assertEquals(-1, ShipImages.bankFrame(0f), "wings level idles");
         assertEquals(ShipImages.BANKL_0 + 1, ShipImages.bankFrame(-0.4f), "a left glide leans left");
-        assertEquals(ShipImages.BANKL_0 + 2, ShipImages.bankFrame(-1f), "full lean reaches the hard bank");
-        assertEquals(ShipImages.BANKR_0 + 2, ShipImages.bankFrame(1f), "and the right side is its mirror");
+        assertEquals(ShipImages.BANKL_0 + 3, ShipImages.bankFrame(-1f), "full lean reaches the hard bank");
+        assertEquals(ShipImages.BANKR_0 + 3, ShipImages.bankFrame(1f), "and the right side is its mirror");
         assertEquals(ShipImages.BANKR_0 + 1, ShipImages.bankFrame(0.4f));
+        // the boost clip closes in over its first two frames, then loops the other six for as long as it is held
+        assertEquals(ShipImages.BOOST_0, ShipImages.boostFrame(0f), "a boost begins on the first frame");
+        assertEquals(ShipImages.BOOST_0 + 1, ShipImages.boostFrame(1.2f / ShipImages.BOOST_FPS), "then the second");
+        assertEquals(ShipImages.BOOST_0 + ShipImages.BOOST_IN, ShipImages.boostFrame(ShipImages.BOOST_IN / ShipImages.BOOST_FPS + 0.001f), "then the flying form");
+        for (float t = 0; t < 6; t += 0.037f) {
+            int f = ShipImages.boostFrame(t);
+            assertTrue(f >= ShipImages.BOOST_0 && f < ShipImages.BOOST_0 + 8, "always inside the boost clip: " + f);
+            if (t > 0.5f) assertTrue(f >= ShipImages.BOOST_0 + ShipImages.BOOST_IN, "and past the first moments it never goes back to the closing frames");
+        }
     }
 
     /** Variation tracks the highest bought tier, so the ladder must be 1 -> 2 -> 3. */

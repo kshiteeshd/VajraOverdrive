@@ -110,6 +110,25 @@ public class Enemy {
         }
     }
 
+    /** The NAME a kind goes by in a loka. The kinds are role slots shared by every loka (so every brain and gun keeps working); Vitala's roster
+     *  and its names come from the original Vajra Overdrive bestiary (docs/reboot/BESTIARY.md, docs/LOKA-LAWS.md): Agneya the Ember, Jvala the
+     *  Cinder, Tamra the Ore, Kila the Nail, Dhuma the Smoke, Rekha the Line, and the boss Bhairava, Herald of Cinders. */
+    public static String nameIn(Kind k, int loka) {
+        if (loka == 1) {
+            switch (k) {
+                case AURIS: return "DHUMA";      // the Smoke: a small ghost that vanishes and reappears
+                case HATAKA: return "REKHA";     // the Line: arms wide, it draws a hairline between its hands
+                case LANCE: return "KILA";       // the Nail: thin and fast
+                case VAKRA: return "AGNEYA";     // the Ember: a burning dart
+                case BHAVI: return "TAMRA";      // the Ore: copper-plated, slow, heavy
+                case MAYAVI: return "JVALA";     // the Cinder: hovers and drops burning ground
+                case BALA: return "BHAIRAVA";    // Herald of Cinders, Lord of Burning Gold
+                default: break;
+            }
+        }
+        return k.name();
+    }
+
     /** Hitbox side of a plain unit of this kind, px. */
     public static float hitSize(Kind k) {
         switch (k) {
@@ -199,6 +218,109 @@ public class Enemy {
     public float orbitRate = 0.3f; // rad/s around that orbit
     public float dmgScale = 1f;  // the loka's fire multiplier (LokaTable.dmgScale)
 
+    // THE DEPTH: the world is a shaft, and below the play layer, down at its floor, a second population lives. A body has a DEPTH, 0 on the play
+    // layer and 1 at the floor; below 0.4 it is gone from the fight (no body, no fire, nothing can touch it) and is drawn small and dark UNDER the
+    // walls. Two things send a body down and bring it up: a scout's FLANKING DIVE (it sinks, runs beneath you and surfaces at your side), and a
+    // leader's CALL (the reserves wait below and rise at his word, see EnemyDirector.tickBackup).
+    public float depth;
+    public int diveState;          // 0 up and about, 1 sinking, 2 running below, 3 rising
+    public float diveT, diveCd = 5f, diveFromX, diveFromY, diveToX, diveToY;
+    /** A leader's calls for reserves left (-1 = not set yet) and the seconds until the next. */
+    public int backups = -1;
+    public float callT = 4f;
+
+    /** VITALA'S BHUTA (the wraith) PHASES: it drifts through walls as if they were mist.  Inside rock it has no body - it cannot be hit or rammed
+     *  by anything and it does not fire, the same law as a body down at the floor - and it comes out of the far side whole. */
+    public boolean phasing, inRock;
+
+    /** VITALA'S OWN (docs/VITALA_ENEMIES.md): a unit placed in Vitala flies {@link VitalaBrain}, not Atala's Brain. It may be SMOKED (Dhuma: translucent
+     *  and untargetable for a moment), ARMOURED (Tamra: copper plate that rings off bolts from the front), and it carries the scratch state of its
+     *  brain; a leader also carries the formation it is flying and the trail its column follows. */
+    /** HOLD YOUR POST: an awake unit whose hull has gone far from its place STANDS DOWN - it flies back to where it was put (spawnX/Y) and goes to
+     *  sleep there, formation restored; the band it was placed in is a wall it cannot pass ({@link #bandMin}, {@link #bandMax}). */
+    public boolean standDown;
+    public float bandMin = -1e9f, bandMax = 1e9f;
+    public static final float TETHER = 760f;
+    public static final float LOSE_FACTOR = 1.7f;     // the hull must be this many wake ranges from its post before it stands down
+    public boolean vitala, smoked, armoured;
+    public int form, vState, vN, vN2, formIdx, slot, slotN, cycle;
+    public float clockT, trailT, slotT;
+    public float formT, vT, vT2, vA, vX, vY, vX2, vY2;
+    public float[] trail;
+    public int trailAt;
+    /** The heading of the round that is hurting it right now (armour reads it): (0, 0) when the hurt is not a round. */
+    public float hitVx, hitVy;
+
+    /** Down at the floor, in the rock, or in smoke: no body in the fight. */
+    public boolean submerged() { return depth > 0.4f || inRock || smoked; }
+
+    /** Scouts and skirmishers may dive: the rank and file of a roaming kind, never a leader, a keeper, the ruler or a person. */
+    private boolean canDive() {
+        return (kind == Kind.AURIS || kind == Kind.VAKRA) && !vitala && !boss && !elite && rank == 0 && !voice && !ghost && !parley && !dismissed && !routed
+                && !standDown;
+    }
+
+    private static final float DIVE_LEASH = 460f;
+
+    private void startDive(World world) {
+        vajra.ship.Ship hull = world.nearestHull(x, y);
+        if (Math.hypot(hull.x - spawnX, hull.y - spawnY) > 900f) { diveCd = 3f; return; }       // a dive is a flank, never a journey
+        for (int tries = 0; tries < 24; tries++) {
+            float a = world.fxRng.nextFloat() * 6.2832f, r = 320f + world.fxRng.nextFloat() * 120f;
+            float nx = hull.x + (float) Math.cos(a) * r, ny = hull.y + (float) Math.sin(a) * r;
+            if (Math.hypot(nx - spawnX, ny - spawnY) > DIVE_LEASH || ny < bandMin || ny > bandMax) continue;   // and it lands within reach of its post
+            if (!world.openFor(nx, ny, Math.max(12f, w * 0.5f))) continue;
+            diveFromX = x;
+            diveFromY = y;
+            diveToX = nx;
+            diveToY = ny;
+            diveState = 1;
+            diveT = 0;
+            return;
+        }
+        diveCd = 3f;
+    }
+
+    private void diveStep(float dt, World world) {
+        boolean wasUnder = submerged();
+        switch (diveState) {
+            case 1:
+                depth = Math.min(1f, depth + dt / 0.8f);
+                if (depth >= 1f) { diveState = 2; diveT = 0; }
+                break;
+            case 2: {
+                diveT += dt;
+                float u = Math.min(1f, diveT / 1.8f);
+                x = diveFromX + (diveToX - diveFromX) * u;
+                y = diveFromY + (diveToY - diveFromY) * u;
+                if (u >= 1f) diveState = 3;
+                break;
+            }
+            case 3:
+                depth = Math.max(0f, depth - dt / 1.0f);
+                if (depth <= 0f) {
+                    diveState = 0;
+                    diveCd = 9f + world.fxRng.nextFloat() * 6f;
+                    homeX = x;
+                    homeY = y;
+                }
+                break;
+            default:
+                depth = Math.max(0f, depth - dt);
+                break;
+        }
+        boolean nowUnder = submerged();
+        if (wasUnder && !nowUnder) { // it breaks the surface: a ring and a spray of grit
+            world.addEffect(Effect.ring(x, y, 46, 0.9f, 0.8f, 0.55f));
+            for (int i = 0; i < 8; i++) {
+                float a = (float) (i * Math.PI / 4), v = 90f + world.fxRng.nextFloat() * 90f;
+                world.addEffect(Effect.spark(x, y, (float) Math.cos(a) * v, (float) Math.sin(a) * v, 3f, 0.4f, 3f, 0.85f, 0.75f, 0.55f));
+            }
+        } else if (!wasUnder && nowUnder) {
+            world.addEffect(Effect.ring(x, y, 30, 0.5f, 0.45f, 0.4f));
+        }
+    }
+
     public Enemy(Kind kind, float x, float y) {
         this.kind = kind;
         this.x = x;
@@ -222,6 +344,10 @@ public class Enemy {
         if (hitFlash > 0) hitFlash -= dt;
         if (contactCd > 0) contactCd -= dt;
         if (recover > 0) recover -= dt;
+        if (diveState != 0 || depth > 0f) {            // sinking, running below, or rising: while it is down there is no AI and no fire
+            diveStep(dt, world);
+            if (submerged()) { vx = 0; vy = 0; return; }
+        } else if (active && canDive() && (diveCd -= dt) <= 0f) startDive(world);
         dispHp += (hp - dispHp) * (1f - (float) Math.exp(-12f * dt)); // bar eases onto hp
         if (boss && bossHidden) { // blink: timers only — no body, no fire
             BossBrain.think(this, world, dt, t);
@@ -229,9 +355,10 @@ public class Enemy {
         }
         if (!active) {
             if (boss) { // the boss wakes on the crossing, not on proximity
-                if (world.deepestHullY() < World.BOSS_WAKE_Y) return;
+                if (world.deepestHullY() < world.bossWakeY) return;
                 active = true;
-                world.cue(vajra.world.Cue.BALA_WAKES);
+                world.cue(world.stage == 0 ? vajra.world.Cue.BALA_WAKES : vajra.world.Cue.BHAIRAVA_WAKES);
+                if (world.stage == 1) vajra.world.Codex.unlock(world, vajra.world.Codex.BHAIRAVA);
                 world.orderRetinue(this);
             } else {
                 vajra.ship.Ship hull = world.nearestHull(homeX, homeY);
@@ -240,25 +367,70 @@ public class Enemy {
                 active = true;
             }
         }
+        if (standDown) { goHome(world, dt); return; }                   // (World.holdPosts says who stands down: a unit driven alone never does)
         if (kind == Kind.DIPAKA && !ghost && !routed) mend(world, dt);
-        if (boss) BossBrain.think(this, world, dt, t);
+        if (boss) {
+            if (vitala) BhairavaBrain.think(this, world, dt, t);
+            else BossBrain.think(this, world, dt, t);
+        } else if (vitala) VitalaBrain.think(this, world, dt, t);
         else Brain.think(this, world, dt, t);
         float px0 = x, py0 = y;
         x += vx * dt;
         y += vy * dt;
-        float[] c = world.collide(x - w / 2, y - h / 2, w, h);
-        x = c[0] + w / 2;
-        y = c[1] + h / 2;
-        notice(world, dt, px0, py0);
+        if (phasing) inRock = world.blockedPx(x, y);                   // a bhuta goes where it likes
+        else {
+            float[] c = world.collide(x - w / 2, y - h / 2, w, h);
+            x = c[0] + w / 2;
+            y = c[1] + h / 2;
+        }
+        if (!boss) {                                                    // the band it was placed in is a wall: no unit leaves it, none enters Bhu Loka
+            if (y < bandMin) { y = bandMin; if (vy < 0) vy = 0; }
+            if (y > bandMax) { y = bandMax; if (vy > 0) vy = 0; }
+            if (!hunt && !phasing) {                                    // and the post is a tether: whatever the brain wants, a unit is never farther from it than this
+                float tx = x - spawnX, ty = y - spawnY, td = (float) Math.sqrt(tx * tx + ty * ty);
+                if (td > TETHER) { x = spawnX + tx / td * TETHER; y = spawnY + ty / td * TETHER; vx *= 0.5f; vy *= 0.5f; }
+            }
+        }
+        if (!phasing) notice(world, dt, px0, py0);                      // (a bhuta is never "stuck in rock")
         fire(world);
     }
+
+    /** The flight home of a unit that has stood down: toward the place it was put, round the rock, and to sleep there once it arrives (a unit that
+     *  cannot get there in time is set down on the post: nobody is lost). */
+    private void goHome(World world, float dt) {
+        smoked = false;
+        vState = 0;
+        float gx0 = world.blockedPx(spawnX, spawnY) ? homeX : spawnX, gy0 = world.blockedPx(spawnX, spawnY) ? homeY : spawnY;   // (a post in rock would hold a unit in rock)
+        float dx = gx0 - x, dy = gy0 - y, d = (float) Math.sqrt(dx * dx + dy * dy);
+        standT += dt;
+        if (d < 26f || standT > 14f) {
+            x = gx0; y = gy0; vx = vy = 0f;
+            homeX = gx0; homeY = gy0;
+            active = false;
+            standDown = false;
+            standT = 0f;
+            return;
+        }
+        float cruise = Math.max(90f, speed * 1.4f);
+        float[] g = VitalaBrain.steer(this, world, dx / d * cruise, dy / d * cruise);
+        vx += (g[0] - vx) * Math.min(1f, 5f * dt);
+        vy += (g[1] - vy) * Math.min(1f, 5f * dt);
+        float[] c = world.collide(x + vx * dt - w / 2, y + vy * dt - h / 2, w, h);
+        x = c[0] + w / 2;
+        y = c[1] + h / 2;
+        if (y < bandMin) y = bandMin;
+        if (y > bandMax) y = bandMax;
+        if (!phasing && world.blockedPx(x, y)) unstick(world);          // never flies home THROUGH the rock
+    }
+
+    private float standT;
 
     /** Each kind fires its own signature (GUN): count + spread from the def, cadence from the
      *  kind, LOS + range gates unchanged. Wounded units fire faster; BHAVI's shell only speaks
      *  up close; MAYAVI marks where its lob lands; LANCE flashes a one-frame laser sight.
      *  Routed and dismissed units never fire: rout means neutral, stand-down means gone. */
     private void fire(World w) {
-        if (voice || routed || dismissed || fireTimer > 0 || kind.fireCd <= 0) return;
+        if (vitala || voice || routed || dismissed || inRock || fireTimer > 0 || kind.fireCd <= 0) return;   // (Vitala's units fire from VitalaBrain)
         vajra.ship.Ship hull = w.nearestHull(x, y); // aim at whoever's closest to the muzzle
         float dx = hull.x - x, dy = hull.y - y;
         float d = (float) Math.sqrt(dx * dx + dy * dy);
@@ -339,6 +511,21 @@ public class Enemy {
         if (any) w.addEffect(Effect.ring(x, y, MEND_R, 1f, 0.9f, 0.5f));
     }
 
+    /** TAMRA'S COPPER: a round that comes from the front (against the way the plate faces) rings off at 40%, one from the flank bites at 70%, one
+     *  from behind takes it whole. A hurt that is not a round (heat, a vent) has no heading and takes full damage. */
+    private float armourFactor(World w) {
+        float sp = (float) Math.sqrt(hitVx * hitVx + hitVy * hitVy);
+        if (sp < 1f) return 1f;
+        float fx = (float) Math.cos(facing), fy = (float) Math.sin(facing);        // the plate faces the hull
+        float dot = (hitVx * fx + hitVy * fy) / sp;                                // -1: the round is coming straight at the plate
+        float f = dot < -0.35f ? 0.4f : dot < 0.35f ? 0.7f : 1f;
+        if (f < 1f) {
+            w.addEffect(Effect.ring(x, y, 12, 1f, 0.7f, 0.3f));                     // the clink
+        }
+        hitVx = hitVy = 0f;
+        return f;
+    }
+
     /** The unit is past caring: badly hurt, hunting, betrayed, or the ruler in his last phase.
      *  The sprite sheet's rage frames play for exactly this. */
     public boolean raging() {
@@ -358,7 +545,7 @@ public class Enemy {
 
     /** The same hit, with the roster id that fired it (0 = this seat). */
     public boolean hurt(float amount, World w, int owner) {
-        if (dead) return false;
+        if (dead || submerged()) return false;         // (a body down at the floor, in rock or in smoke cannot be touched)
         if (voice) return false; // a person: nothing to reward, nothing to spend
         // A GHOST is the host's word about a foe, not a body. On a guest seat it must not be
         // hurt at all: the host owns every verdict, and a guest killing its own copy used to
@@ -366,6 +553,7 @@ public class Enemy {
         if (ghost && w.clientSeat) return false;
         if (boss && (bossInvuln || bossHidden)) return false; // stagger beats and blinks eat hits
         parley = false; // struck first: the talking is over
+        if (armoured) amount *= armourFactor(w);
         hp = Math.max(0, hp - amount);
         if (boss) bossTook[bossPattern] += amount; // MEMORY: what this pattern cost while it played
         hitFlash = 0.12f; // the hit strobe
@@ -394,7 +582,7 @@ public class Enemy {
         w.countKill(this);
         w.shooter = prev;
         w.addEffect(Effect.ring(x, y, boss ? 500 : 70, 1f, 0.84f, 0.35f));
-        if (!boss) w.addEffect(Effect.death(kind.ordinal(), elite ? 3 : rank >= 1 ? 2 : 0, x, y, drawSize()));
+        if (!boss) w.addEffect(Effect.death(kind.ordinal() + (vitala ? 100 : 0), elite ? 3 : rank >= 1 ? 2 : 0, x, y, drawSize()));
         int bits = boss ? 26 : elite ? 14 : 8; // the debris shower: bigger bodies throw more
         for (int i = 0; i < bits; i++)
             w.debris(x, y, boss ? 260 : 170, 1f, elite ? 0.9f : 0.84f, elite ? 0.2f : 0.35f);

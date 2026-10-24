@@ -35,6 +35,8 @@ public final class RunSave {
         public long points;
         public float clock;
         public boolean bossDead;
+        public int stage;
+        public boolean[] chestOpen, wellUsed;
         public int[] kills;
         public boolean[] codex, regionScored, wreckTaken, cpCollected, voicesMet;
         public int[] cache;
@@ -42,8 +44,9 @@ public final class RunSave {
         public int[] deadGarrison;
         // the hangar
         public int coins, shipIndex, weaponIndex, hangarLoka;
-        public int[] shards, forgeProgress, forgeCharges, weaponRank;
-        public boolean[] pieces, forged, owned, weaponOwned;
+        public int[] shards, weaponRank;
+        public int astraSel;
+        public boolean[] pieces, owned, weaponOwned;
     }
 
     // --- capture ---------------------------------------------------------------------------
@@ -62,6 +65,10 @@ public final class RunSave {
         d.points = w.score.points;
         d.clock = w.clock;
         d.bossDead = w.bossDead;
+        d.stage = w.stage;
+        d.chestOpen = new boolean[w.chests.size()];
+        for (int i = 0; i < w.chests.size(); i++) d.chestOpen[i] = w.chests.get(i).open;
+        d.wellUsed = w.wellUsed.clone();
         d.kills = w.kills.clone();
         d.codex = w.codex.clone();
         d.regionScored = w.regionScored().clone();
@@ -93,11 +100,9 @@ public final class RunSave {
         d.weaponIndex = h.weaponIndex;
         d.hangarLoka = h.loka;
         d.shards = h.shards.clone();
-        d.forgeProgress = h.forgeProgress.clone();
-        d.forgeCharges = h.forgeCharges.clone();
+        d.astraSel = w.astraSel;
         d.weaponRank = h.weaponRank.clone();
         d.pieces = h.pieces.clone();
-        d.forged = h.forged.clone();
         d.weaponOwned = h.weaponOwned.clone();
         d.owned = new boolean[h.owned.length * 3];
         for (int i = 0; i < h.owned.length; i++)
@@ -123,11 +128,8 @@ public final class RunSave {
         h.coins = Math.max(0, d.coins);
         h.loka = clamp(d.hangarLoka, 0, LokaTable.COUNT - 1);
         copy(d.shards, h.shards);
-        copy(d.forgeProgress, h.forgeProgress);
-        copy(d.forgeCharges, h.forgeCharges);
         copy(d.weaponRank, h.weaponRank);
         copy(d.pieces, h.pieces);
-        copy(d.forged, h.forged);
         copy(d.weaponOwned, h.weaponOwned);
         if (d.owned != null)
             for (int i = 0; i < h.owned.length; i++)
@@ -138,11 +140,21 @@ public final class RunSave {
         w.selectWeapon(clamp(d.weaponIndex, 0, h.weaponOwned.length - 1));
 
         w.lokaIndex = clamp(d.loka, 0, LokaTable.COUNT - 1);
+        w.astraSel = clamp(d.astraSel, 0, Astra.KINDS - 1);
         w.lives = clamp(d.lives, 1, World.MAX_LIVES);
         w.score.points = Math.max(0, Math.min(Score.MAX, d.points));
         w.clock = Math.max(0, d.clock);
+        if (w.campaign && d.stage == 1 && w.stage == 0) {                       // Bala fell in the saved run: his door stays open, Bhairava is the quota
+            for (int c = w.sealC0s[0]; c <= w.sealC1s[0]; c++) w.sealMaps[0].set(c, w.sealRows[0], TileMap.EMPTY);
+            w.wallVersion++;
+            w.beginStage(1);
+        }
         w.bossDead = d.bossDead;
         w.gazeStage = clamp(d.gaze, 0, 3);
+        if (d.chestOpen != null)                                                 // the treasure already found stays found
+            for (int i = 0; i < w.chests.size() && i < d.chestOpen.length; i++)
+                if (d.chestOpen[i]) { w.chests.get(i).open = true; w.chests.get(i).openT = 99f; w.chests.get(i).guards = 0; }
+        copy(d.wellUsed, w.wellUsed);
         copy(d.kills, w.kills);
         copy(d.codex, w.codex);
         copy(d.regionScored, w.regionScored());

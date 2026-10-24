@@ -159,7 +159,7 @@ steps — all throwable at every future warden:
 
 - **Bala (Atala)** — the honorable commander, today's build + memory in step 1. His duel phase
   stays sacred — no cheap shots at the "stand down" beat, that is the characterization.
-- **Agnihotra (Vitala)** — the ember-walled: walls of fire lanes grow as HP falls; the counter is
+- **Bhairava (Vitala)** — the ember-walled: walls of fire lanes grow as HP falls; the counter is
   the loka itself — he cools blind in the deep water pockets, so the arena's geography bites.
 - **Takshaka (Sutala)** — the coiling: he hangs the fight *on* terrain, pillars and lake-lines;
   venom tide rises the longer you let him keep the lake.
@@ -226,7 +226,7 @@ on bands 1–3, the codex with its first 12 pages, Bala's memory (step 1). *The 
 proof* that the "straightforward" diagnosis was right.
 
 **WAVE 2 — Vitala (the second world).** One `MapGen` cavern, the six kinds reskinned through
-`LokaTable` scales, traffic + shard-tide, Agnihotra's brain, two new voices, the full template
+`LokaTable` scales, traffic + shard-tide, Bhairava's brain, two new voices, the full template
 set on hand. This wave is where the world-building *machine* is proven reproducible — that
 "add a loka" is a row, a cavern, art and a brain, as the PLAN says.
 

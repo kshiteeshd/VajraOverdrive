@@ -9,25 +9,36 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import vajra.enemy.Enemy;
 
 /** Enemy art. A kind with a 64x64 sheet (assets/enemies/atala/<kind>.png, see
- *  tools/gen_enemy_sheets.py) wears it: idle, rage, hit and death, with a crest for a leader and
+ *  tools/gen_enemy_sheets.py; 16x4 cells, eight idle frames and eight rage) wears it: idle, rage, hit and death, with a crest for a leader and
  *  vents for an elite. A kind without one (Bala) keeps its older idle_N frames, animated in
  *  sequence. Missing files become gold diamonds, never a crash. */
 public class EnemyImages {
     private static final int MAX_FRAMES = 16;
-    private static final float FPS = 4;
+    private static final float FPS = 4;           // the older idle_N frames
+    static final int IDLE_N = 8;                  // a sheet's idle (and rage) frames per row
+    private static final float SHEET_FPS = 8;     // the sheet loop: eight frames, one second
     private final Texture[][] tex = new Texture[Enemy.Kind.values().length][MAX_FRAMES];
     private final TextureRegion[][] reg = new TextureRegion[Enemy.Kind.values().length][MAX_FRAMES];
     private final int[] frames = new int[Enemy.Kind.values().length];
-    /** [kind][row][col] of the 8x4 sheet; null for a kind that has none. */
+    /** [kind][row][col] of the 16x4 sheet; null for a kind that has none. */
     private final TextureRegion[][][] sheet = new TextureRegion[Enemy.Kind.values().length][][];
     private final Texture[] sheetTex = new Texture[Enemy.Kind.values().length];
     static final int CELL = 64;
     // A body is drawn at Enemy.drawSize() - by kind and rank - which is always smaller than the
     // 64 px cell, so the sheets are filtered Linear: the downscale averages rather than drops.
 
+    /** Vitala's units wear their own sheets (assets/enemies/vitala/): the six ships and, in the BALA slot, Bhairava - a 1024 x 512 sheet of 128 px
+     *  cells: rows 0-2 the three phases' idle, row 3 hit x2 then death x6. A kind with no Vitala sheet (the keepers) wears its Atala sheet
+     *  re-coloured into basalt and gold. {@code e.vitala} picks the set, so the one world can hold both. */
+    private final TextureRegion[][][] sheetV = new TextureRegion[Enemy.Kind.values().length][][];
+    private final Texture[] sheetVTex = new Texture[Enemy.Kind.values().length];
+    private boolean bossSheet;
+    static final int BOSS_CELL = 128;
+
     public EnemyImages() {
         for (Enemy.Kind k : Enemy.Kind.values()) {
-            String sheetPath = "enemies/atala/" + k.name().toLowerCase() + ".png";
+            String name = k.name().toLowerCase();
+            String sheetPath = "enemies/atala/" + name + ".png";
             if (Gdx.files.internal(sheetPath).exists()) {
                 Texture t = ImageKit.texture(sheetPath, true);
                 if (t != null) {
@@ -35,6 +46,22 @@ public class EnemyImages {
                     sheetTex[k.ordinal()] = t;
                     sheet[k.ordinal()] = TextureRegion.split(t, CELL, CELL);
                 }
+            }
+            String vp = "enemies/vitala/" + name + ".png";
+            Texture tv = null;
+            if (Gdx.files.internal(vp).exists()) tv = ImageKit.texture(vp, true);
+            else if (Gdx.files.internal(sheetPath).exists()) {           // a keeper: the Atala sheet in basalt and gold
+                Pixmap p = new Pixmap(Gdx.files.internal(sheetPath));
+                TileImages.toBasalt(p);
+                tv = new Texture(p);
+                p.dispose();
+            }
+            if (tv != null) {
+                tv.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+                sheetVTex[k.ordinal()] = tv;
+                boolean boss = k == Enemy.Kind.BALA && tv.getHeight() == 4 * BOSS_CELL;
+                if (boss) bossSheet = true;
+                sheetV[k.ordinal()] = boss ? TextureRegion.split(tv, BOSS_CELL, BOSS_CELL) : TextureRegion.split(tv, CELL, CELL);
             }
             String base = "atala/enemies/" + k.name().toLowerCase() + "/idle_";
             int f = 0;
@@ -72,10 +99,16 @@ public class EnemyImages {
 
     /** Which sheet cell this unit shows now: row (0 plain, 2 leader, 3 elite) and column. Pure, so
      *  a test can pin it: a hit shows the hit frames, rage the right half of its row. */
+    static int[] bossCell(Enemy e, float time) {
+        if (e.hitFlash > 0) return new int[] {3, e.hitFlash > 0.06f ? 0 : 1};
+        int phase = Math.max(0, Math.min(2, e.bossPhase - 1));
+        return new int[] {phase, Math.floorMod((int) (time * SHEET_FPS + e.phase * 2), IDLE_N)};
+    }
+
     static int[] cell(Enemy e, float time) {
         int row = e.elite ? 3 : e.rank >= 1 ? 2 : 0;
         if (e.hitFlash > 0) return new int[] {1, e.hitFlash > 0.06f ? 0 : 1};
-        return new int[] {row, (e.raging() ? 4 : 0) + frame(time, e.phase, 4)};
+        return new int[] {row, (e.raging() ? IDLE_N : 0) + Math.floorMod((int) (time * SHEET_FPS + e.phase * 2), IDLE_N)};
     }
 
     /** A dead body's frame: six frames over the effect's life. */
@@ -89,7 +122,8 @@ public class EnemyImages {
 
     /** The last six frames of a dead unit, over where it fell. */
     public void drawDeath(SpriteBatch batch, vajra.world.Effect e) {
-        TextureRegion[][] sh = sheet[e.kind];
+        boolean v = e.kind >= 100;                                      // (a Vitala unit's death is filed at kind + 100)
+        TextureRegion[][] sh = v ? sheetV[e.kind - 100] : sheet[e.kind];
         if (sh == null) return;
         TextureRegion r = sh[1][2 + deathFrame(e.age, e.life)];
         batch.setColor(1, 1, 1, 1);
@@ -97,11 +131,17 @@ public class EnemyImages {
     }
 
     public void draw(SpriteBatch batch, Enemy e, float time) {
-        TextureRegion[][] sh = sheet[e.kind.ordinal()];
+        TextureRegion[][] sh = e.vitala && sheetV[e.kind.ordinal()] != null ? sheetV[e.kind.ordinal()] : sheet[e.kind.ordinal()];
         if (sh != null) {
-            int[] c = cell(e, time);
+            int[] c = bossSheet && e.vitala && e.kind == Enemy.Kind.BALA ? bossCell(e, time) : cell(e, time);
             float s = e.drawSize();
             if (!e.active && !e.voice && e.hitFlash <= 0) batch.setColor(0.6f, 0.6f, 0.62f, 1); // asleep: dimmed
+            if (e.smoked || e.inRock) batch.setColor(1f, 1f, 1f, 0.28f);                      // in smoke or in rock: a ghost of itself
+            if (e.depth > 0f) { // down in the shaft: smaller, darker and a little faded the deeper it is
+                float k = 1f - 0.65f * e.depth;
+                s *= 1f - 0.5f * e.depth;
+                batch.setColor(k, k, k * 1.05f, 1f - 0.3f * e.depth);
+            }
             batch.draw(sh[c[0]][c[1]], e.x - s / 2, e.y - s / 2, s, s);
             batch.setColor(1, 1, 1, 1);
             return;
@@ -118,5 +158,6 @@ public class EnemyImages {
     public void dispose() {
         for (Texture[] row : tex) for (Texture t : row) if (t != null) t.dispose();
         for (Texture t : sheetTex) if (t != null) t.dispose();
+        for (Texture t : sheetVTex) if (t != null) t.dispose();
     }
 }

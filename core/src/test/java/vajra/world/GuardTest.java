@@ -8,6 +8,13 @@ import org.junit.jupiter.api.Test;
 /** The walled compound around each shop (open courtyard, ring wall, door under the bay)
  *  and the region-graded guards that hold the Atala sites. Bhu Loka holds neither. */
 class GuardTest {
+    // These tests are about the rock the world was built with; the default world has none (World.walls).
+    @org.junit.jupiter.api.BeforeAll
+    static void rockOn() { World.walls = true; }
+
+    @org.junit.jupiter.api.AfterAll
+    static void rockOff() { World.walls = true; }
+
     private static final float T = 32;
 
     /** Ring tile centre: solid, or deliberately left open because a posted enemy sits on it —

@@ -13,5 +13,10 @@ public enum Cue {
     GAZE_NOTICED, // the ruler's piece warms: the first of his people have fallen
     GAZE_WATCHING,// he looks up and speaks to the empty hall
     GAZE_ROUSED,  // the quota is full: he takes his place in the last band
-    BALA_FALLS    // the ruler's last breath
+    BALA_FALLS,   // the ruler's last breath
+    VITALA_ENTER, // first crossing through Bala's door into the Plunge
+    VOICE_SELLER, // first meeting: the Gold-Seller, a bhuta of Hara's court
+    VOICE_MAID,   // first meeting: Gauri's Maid, keeper of the shrine lamps
+    BHAIRAVA_WAKES,  // Vitala's ruler wakes as the hull comes into the Altar
+    BHAIRAVA_FALLS   // and his last breath
 }

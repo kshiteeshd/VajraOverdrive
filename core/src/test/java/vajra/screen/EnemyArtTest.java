@@ -45,18 +45,18 @@ class EnemyArtTest {
 
     /** The keepers and the six soldiers wear 64x64 sheets: idle, rage, hit, death, ranked. */
     @Test
-    void everySheetIsEightByFourCellsOfSixtyFour() throws Exception {
+    void everySheetIsSixteenByFourCellsOfSixtyFour() throws Exception {
         int sheets = 0;
         for (Enemy.Kind k : Enemy.Kind.values()) {
             File f = sheetOf(k);
             if (f == null) continue;
             sheets++;
             java.awt.image.BufferedImage im = javax.imageio.ImageIO.read(f);
-            assertEquals(512, im.getWidth(), k + " sheet width");
+            assertEquals(1024, im.getWidth(), k + " sheet width");
             assertEquals(256, im.getHeight(), k + " sheet height");
-            for (int col = 0; col < 8; col++) // every cell the game reads must hold a drawn body
+            for (int col = 0; col < 16; col++) // every cell the game reads must hold a drawn body
                 for (int row = 0; row < 4; row++) {
-                    if (row == 1 && col >= 7) continue; // the last death frame may be nearly empty
+                    if (row == 1 && col >= 7) continue; // hit x2 + death x6 fill the row's first eight; the last may be nearly empty
                     int px = 0;
                     for (int y = 0; y < 64; y++)
                         for (int x = 0; x < 64; x++)
@@ -65,6 +65,25 @@ class EnemyArtTest {
                 }
         }
         assertTrue(sheets >= 9, "the nine Atala archetypes ship sheets (found " + sheets + ")");
+    }
+
+    /** The idle is eight distinct frames, not a body shifting a pixel: no two neighbours may match. */
+    @Test
+    void theIdleLoopMovesOnEveryFrame() throws Exception {
+        for (Enemy.Kind k : Enemy.Kind.values()) {
+            File f = sheetOf(k);
+            if (f == null) continue;
+            java.awt.image.BufferedImage im = javax.imageio.ImageIO.read(f);
+            for (int row : new int[] {0, 2, 3})
+                for (int half = 0; half < 2; half++)
+                    for (int t = 0; t < EnemyImages.IDLE_N; t++) {
+                        int a = half * EnemyImages.IDLE_N + t, b = half * EnemyImages.IDLE_N + (t + 1) % EnemyImages.IDLE_N, diff = 0;
+                        for (int y = 0; y < 64; y++)
+                            for (int x = 0; x < 64; x++)
+                                if (im.getRGB(a * 64 + x, row * 64 + y) != im.getRGB(b * 64 + x, row * 64 + y)) diff++;
+                        assertTrue(diff >= 6, k + " row " + row + " frames " + a + "->" + b + " barely change (" + diff + " px)");
+                    }
+        }
     }
 
     @Test
@@ -79,13 +98,13 @@ class EnemyArtTest {
         Enemy e = new Enemy(Enemy.Kind.LANCE, 0, 0);
         int[] idle = EnemyImages.cell(e, 0);
         assertEquals(0, idle[0]);
-        assertTrue(idle[1] < 4, "plain idle sits in the left half");
+        assertTrue(idle[1] < EnemyImages.IDLE_N, "plain idle sits in the left half");
         e.rank = 1;
         assertEquals(2, EnemyImages.cell(e, 0)[0], "a leader wears the crest row");
         e.elite = true;
         assertEquals(3, EnemyImages.cell(e, 0)[0], "an elite wears the vents row");
         e.hp = 1; // nearly dead: rage
-        assertTrue(EnemyImages.cell(e, 0)[1] >= 4, "rage plays the right half");
+        assertTrue(EnemyImages.cell(e, 0)[1] >= EnemyImages.IDLE_N, "rage plays the right half");
         e.hitFlash = 0.1f;
         assertEquals(1, EnemyImages.cell(e, 0)[0], "a fresh hit shows the hit row");
         assertEquals(0, EnemyImages.cell(e, 0)[1]);

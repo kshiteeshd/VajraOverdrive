@@ -13,7 +13,7 @@ import vajra.flow.FlowState;
  *  chrome. The selected row is gold and marked; A/D or clicking a row's left/right half
  *  adjusts, ESC leaves. Every change persists at once. */
 public class SettingsScreen implements FlowState {
-    static final String[] ROWS = {"FULLSCREEN", "SHAKE", "POPUPS", "BACK"};
+    static final String[] ROWS = {"FULLSCREEN", "SHAKE", "POPUPS", "HUD", "BACK"};
     private static final int BACK = ROWS.length - 1;
     private static final float ROW_Y = 380;  // first row baseline: the menu zone every overlay shares
     private static final float PITCH = 56;   // row pitch
@@ -89,7 +89,8 @@ public class SettingsScreen implements FlowState {
         }
         if (row == 1) settings.shake = clamp(settings.shake + 0.25f * dir, 0, 1);
         if (row == 2) settings.popupScale = clamp(settings.popupScale + 0.25f * dir, 0, 2);
-        if (row == 1 || row == 2) vajra.profile.Profiles.save(); // each pilot keeps their own feel
+        if (row == 3) settings.hudStyle = 1 - settings.hudStyle; // CLASSIC <-> VEDIC
+        if (row >= 1 && row <= 3) vajra.profile.Profiles.save(); // each pilot keeps their own feel
     }
 
     /** Row cursor, wrapping. Package-private: the headless test pins the wrap. */
@@ -112,6 +113,7 @@ public class SettingsScreen implements FlowState {
         if (row == 0) return Gdx.graphics.isFullscreen() ? "ON" : "OFF";
         if (row == 1) return Math.round(settings.shake * 100) + "%";
         if (row == 2) return Math.round(settings.popupScale * 100) + "%";
+        if (row == 3) return settings.hudStyle == 1 ? "VEDIC" : "CLASSIC";
         return "";
     }
 

@@ -65,6 +65,7 @@ public class Weapon {
         float my = s.y + (float) Math.sin(a) * 22;
         for (int i = 0; i < def.count; i++) {
             float off = def.count == 1 ? 0 : (float) (i * def.spreadDeg / (def.count - 1) - def.spreadDeg / 2);
+            if (s.heated) off += (w.fxRng.nextFloat() - 0.5f) * 2f * Ship.HEAT_SCATTER_DEG;   // the forge-lands' heat: a little scatter
             w.spawnBullet(mx, my, a + (float) Math.toRadians(off), def, power, s.damageMult());
         }
         if (def.burst > 1 && burstLeft == 0) { // re-arm only from a fresh trigger pull —

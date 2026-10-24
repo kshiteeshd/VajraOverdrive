@@ -19,7 +19,7 @@ import vajra.world.World;
  * this and stays full-bright. ponytail: radial pools only — no wall line-of-sight yet.
  */
 public class Lights {
-    private static final float AMB = 0.15f;          // ambient floor: silhouettes, not black
+    /** The band's own light (vajra.world.Biome): a sunlit surface, warm jewel-light below, a tint per loka. */
     private final Texture glow;                      // one grayscale radial falloff, per light
     private FrameBuffer fbo;
     private TextureRegion map;
@@ -33,7 +33,8 @@ public class Lights {
      *  -Dvajra.nolights=true skips the whole pass: if the ship reappears, this pass is what
      *  was eating the post-lights layers. */
     public void render(SpriteBatch batch, OrthographicCamera uiCam, Viewport viewport,
-                       World world, float l, float b, float viewW, float viewH) {
+                       World world, float l, float b, float viewW, float viewH, float[] ambient,
+                       java.util.List<float[]> glows) {
         if (Boolean.getBoolean("vajra.nolights")) return;
         int w = Gdx.graphics.getWidth(), h = Gdx.graphics.getHeight();
         // a 0x0 window during resize makes the FBO throw and takes the whole pass down with
@@ -57,7 +58,7 @@ public class Lights {
         boolean drew = false;
         fbo.begin();
         try {
-            Gdx.gl.glClearColor(AMB, AMB, AMB + 0.03f, 1f);
+            Gdx.gl.glClearColor(ambient[0], ambient[1], ambient[2], 1f);
             Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
             batch.setProjectionMatrix(uiCam.combined);
             batch.begin();
@@ -70,6 +71,7 @@ public class Lights {
                 pool(batch, e.x, e.y, r, 1f, e.boss ? 0.75f : 0.55f, e.boss ? 0.3f : 0.45f,
                         l, b, scale);
             }
+            for (float[] g : glows) pool(batch, g[0], g[1], g[2], g[3], g[4], g[5], l, b, scale); // lamps, mushrooms, pillar crowns
             for (int i = 0; i < world.torches.length; i++) { // torch glow, mid-flame, flickering
                 float[] t = world.torches[i];
                 float a = (float) Math.toRadians(t[2]);

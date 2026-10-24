@@ -21,7 +21,7 @@ public class FxImages {
     private final TextureRegion beam, ring;
     private final TextureRegion[] thrust = new TextureRegion[16];
     private final TextureRegion[] smoke = split("effects/smoke-low-hull/low_hull.png", 16, 16);
-    private final TextureRegion[] flame = split("effects/small-flame/pixilart-sprite.png", 16, 16);
+    private final FireSheet fire = new FireSheet();
     private final TextureRegion[] plant1 = split("atala/plants/plant_1.png", 16, 16);
     private final TextureRegion[] plant2 = split("atala/plants/plant_2.png", 16, 16);
     private final TextureRegion[] plant3 = split("atala/plants/plant_3.png", 16, 16);
@@ -68,13 +68,12 @@ public class FxImages {
         return out;
     }
 
-    /** Torch flame: base anchored at (x,y), rotated by `angle` so it always points off its
-     *  wall (0 up, -90 right, 90 left, 180 down); 3-frame loop phase-offset per torch. */
+    /** Torch flame: a hearth fire burning just off the wall at (x,y), `angle` naming the way the wall faces (0 up, -90 right, 90 left, 180 down), its
+     *  frames phase-offset per torch. */
     public void drawFlame(SpriteBatch batch, float x, float y, float angle, float time, int phase) {
-        if (flame == null) return;
-        int f = (int) (time * 8 + phase * 1.3f) % flame.length;
+        double a = Math.toRadians(angle);
         batch.setColor(1, 1, 1, 1);
-        batch.draw(flame[f], x - 16, y, 16, 0, 32, 32, 1, 1, angle);
+        fire.puff(batch, FireSheet.HEARTH, (int) (time * 10 + phase * 1.3f), x - (float) Math.sin(a) * 18f, y + (float) Math.cos(a) * 18f, 44f);
     }
 
     /** Plant: base anchored at (x,y), rotated off its rock face (0 up, -90 right, 90 left,
@@ -155,5 +154,6 @@ public class FxImages {
 
     public void dispose() {
         for (Texture t : loaded) t.dispose();
+        fire.dispose();
     }
 }

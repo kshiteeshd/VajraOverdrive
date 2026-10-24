@@ -36,6 +36,14 @@ public final class Chatter {
                     w.cue(Cue.VOICE_KALIYA);
                     Codex.unlock(w, Codex.KALIYA);
                     break;
+                case "SELLER":
+                    w.cue(Cue.VOICE_SELLER);
+                    Codex.unlock(w, Codex.SELLER);
+                    break;
+                case "MAID":
+                    w.cue(Cue.VOICE_MAID);
+                    Codex.unlock(w, Codex.MAID);
+                    break;
                 default: // THE SCOUT
                     w.cue(Cue.VOICE_SCOUT);
                     Codex.unlock(w, Codex.SCOUT);

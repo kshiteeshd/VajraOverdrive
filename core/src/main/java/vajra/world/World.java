@@ -30,7 +30,6 @@ public class World {
     public Checkpoint respawnCp;    // most recent collected checkpoint; null = region entrance
     public int lives = 3;
     public static final int MAX_LIVES = 5; // a forged release can lift a run back to this, never past
-    public boolean gameOver;
     /** This run was flown with other pilots: it folds into the multiplayer book, not the
      *  campaign one. */
     public boolean multiplayer;
@@ -48,12 +47,14 @@ public class World {
     /** The boss arena's heart: the pit Bala holds, and the kill ring below the banner. */
     public static final float PIT_X = 2600f, PIT_Y = 19104f;
 
-    /** The run is over: dead, the blade whole, or Bala fallen and the banner lap done. A
+    /** The run is over: the blade whole, or Bala fallen (in the first-loka world) and the banner lap done. There is no game over: the last life spent,
+     *  the hull still wakes at the last lit lamp, for as long as the pilot likes. A
      *  guest's seat also ends when the host's run does — the swarm carries that bit. */
     public boolean runEnded() {
-        return gameOver || vajraDone || (won && victoryT >= VICTORY_LAP)
+        return vajraDone || (won && victoryT >= VICTORY_LAP)
                 || (clientSeat && (hostFlags & 1) != 0);
     }
+
     public boolean vajraDone;       // all 7 Vajrayudha bands recovered: the run is over
     public float victoryT = -1;     // seconds since the kill; -1 = no victory yet
     public static final float BOSS_WAKE_Y = 18000; // cross this line and the commander calls his ring
@@ -112,7 +113,7 @@ public class World {
     public PainSink painWire;   // a partner hull touched, shoved or a kill paying their book
     /** The Astra's wire: a guest seat announces the foes it aimed at and the hub arms the
      *  same volley there, so the signature weapon is a real weapon on every seat. */
-    public interface AstraSink { void astra(int[] targetIds, int count); }
+    public interface AstraSink { void astra(int kind, float power, int[] targetIds, int count); }
     public AstraSink astraWire;
     public float shipBeat, swarmBeat; // this seat's send-cadence debt
     public int shooter;         // whose round/contact is about to hurt someone: a roster id
@@ -208,11 +209,63 @@ public class World {
     /** Where a fresh run wakes: the camera clamps at the world's floor, so this rides the view's lower edge. */
     public static final float SPAWN_Y = 90;
 
+    /** THE WALLS. The old rock tiles are the play layer again (docs/ATALA_PLAN.md): the walls stop hulls, bodies and rounds, and the
+     *  renderer stacks them behind it for depth. -Dvajra.walls=false sweeps them away after generation (the open-land experiment). */
+    public static boolean walls = Boolean.parseBoolean(System.getProperty("vajra.walls", "true"));
+    /** This world's own copy of the switch, fixed when it was built. */
+    public final boolean walled = walls;
+    /** Bumped whenever a wall tile changes after the world is built: the renderer's baked chunks of wall are redone. */
+    public int wallVersion;
+    /** The belt of boulders between Bhu Loka and Atala: {x, y, radius, seed}. Solid to hulls, bodies and rounds. */
+    public final float[][] boulders = Boundary.belt(width, 1600f);
+
+    /** THE TWO WORLDS: {@code ATALA_ONLY} is the first loka alone (the unit tests' world, 20,600 px tall); {@code CAMPAIGN} is the game: Atala, and
+     *  VITALA ON ITS ROOF - one continuous world 47,600 px tall, Bala's gold door at the top of Atala opening straight into the Plunge. The pilot can
+     *  fly up into Vitala, and back down into Atala. */
+    public static final int ATALA_ONLY = 0, CAMPAIGN = 2;
+    public final boolean campaign;
+    /** Which ruler is current: 0 Bala (Atala), 1 Bhairava (Vitala). Killing the first lifts his seal and the second becomes the quota's business;
+     *  killing the last one wins the run. */
+    public int stage;
+    /** The fire vents of Vitala (none in Atala) and the seconds a lit shrine has left on its hush: while it runs the current and the vents rest. */
+    public final Vents vents = new Vents();
+    public float quietT;
+    private float ventHurtT;
+    /** Burning ground and hairlines of fire (Vitala's enemies and boss lay them). */
+    public final Hazards hazards = new Hazards();
+    /** The treasure chests of every loka (docs/TREASURE_CHESTS.md). */
+    public final java.util.ArrayList<Chest> chests = new java.util.ArrayList<>();
+    /** Vitala's side caverns {cx, cy, rx, ry, side, type} and whether each one's ember well has been drunk. */
+    public float[][] pockets = new float[0][];
+    public boolean[] wellUsed = new boolean[0];
+
+    /** The boss's post and the tile row that seals his arena's north door (the kill lifts it), for the CURRENT stage. */
+    public float pitX = PIT_X, pitY = PIT_Y;
+    /** The line that wakes the boss's ring (Bala's is 18000, Bhairava's is a little way into the Altar). */
+    public float bossWakeY = BOSS_WAKE_Y;
+    TileMap sealMap;
+    int sealRow, sealC0, sealC1;
+    /** Every stage's own seal and kill quota, filled at generation; {@link #beginStage} makes one current. */
+    final TileMap[] sealMaps = new TileMap[2];
+    final int[] sealRows = new int[2], sealC0s = new int[2], sealC1s = new int[2];
+    final int[][] stageQuota = new int[2][Enemy.Kind.values().length];
+    /** The world axis (the spine the gates and the mirrored garrison hang on): x = 2600 in both lokas. */
+    public float axisX = WORLD_CX;
+    /** The region of each cache (a cache lives in the band whose enemies hear it). */
+    public int[] cacheRegion = { 1, 2, 3, 4, 5 };
+
     public World(long seed) {
+        this(seed, ATALA_ONLY);
+    }
+
+    public World(long seed, int mode) {
+        this.campaign = mode == CAMPAIGN;
         orbRng = seed == 0 ? new Random(21) : new Random(seed ^ 0x004F21L);
         lootRng = seed == 0 ? new Random(90210) : new Random(seed ^ 0x90210L);
         ship = new Ship(width / 2, 800, ShipDef.ALL[0], hangar);
         new WorldGen(this).build();
+        if (!walled) stripWalls();
+        else markMirages();
         garrison = enemySeq; // the static garrison is ids [0, garrison): what a saved run strikes off
         docking = new DockingSystem(this);
         cacheDirector = new CacheDirector(this);
@@ -226,6 +279,158 @@ public class World {
         ship.vx = ship.vy = 0;
         ship.facing = (float) (Math.PI / 2);
         cue(Cue.OPENING);
+    }
+
+    /** A campaign world with the pilot already in Vitala (the menu's VITALA row, and the tests): Bala's door stands open, the opening and the
+     *  Atala beats are settled, and the second ruler is the one the quota is for. */
+    public static World vitala(long seed) {
+        World w = new World(seed, CAMPAIGN);
+        w.startInVitala();
+        return w;
+    }
+
+    private void startInVitala() {
+        for (int c = sealC0s[0]; c <= sealC1s[0]; c++) sealMaps[0].set(c, sealRows[0], TileMap.EMPTY);
+        wallVersion++;
+        bossDead = true;
+        beginStage(1);
+        cues.clear();                                  // no opening scene: the pilot is already here
+        ship.x = axisX;
+        ship.y = Hataki.Y0 + SPAWN_Y;
+        ship.vx = ship.vy = 0;
+        lokaIndex = 1;
+        hangar.loka = 1;
+        boolean[] seen = regionScored();
+        for (int i = 0; i < seen.length && i <= 6; i++) seen[i] = true;
+        settleRegion();
+    }
+
+    /** Make stage s the current one: its ruler, its arena's door, its seal, its kill quota, a fresh gaze. */
+    void beginStage(int s) {
+        stage = s;
+        boss = null;
+        bossDead = false;
+        won = false;
+        victoryT = -1;
+        gazeStage = 0;
+        java.util.Arrays.fill(kills, 0);
+        System.arraycopy(stageQuota[s], 0, quota, 0, quota.length);
+        sealMap = sealMaps[s];
+        sealRow = sealRows[s];
+        sealC0 = sealC0s[s];
+        sealC1 = sealC1s[s];
+        if (s == 1) {
+            pitX = Hataki.ALTAR_X;
+            pitY = Hataki.ALTAR_Y;
+            bossWakeY = Hataki.START[5] + 250f;
+        }
+    }
+
+    /** The last stage of this world: Bhairava in the campaign, Bala alone in the first-loka world. */
+    int lastStage() { return campaign ? 1 : 0; }
+
+    /** The region index of the current boss's arena. */
+    public int arenaRegion() { return stage == 0 ? 5 : regionStart.length - 1; }
+
+    /** HOLD YOUR POST (docs/ENEMY_BIBLE.md): an awake unit whose hull is farther than {@link Enemy#LOSE_FACTOR} wake ranges from the unit's own
+     *  spawn stands down - flies home and sleeps there. Checked six times a second; hunters, the routed, the dismissed, the talking, the ruler and the
+     *  people are exempt (they are on a job of their own). */
+    private void holdPosts() {
+        for (int i = 0; i < enemies.size(); i++) {
+            Enemy e = enemies.get(i);
+            if (e.dead || e.boss || e.voice || e.hunt || e.routed || e.dismissed || e.parley || e.diveState != 0 || !e.active) { if (!e.active) e.standDown = false; continue; }
+            Ship h = nearestHull(e.spawnX, e.spawnY);
+            float fx = h.x - e.spawnX, fy = h.y - e.spawnY, lose = Math.max(e.wakeRange, 600f) * Enemy.LOSE_FACTOR;
+            e.standDown = fx * fx + fy * fy > lose * lose;
+        }
+    }
+
+    /** The region a world height lies in. */
+    public int regionIndexAt(float y) {
+        int r = 0;
+        for (int i = 0; i < regionStart.length; i++) if (y >= regionStart[i]) r = i;
+        return r;
+    }
+
+    /** Which loka a world height is in (0 Atala/Bhu Loka, 1 Vitala). */
+    public int lokaAt(float y) { return campaign && y >= Hataki.Y0 ? 1 : 0; }
+
+    /** Grow this world's arrays for Vitala on its roof (the generator calls it once, after Atala is whole). */
+    void expandForVitala() {
+        height = Hataki.TOP;
+        int n = regionStart.length;
+        regionStart = concatF(regionStart, Hataki.START);
+        regionEnd = concatF(regionEnd, Hataki.END);
+        regionEnd[regionEnd.length - 1] = Hataki.TOP;                       // the last band runs on into Sutala's hall
+        String[] names = java.util.Arrays.copyOf(regionNames, n + 6);
+        for (int i = 0; i < 6; i++) names[n + i] = i == 5 ? "Boss: Bhairava" : Hataki.NAMES[i];
+        regionNames = names;
+        lokaOfRegion = new int[] { 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1 };
+        checkpoints = java.util.Arrays.copyOf(checkpoints, 10);
+        shops = java.util.Arrays.copyOf(shops, 8);
+        for (int i = 4; i < 8; i++) shops[i] = new float[2];
+        caches = java.util.Arrays.copyOf(caches, 10);
+        for (int i = 5; i < 10; i++) caches[i] = new float[2];
+        cacheRegion = new int[] { 1, 2, 3, 4, 5, 7, 8, 9, 10, 11 };
+        cacheState = new int[SLOTS][10];
+        shopState = new int[8];
+        shopTimer = new float[8];
+        regionScored = null;
+    }
+
+    private static float[] concatF(float[] a, float[] b) {
+        float[] out = java.util.Arrays.copyOf(a, a.length + b.length);
+        System.arraycopy(b, 0, out, a.length, b.length);
+        return out;
+    }
+
+    /** THE MIRAGE WOOD: about three blocks of wall in ten, in whole 8x8-tile blocks, are illusions - drawn like rock and nothing to a
+     *  hull, a body or a round. Not near the gates, the shops or the checkpoints, whose walls stay real. */
+    private void markMirages() {
+        float y0 = regionStart[2] + 300f, y1 = regionEnd[2] - 300f;
+        java.util.HashSet<Long> rooted = new java.util.HashSet<>(); // blocks that hold a plant or a torch keep their rock: they grow from it
+        for (float[] pl : plants) { rooted.add(block(pl[0], pl[1])); rooted.add(block(pl[6], pl[7])); }
+        for (float[] t : torches) { rooted.add(block(t[0], t[1])); rooted.add(block(t[3], t[4])); }
+        for (TileMap m : maps)
+            for (int ty = 0; ty < m.rows; ty++) {
+                float wy = m.oy + ty * TileMap.TILE;
+                if (wy < y0 || wy > y1) continue;
+                for (int tx = 0; tx < m.cols; tx++) {
+                    if (m.raw(tx, ty) == TileMap.EMPTY) continue;
+                    float wx = m.ox + tx * TileMap.TILE;
+                    if (GroundMap.rnd((int) (wx / 256f), (int) (wy / 256f), 0x31AA) >= 0.30f || nearLandmark(wx, wy) || rootedNear(rooted, wx, wy)) continue;
+                    m.markGhost(tx, ty);
+                }
+            }
+    }
+
+    /** True if a block holding a plant or a torch is this block or one of its eight neighbours. */
+    private static boolean rootedNear(java.util.Set<Long> rooted, float x, float y) {
+        for (int dx = -1; dx <= 1; dx++)
+            for (int dy = -1; dy <= 1; dy++) if (rooted.contains(block(x + dx * 256f, y + dy * 256f))) return true;
+        return false;
+    }
+
+    private static long block(float x, float y) {
+        return ((long) (int) Math.floor(x / 256f) << 32) ^ ((int) Math.floor(y / 256f) & 0xFFFFFFFFL);
+    }
+
+    private boolean nearLandmark(float x, float y) {
+        for (float[] s : shops) if (Math.abs(s[0] - x) < 380 && Math.abs(s[1] - y) < 380) return true;
+        for (Checkpoint c : checkpoints) if (Math.abs(c.x - x) < 380 && Math.abs(c.y - y) < 380) return true;
+        return false;
+    }
+
+    /** Lift the boulder belt out of the world (the test area wants only the wall tiles). */
+    public void clearBoulders() {
+        for (int i = 0; i < boulders.length; i++) boulders[i] = new float[] {-9999f, -9999f, 0f, 0f};
+    }
+
+    /** Sweep the rock away: every tile map emptied, and the plants and torches that were rooted in it dropped. */
+    private void stripWalls() {
+        for (TileMap m : maps) java.util.Arrays.fill(m.cells, TileMap.EMPTY);
+        plants = new float[0][];
+        torches = new float[0][];
     }
 
     /** STORY CUES: moments the screen may stage as a cutscene. The world only names them; the
@@ -300,7 +505,6 @@ public class World {
         }
         if (victoryT >= 0) victoryT += dt;
         shooter = 0; // this frame's hurts are the host's own unless a round claims otherwise
-        if (forgeCd > 0) forgeCd -= dt;
         int chain = score.combo;
         score.update(dt);
         if (chain >= 5 && score.combo == 0) // a chain worth missing just dropped
@@ -310,6 +514,10 @@ public class World {
         if (boss == null) enemyDirector.trySpawnBoss(); // the frame the quota fills, he is simply there
         gazeCheck();
         ship.update(dt, input, this);
+        if (campaign) tickVitala(dt);
+        hazards.update(this, dt);
+        tickChests(dt);
+        if (((int) (clock * 60f)) % 10 == 0) holdPosts();
         regionEntry();
         for (Orb o : orbs) o.update(dt, this, orbRng);
         clock += dt;
@@ -323,6 +531,7 @@ public class World {
         }
         // index loop: a summon (boss blink) may append to the roster mid-iteration
         for (int i = 0; i < enemies.size(); i++) enemies.get(i).update(dt, this, clock);
+        if (!clientSeat) enemyDirector.tickBackup(dt);                  // the leaders' calls: reserves rise from the floor
         separateEnemies(); // bodies never sit on each other
         updateAstra(dt); // the forged weapon's cubes, after the roster has moved
         // Contact: each body shoves the other away along the contact line, opposite directions.
@@ -379,14 +588,168 @@ public class World {
     /** A checkpoint under the hull: taken, scored, and the new respawn anchor. The guest seat
      *  runs the same test — the checkpoints are the same geometry on every machine, so a guest
      *  anchors on the same stone the host did. */
+    /** VITALA'S TWO MECHANICS, once a step: the Hataki's CURRENT carries every hull and body on the gold (a drift in the pools, a hard pull in the
+     *  Hearth Deep's rapids), and the FIRE VENTS burn whatever stands in a jet while it flames. A lit shrine hushes both for six seconds. */
+    private void tickVitala(float dt) {
+        if (quietT > 0f) quietT = Math.max(0f, quietT - dt);
+        boolean quiet = quietT > 0f;
+        vents.arenaOn = stage == 1 && boss != null && !bossDead && boss.bossPhase == 2;   // the Altar's rim vents open in the second phase (Kindling)
+        flood = stage == 1 && boss != null && !bossDead && boss.bossPhase >= 3;           // and in the third the cataract is opened: the Flood
+        ship.heated = !(quietT > 0f) && ship.y > Hataki.START[1];                      // the forge-lands' heat, past the Plunge, unless a shrine holds its breath
+        if (Hataki.on(ship.x, ship.y)) Codex.unlock(this, Codex.HATAKI);
+        if (!quiet) {
+            carry(ship, dt);
+            for (int i = 0; i < enemies.size(); i++) {
+                Enemy e = enemies.get(i);
+                if (e.dead || e.boss || e.submerged() || !e.active) continue;      // a sleeper keeps its place: the river does not float it away
+                float[] f = flowBuf;
+                Hataki.flow(e.x, e.y, f);
+                if (f[0] == 0f && f[1] == 0f) continue;
+                float k = Hataki.forced(e.y) ? 0.3f : 0.15f;                  // a post holds against the river: it only leans on a unit
+                float[] c = collide(e.x + f[0] * k * dt - e.w / 2, e.y + f[1] * k * dt - e.h / 2, e.w, e.h);
+                e.x = c[0] + e.w / 2;
+                e.y = c[1] + e.h / 2;
+            }
+        }
+        ventHurtT = Math.max(0f, ventHurtT - dt);
+        for (int i = 0; i < vents.count(); i++) {
+            if (vents.state(i, clock, quiet) != Vents.FLAMING) continue;
+            if (ventHurtT <= 0f && vents.burns(i, ship.x, ship.y, 10f, clock, quiet)) {
+                ship.damage(VENT_DAMAGE, this);
+                ventHurtT = 0.35f;
+            }
+            // (the forge's own are at home in its fire: a vent burns the pilot, never the garrison - and never wakes a court)
+        }
+    }
+
+    // ---- TREASURE CHESTS and EMBER WELLS ---------------------------------------------------------------------------------------
+
+    /** Fly into a chest and it opens (a guarded one stays shut until its ambush has fallen); an open one plays its lid; a well in a side cavern of
+     *  Vitala mends a hurt hull once. */
+    private void tickChests(float dt) {
+        for (int i = 0; i < chests.size(); i++) {
+            Chest c = chests.get(i);
+            if (c.open) { c.openT += dt; continue; }
+            if (c.guards > 0) {                                               // a den's chest: shut while its guards live
+                int alive = 0;
+                for (int j = 0; j < enemies.size(); j++) {
+                    Enemy e = enemies.get(j);
+                    if (!e.dead && e.siteGuard && Math.abs(e.homeX - c.x) < 420f && Math.abs(e.homeY - c.y) < 300f) alive++;
+                }
+                if (alive == 0) c.guards = 0;
+            }
+            if (c.guards == 0 && c.touches(ship.x, ship.y)) openChest(c);
+        }
+        for (int i = 0; i < wellUsed.length; i++) {
+            if (wellUsed[i] || pockets[i][5] != MapGen.WELL) continue;
+            float dx = ship.x - pockets[i][0], dy = ship.y - pockets[i][1];
+            if (dx * dx + dy * dy > 46f * 46f) continue;
+            if (ship.hp >= ship.maxHp() * 0.98f && ship.boostEnergy >= 99f) continue;   // nothing to mend: keep it for later
+            wellUsed[i] = true;
+            ship.hp = ship.maxHp();
+            ship.shieldEnergy = ship.shieldCap();
+            ship.boostEnergy = 100f;
+            addEffect(Effect.ring(pockets[i][0], pockets[i][1], 120, 1f, 0.6f, 0.2f));
+            addEffect(Effect.ring(pockets[i][0], pockets[i][1], 60, 1f, 0.95f, 0.7f));
+            popups.push(new Popups.Spec().text("THE WELL MENDS").at(ship.x, ship.y + 34).color(1f, 0.7f, 0.3f).scale(1.2f).life(1.6f));
+        }
+    }
+
+    /** Pay a chest: coins that fly out, and the one useful thing of its loka's table. Deterministic from where it stands, so a restored run
+     *  and a shared race roll the same treasure. */
+    public void openChest(Chest c) {
+        if (c.open) return;
+        c.open = true;
+        c.openT = 0f;
+        Random rng = new Random(Float.floatToIntBits(c.x) * 31L + Float.floatToIntBits(c.y));
+        int coins = Chest.coins(c.loka, rng), item = Chest.item(c.loka, rng);
+        for (int i = 0; i < Math.min(coins, 14); i++) {                       // the purse bursts out, the rest goes straight in
+            float a = (float) (i * 2.3999632 + rng.nextFloat() * 0.3f);
+            Pickup p = new Pickup();
+            p.netId = dropSeq++;
+            p.type = Pickup.COIN;
+            p.variant = rng.nextInt(Pickup.VARIANTS);
+            p.x = c.x;
+            p.y = c.y;
+            float d = 30f + 50f * rng.nextFloat();
+            p.vx = (float) Math.cos(a) * d * Pickup.DRAG;
+            p.vy = (float) Math.sin(a) * d * Pickup.DRAG;
+            p.phase = rng.nextFloat() * 6.2831853f;
+            pickups.add(p);
+        }
+        hangar.coins += Math.max(0, coins - 14);
+        String label = Chest.ITEM[item];
+        switch (item) {
+            case Chest.MEND:
+                ship.hp = ship.maxHp();
+                ship.shieldEnergy = ship.shieldCap();
+                break;
+            case Chest.SHARDS: {
+                int[] pay = LokaTable.at(c.loka).shards;
+                int n = Chest.shards(c.loka);
+                for (int k = 0; k < n; k++) hangar.addShard(pay[0]);
+                label = n + " " + (pay[0] == 2 ? "AGNI" : "AKASHA") + " SHARDS";
+                break;
+            }
+            case Chest.LIFE:
+                lives = Math.min(MAX_LIVES, lives + 1);
+                break;
+            default:                                                          // SURGE: boost and shield brimming
+                ship.boostEnergy = 100f;
+                ship.shieldEnergy = ship.shieldCap();
+                break;
+        }
+        float[] col = c.loka == 0 ? new float[] {1f, 0.92f, 0.6f} : new float[] {1f, 0.62f, 0.2f};
+        addEffect(Effect.ring(c.x, c.y, 110, col[0], col[1], col[2]));
+        addEffect(Effect.ring(c.x, c.y, 54, 1f, 1f, 0.9f));
+        for (int i = 0; i < 18; i++) {
+            float a = (float) (i * Math.PI * 2 / 18), v = 90f + rng.nextFloat() * 150f;
+            addEffect(Effect.spark(c.x, c.y, (float) Math.cos(a) * v, (float) Math.sin(a) * v + 40f, 2.6f, 0.6f + rng.nextFloat() * 0.5f,
+                    3f, col[0], col[1], col[2]));
+        }
+        popups.push(new Popups.Spec().text("TREASURE  +" + coins + "  " + label).at(c.x, c.y + 42).color(col[0], col[1], col[2]).scale(1.3f).life(2.2f));
+        score.add(Score.CHECKPOINT);
+    }
+
+    /** THE FLOOD (the boss's third phase): the Hataki pours into the Altar and carries every hull one way - east, across the hall. */
+    public boolean flood;
+    public static final float FLOOD_PUSH = 85f;
+    public static final float VENT_DAMAGE = 8f, VENT_DAMAGE_FOE = 28f;
+    private final float[] flowBuf = new float[2];
+
+    /** The Hataki's pull on the hull: along the river's own direction, hard where the current is forced, light in the pools. */
+    private void carry(Ship s, float dt) {
+        Hataki.flow(s.x, s.y, flowBuf);
+        if (flood && s.y > Hataki.START[5]) flowBuf[0] += FLOOD_PUSH;
+        if (flowBuf[0] == 0f && flowBuf[1] == 0f) return;
+        float k = Hataki.forced(s.y) ? 1f : 0.6f;
+        float[] c = collide(s.x + flowBuf[0] * k * dt - Ship.W / 2, s.y + flowBuf[1] * k * dt - Ship.H / 2, Ship.W, Ship.H);
+        s.x = c[0] + Ship.W / 2;
+        s.y = c[1] + Ship.H / 2;
+    }
+
+    /** The current's push on a body at a point, px/s (what the HUD and the tests read); zero off the gold, or while the shrine hushes it. */
+    public float[] currentAt(float x, float y) {
+        float[] out = new float[2];
+        if (campaign && quietT <= 0f) Hataki.flow(x, y, out);
+        return out;
+    }
+
     private void collectCheckpoint(Checkpoint c) {
         if (c.collected || !c.touches(ship.x, ship.y)) return;
         c.collected = true;
+        if (c.y >= Hataki.Y0) quietT = 6f;  // a shrine of Vitala hushes the band: no current, no flame, for six seconds
         respawnCp = c;
         score.add(Score.CHECKPOINT);
         popups.push(new Popups.Spec().text("ANCHORED").img("pratishtha")
                 .at(c.x, c.y + 30).color(0.5f, 0.9f, 1f).scale(1.1f));
-        addEffect(Effect.ring(c.x, c.y, 40, 1f, 0.45f, 0.72f));
+        addEffect(Effect.ring(c.x, c.y, 54, 1f, 0.8f, 0.35f));                      // the lamp catches
+        addEffect(Effect.ring(c.x, c.y, 28, 1f, 0.97f, 0.8f));
+        for (int i = 0; i < 16; i++) {                                              // and sheds embers
+            float a = (float) (i * Math.PI * 2 / 16 + fxRng.nextFloat() * 0.3f), v = 70f + fxRng.nextFloat() * 130f;
+            addEffect(Effect.spark(c.x, c.y + 6f, (float) Math.cos(a) * v, (float) Math.sin(a) * v + 50f, 2.5f,
+                    0.5f + fxRng.nextFloat() * 0.4f, 3f, 1f, 0.72f + 0.2f * fxRng.nextFloat(), 0.3f));
+        }
     }
 
     // ---- the guest seat ----------------------------------------------------------------------
@@ -649,6 +1012,10 @@ public class World {
             score.add(Score.REGION);
             Codex.unlock(this, Codex.DEEPENING); // the descent teaches, the book takes the page
             if (r == 1) cue(Cue.ATALA_GATE);
+            if (r == 6) {                                                           // Bala's door: Vitala
+                cue(Cue.VITALA_ENTER);
+                Codex.unlock(this, Codex.VITALA);
+            }
             popups.push(new Popups.Spec().text("THE DEEPENING").img("pravesh")
                     .at(ship.x, ship.y + 40).color(1f, 1f, 1f).scale(1.2f).life(1.8f));
         }
@@ -750,14 +1117,17 @@ public class World {
         if (b.dead) return;
         shooter = b.owner < 0 ? 0 : b.owner; // an unstamped round is this seat's own; relays carry ids
         for (Enemy e : enemies) {
-            if (e.dead) continue;
+            if (e.dead || e.submerged()) continue;                      // a round does not reach the floor
             if (Math.abs(b.x - e.x) > e.w / 2 + b.radius) continue;
             if (Math.abs(b.y - e.y) > e.h / 2 + b.radius) continue;
             if (b.aoe > 0) { // splash: bursts on contact, never a plain hit
                 b.detonate(this);
                 return;
             }
+            e.hitVx = b.vx;
+            e.hitVy = b.vy;
             boolean killed = e.hurt(b.damage, this);
+            e.hitVx = e.hitVy = 0f;
             spray(b.x, b.y, b.vx, b.vy, b.r, b.g, b.b); // sparks thrown along the shot's path
             if (!b.pierceEnemies || killed) {
                 b.dead = true;
@@ -772,7 +1142,7 @@ public class World {
         for (int i = 0; i < hulls; i++) {
             SeatHull gh = i >= 2 ? extras.get(i - 2) : null;
             Ship h = i == 0 ? ship : i == 1 ? partner : gh.ship;
-            if (h == null || h.iFrames > 0) continue; // dash: the ship ghosts, shots pass through
+            if (h == null || h.iFrames > 0) continue; // respawn grace: the ship ghosts, shots pass through
             if (Math.abs(b.x - h.x) < Ship.W / 2f + b.radius
                     && Math.abs(b.y - h.y) < Ship.H / 2f + b.radius) {
                 if (h == ship) h.damage(b.damage, this);
@@ -803,7 +1173,7 @@ public class World {
     }
 
     private void body(Enemy e, Ship h, int seat) {
-        if (e.dead || e.bossHidden) return; // mid-blink: no body to shove or ram
+        if (e.dead || e.bossHidden || e.submerged()) return; // mid-blink or down at the floor: no body to shove or ram
         float dx = h.x - e.x, dy = h.y - e.y;
         if (Math.abs(dx) >= Ship.W / 2 + e.w / 2 || Math.abs(dy) >= Ship.H / 2 + e.h / 2) return;
         float len = (float) Math.sqrt(dx * dx + dy * dy);
@@ -850,21 +1220,40 @@ public class World {
             { Enemy.Kind.BHAVI, Enemy.Kind.VAKRA },
             { Enemy.Kind.BHAVI, Enemy.Kind.VAKRA },
             { Enemy.Kind.MAYAVI, Enemy.Kind.BHAVI },
+            // Vitala's six regions: the keeper's two sentries (the Plunge has no post)
+            { null, null },
+            { Enemy.Kind.LANCE, Enemy.Kind.AURIS },
+            { Enemy.Kind.VAKRA, Enemy.Kind.LANCE },
+            { Enemy.Kind.HATAKA, Enemy.Kind.AURIS },
+            { Enemy.Kind.BHAVI, Enemy.Kind.VAKRA },
+            { Enemy.Kind.MAYAVI, Enemy.Kind.BHAVI },
     };
 
     void add(Enemy e) {
         if (clientSeat) return; // a guest's world holds no local roster; foes arrive as ghosts
         e.netId = enemySeq++; // the host's ledger: every foe a swarm can speak about
+        if (!e.boss && !e.voice) {                                                // the band it is placed in is its wall
+            int r = regionIndexAt(e.spawnY);
+            e.bandMin = regionStart[r] + (r <= 1 ? 48f : 24f);
+            e.bandMax = regionEnd[r] - 24f;
+        }
+        if (campaign && e.homeY >= Hataki.Y0 && !e.voice) {                       // Vitala's own: its own brain, and its own gifts
+            e.vitala = true;
+            if (e.kind == Enemy.Kind.HATAKA) e.phasing = true;                    // Rekha the wraith walks through rock
+            if (e.kind == Enemy.Kind.BHAVI) e.armoured = true;                    // Tamra is copper-plated
+        }
         // DIFFICULTY CURVE: the loka grades every unit it places, hull and fire alike, so a
         // deeper band's roster is meaner without any new behaviour code. An elite's doubling
         // rides on top of this, at placement.
         float rs = e.rankScale(); // a leader and an elite are bigger bodies than their court
         e.w *= rs;
         e.h *= rs;
-        float hp = LokaTable.at(lokaIndex).hpScale;
+        int own = lokaAt(e.spawnY);                                               // the loka it STANDS in, not the deepest one the pilot has reached
+        float ramp = e.boss ? 1f : Balance.ramp(own, regionIndexAt(e.spawnY));   // and the band grades it again: a loka teaches before it tests
+        float hp = LokaTable.at(own).hpScale * ramp;
         e.hp = e.maxHp = e.maxHp * hp;
         e.dispHp = e.maxHp;
-        e.dmgScale = LokaTable.at(lokaIndex).dmgScale;
+        e.dmgScale = LokaTable.at(own).dmgScale * Balance.rampFire(own, regionIndexAt(e.spawnY));
         for (TileMap m : tileMaps()) {
             int x0 = (int) Math.floor((e.homeX - e.w / 2 - 16 - m.ox) / TileMap.TILE);
             int x1 = (int) Math.floor((e.homeX + e.w / 2 + 16 - m.ox) / TileMap.TILE);
@@ -883,83 +1272,69 @@ public class World {
         return clock;
     }
 
-    // --- THE FORGED WEAPON (the Tatva Lance) -----------------------------------------------
-    // Only the loka's OWN element feeds it (LOKA-LAWS §3), so the forge obeys the same purity
-    // THE AKASHA ASTRA - Atala's forged weapon. Five shards forge it ONCE, and every five after
-    // that buys one release. A release throws ASTRA_CUBES cubes out of the hull, each one picks
-    // its own target and goes for it THROUGH ROCK, so the Astra reaches enemies a shot could
-    // never see. The hull is mended whole and a life comes back while they fly.
-    //
-    // Expensive enough to be a run's turning point, cheap enough to plan around.
-    public static final int ASTRA_CUBES = 20;       // cubes per release, one per target
-    public static final float ASTRA_SPEED = 900f;    // px/s, and they steer, not fall
-    public static final float ASTRA_TURN = 5.5f;     // rad/s of steering - fast enough to track
-    public static final float ASTRA_DAMAGE = 90f;    // flat per cube: one-shots a regular unit
-    public static final float FORGE_CD = 20f;        // seconds between releases
+    // --- THE ASTRA RITE ----------------------------------------------------------------------
+    // See vajra.world.Astra for the rules in one place. HOLD F invokes (a cage of cubes gathers, the hull goes heavy,
+    // foes in front of the nose are locked), LET GO looses it, and the price (five shards of the astra's element) is
+    // paid at the loosing, never at the start. Hold longer and the volley is bigger and hits harder; let go too soon
+    // and the mantra falters for free. Five elemental astras, each its own character, and the Brahmastra of all five.
 
-    /** THE CHARGE. F does not release - it winds up, and the release arrives on its own.
-     *
-     *  <p>This is the difference between a button and a moment. Fired instantly, twenty cubes is
-     *  just a burst of numbers; held for nearly two seconds while the hull is heavy and slow,
-     *  it is a decision you are living inside. The charge buys the release its weight: by the
-     *  time the cage of twenty solids has tightened around the ship, the player has already
-     *  committed, and everything after is release. */
-    public static final float FORGE_WIND = 1.75f;
-    /** The shell's radius at the start of the charge and at the instant before it lets go. */
+    /** The shell's radius at the start of the invocation and at full strength. */
     private static final float WIND_R_OUT = 150f, WIND_R_IN = 58f;
-    /** Frames held still at the moment of release. Impact is mostly the absence of motion. */
+    /** Frames held still at the moment of a full release. Impact is mostly the absence of motion. */
     public static final float RELEASE_FREEZE = 0.14f;
+    /** The release is drawn in the astra's own tatva, lifted toward white for the crest: a hue that is nobody's
+     *  element (it used to be water blue mixed in) reads as a mistake. */
+    private static final float CREST_LIFT = 0.55f;
+    private static final float[] BRAHMA_RGB = {1f, 0.86f, 0.45f};
 
-    public float forgeCd;
-    /** Seconds left of the charge; > 0 means the Astra is winding up and not yet released. */
-    public float forgeWind;
+    /** Which astra X has chosen: an {@link Astra} kind. */
+    public int astraSel;
+    /** HOLD F is down: the cage is gathering. */
+    public boolean astraInvoking;
+    /** Seconds the invocation has been held. */
+    public float astraCharge;
+    /** Seconds until another can be invoked. */
+    public float astraCd;
+    /** The astra being invoked, or last loosed (colours the cage, the release and every impact). */
+    public int astraKind;
+    /** The foes locked by the invocation, nearest the nose first (valid up to {@link #astraLockCount}). */
+    public final Enemy[] astraLocks = new Enemy[32];
+    public int astraLockCount;
     /** Frames to freeze the world on release. Drained by the screen, not here. */
     public float hitStop;
-    /** 1 at the instant of release, decaying. The screen turns this into a pull BACK, so the
-     *  Astra opens the view up rather than closing it in - the only way this camera moves. */
+    /** 1 at the instant of a full release, decaying. The screen turns this into a pull BACK, so the astra opens the
+     *  view up rather than closing it in - the only way this camera moves. */
     public float astraPunch;
 
-    // The release is drawn in the loka's own tatva, straight - not a fixed effect that gets
-    // tinted. It used to be water blue with the element mixed in at 35%, which meant Atala's
-    // violet Akasha came out a pale blue that was nobody's element. The crest is the body lifted
-    // toward white by CREST_LIFT, which keeps the hue.
-    private static final float CREST_LIFT = 0.55f;
+    /** Cubes in flight or in the shell, oldest first. The renderer draws them; nothing else touches them. */
+    public final List<AstraCube> astra = new ArrayList<>();
 
-    public float forgeCd() { return forgeCd; }
-    public boolean winding() { return forgeWind > 0; }
-    /** 0..1 through the charge. The renderer and the HUD both read this, so the cage, the shake
-     *  and the corner gauge all wind up off one number. */
-    public float windK() { return forgeWind <= 0 ? 1f : 1f - forgeWind / FORGE_WIND; }
+    public float astraCd() { return astraCd; }
+    public boolean winding() { return astraInvoking; }
+    /** 0..1 through the invocation. The renderer and the HUD both read this, so the cage, the shake and the dial all
+     *  build off one number. */
+    public float windK() { return astraInvoking ? Astra.k(astraCharge) : 1f; }
 
-    /** Ready to START a charge: a release in hand, no charge already running, and no cooldown.
-     *  Without the middle term, mashing F would stack twenty cages and queue twenty releases. */
-    public boolean forgeReady() {
-        return forgeCd <= 0 && forgeWind <= 0 && readyAstra() >= 0;
-    }
-
-    // OPEN WORLD: every Astra a pilot has forged is carried on, whichever loka it came from.
-    // X picks which one F spends; a selection that has run dry falls to the deepest one that
-    // still has a release in hand.
-    /** The loka whose Astra the next F spends (chosen with X). */
-    public int astraLoka = 0;
-    /** The loka whose Astra is in flight (colours the cubes, the cage and the impacts). */
-    private int astraFired = 0;
-
-    /** Which loka's Astra would fly now, or -1 when none has a release in hand. */
-    public int readyAstra() {
-        if (hangar.hasForgeCharge(astraLoka)) return astraLoka;
-        for (int l = LokaTable.COUNT - 1; l >= 0; l--) if (hangar.hasForgeCharge(l)) return l;
+    /** The astra F would invoke: the one X chose if it can be paid, else the first that can, else -1. */
+    public int loadedAstra() {
+        if (Astra.canLoose(hangar, astraSel)) return astraSel;
+        for (int k = 0; k < Astra.KINDS; k++) if (Astra.canLoose(hangar, k)) return k;
         return -1;
     }
 
-    /** X: step the selection to the next loka whose Astra is forged (wrapping). */
+    /** Ready to START an invocation: something to loose, none running, no cooldown, the run alive. */
+    public boolean astraReady() {
+        return astraCd <= 0 && !astraInvoking && !runEnded() && loadedAstra() >= 0;
+    }
+
+    /** X: step the choice to the next astra that can be paid (wrapping). False when none can. */
     public boolean cycleAstra() {
-        for (int step = 1; step <= LokaTable.COUNT; step++) {
-            int l = (astraLoka + step) % LokaTable.COUNT;
-            if (hangar.isForged(l)) {
-                astraLoka = l;
-                float[] c = TATVA_RGB[LokaTable.at(l).shards[0]];
-                popups.push(new Popups.Spec().text(astraName(l) + " x" + hangar.forgeCharges[l])
+        for (int step = 1; step <= Astra.KINDS; step++) {
+            int k = (astraSel + step) % Astra.KINDS;
+            if (Astra.canLoose(hangar, k)) {
+                astraSel = k;
+                float[] c = astraRgb(k);
+                popups.push(new Popups.Spec().text(Astra.NAME[k] + " x" + Astra.releases(hangar, k))
                         .at(ship.x, ship.y + 60).color(c[0], c[1], c[2]).scale(1.2f).life(1.4f));
                 return true;
             }
@@ -967,117 +1342,172 @@ public class World {
         return false;
     }
 
-    /** The Astra's name, from the tatva its loka pays: AKASHA ASTRA, AGNI ASTRA, ... */
-    public static String astraName(int loka) {
-        String[] t = {"AKASHA", "VAYU", "AGNI", "JALA", "PRITHVI"};
-        int[] pays = LokaTable.at(loka).shards;
-        return pays.length > 1 ? "PANCHA ASTRA" : t[pays[0]] + " ASTRA";
-    }
+    /** The colour of an astra: its element's tatva, or the Brahmastra's own gold. */
+    public static float[] astraRgb(int kind) { return kind >= 0 && kind < Astra.ELEMENTS ? TATVA_RGB[kind] : BRAHMA_RGB; }
 
-    /** Cubes in flight or in the shell, oldest first. The renderer draws them; nothing else
-     *  touches them. */
-    public final List<AstraCube> astra = new ArrayList<>();
+    /** The colour of the astra in the shell or in flight. */
+    public float[] astraRgb() { return astraRgb(astraKind); }
 
-    /** START the charge. The release is spent and the cubes are out of the hull immediately -
-     *  they just have nowhere to go until the wind finishes. False when there is no release in
-     *  hand, or one is already winding. */
-    public boolean useForge() {
-        if (!forgeReady()) return false;
-        astraFired = readyAstra();
-        if (!hangar.spendForgeCharge(astraFired)) return false;
-        forgeWind = FORGE_WIND;
+    public float crestR() { float[] e = astraRgb(); return e[0] + (1f - e[0]) * CREST_LIFT; }
+    public float crestG() { float[] e = astraRgb(); return e[1] + (1f - e[1]) * CREST_LIFT; }
+    public float crestB() { float[] e = astraRgb(); return e[2] + (1f - e[2]) * CREST_LIFT; }
+
+    /** The loka's own element: its colour code for the HUD accent. */
+    public float[] elementRgb() { return TATVA_RGB[LokaTable.at(lokaIndex).shards[0]]; }
+
+    /** BEGIN the invocation (F goes down). The cage starts with a few cubes and fills as you hold. False when there is
+     *  nothing to invoke or it is too soon. Nothing is paid yet. */
+    public boolean astraBegin() {
+        if (!astraReady()) return false;
+        astraKind = loadedAstra();
+        astraInvoking = true;
+        astraCharge = 0;
+        astraLockCount = 0;
         ship.winding = true;
-        ship.trauma = Math.max(ship.trauma, 0.35f); // the hull shudders as it loads
-
+        ship.trauma = Math.max(ship.trauma, 0.25f); // the hull shudders as it loads
         float[] el = astraRgb();
-        float cr = el[0] + (1f - el[0]) * CREST_LIFT;
-        float cg = el[1] + (1f - el[1]) * CREST_LIFT;
-        float cb = el[2] + (1f - el[2]) * CREST_LIFT;
-
-        // THE CAGE GOES UP: twenty held cubes, evenly spaced on the shell, tumbling.
-        for (int i = 0; i < ASTRA_CUBES; i++) {
-            float slot = (float) (i * 2 * Math.PI / ASTRA_CUBES);
-            AstraCube c = new AstraCube(ship.x + (float) Math.cos(slot) * WIND_R_OUT,
-                    ship.y + (float) Math.sin(slot) * WIND_R_OUT, slot, 0f, null, ASTRA_DAMAGE);
-            c.armed = false;
-            c.slot = slot;
-            c.spin = fxRng.nextFloat() * 6.2831853f;   // so no two start in phase
-            c.hold(ship, 0f, 0f, WIND_R_OUT, WIND_R_IN);
-            astra.add(c);
-        }
         addEffect(Effect.ring(ship.x, ship.y, WIND_R_OUT, el[0], el[1], el[2]));
-        popups.push(new Popups.Spec().text("THE " + astraName(astraFired)).img("taptam")
-                .at(ship.x, ship.y + 70).color(cr, cg, cb).scale(1.6f).life(FORGE_WIND + 0.6f));
+        syncCage();
+        popups.push(new Popups.Spec().text("THE " + Astra.EPITHET[astraKind]).img("taptam")
+                .at(ship.x, ship.y + 70).color(crestR(), crestG(), crestB()).scale(1.4f).life(Astra.WIND_FULL + 0.4f));
         return true;
     }
 
-    /** THE RELEASE. Called by {@link #updateAstra} the instant the charge runs out: every held
-     *  cube gets its own target and goes, the hull is mended, a life comes back, and the screen
-     *  is told to freeze and pull back so the moment lands. */
-    private void release() {
-        forgeCd = FORGE_CD;
+    /** Give up the invocation without loosing it: nothing is spent. A death, a pause, a hangar, a scene. */
+    public void astraCancel() {
+        if (!astraInvoking) return;
+        astraInvoking = false;
+        astraCharge = 0;
+        astraLockCount = 0;
         ship.winding = false;
-        ship.hp = ship.maxHp();               // the release knits the hull back together
-        ship.shieldEnergy = ship.shieldCap();
-        ship.iFrames = Math.max(ship.iFrames, 1.2f); // and buys the read to escape it
+        dropHeldCubes();
+    }
+
+    /** LET GO (F goes up): loose it, or let the mantra falter if it was not held long enough. True when it flew. */
+    public boolean astraLoose() {
+        if (!astraInvoking) return false;
+        astraInvoking = false;
+        ship.winding = false;
+        float charge = astraCharge;
+        if (charge < Astra.WIND_MIN) { // too soon: the mantra falters, and costs nothing
+            astraCharge = 0;
+            dropHeldCubes();
+            astraLockCount = 0;
+            astraCd = Math.max(astraCd, Astra.FALTER_LOCKOUT);
+            return false;
+        }
+        int kind = astraKind;
+        refreshLocks(); // while the charge is still held: the locks are as many as the cubes it earned
+        if (astraLockCount == 0) { // nothing in front to answer: the mantra falters, and costs nothing
+            astraCharge = 0;
+            dropHeldCubes();
+            astraCd = Math.max(astraCd, Astra.FALTER_LOCKOUT);
+            return false;
+        }
+        if (!Astra.pay(hangar, kind)) { // the shards went (sold) while you held it
+            astraCharge = 0;
+            dropHeldCubes();
+            astraLockCount = 0;
+            return false;
+        }
+        astraCharge = 0;
+        float power = Astra.power(charge), dm = Astra.damageMult(power);
+        astraCd = Astra.COOLDOWN;
+        hitStop = RELEASE_FREEZE * (0.35f + 0.65f * power);
+        astraPunch = 0.4f + 0.6f * power;
         ship.dipT = 0.35f;
-        ship.trauma = Math.max(ship.trauma, 0.8f);  // and the whole screen takes it
-        hitStop = RELEASE_FREEZE;
-        astraPunch = 1f;
+        ship.trauma = Math.max(ship.trauma, 0.4f + 0.4f * power);
 
+        // every held cube goes to a locked foe, round and round the locks
+        int n = 0, held = 0;
+        for (AstraCube c : astra) if (!c.armed) held++;
+        int[] ids = new int[held];
+        int fired = 0;
+        for (AstraCube c : astra) {
+            if (c.armed) continue;
+            Enemy t = astraLocks[fired % astraLockCount];
+            float a = ship.facing + (fired - (held - 1) * 0.5f) * 0.18f; // a fan off the nose, a volley leaving as one
+            c.dress(c.element, dm);
+            c.arm(a, Astra.SPEED[c.element], t);
+            if (fired < ids.length) ids[n++] = t.netId;
+            fired++;
+        }
+        boons(kind);
+        // THE WIRE: a guest seat names the foes it locked and the hub looses the same volley there, so the astra lands
+        // for real and the kills pay the pilot who fired it.
+        if (astraWire != null) astraWire.astra(kind, power, ids, n);
         float[] el = astraRgb();
-        float cr = el[0] + (1f - el[0]) * CREST_LIFT;
-        float cg = el[1] + (1f - el[1]) * CREST_LIFT;
-        float cb = el[2] + (1f - el[2]) * CREST_LIFT;
+        addEffect(Effect.ring(ship.x, ship.y, 120f + 60f * power, el[0], el[1], el[2]));
+        for (int i = 0; i < held; i++) debris(ship.x, ship.y, 340, crestR(), crestG(), crestB());
+        astraLockCount = 0;
+        return true;
+    }
 
-        // One cube per living enemy, nearest first, each answerable to exactly one target. If
-        // there are fewer than ASTRA_CUBES enemies the rest go untargeted rather than stacking
-        // on the same body.
-        Enemy[] targets = pickTargets(ASTRA_CUBES);
-        for (int i = 0; i < astra.size() && i < ASTRA_CUBES; i++) {
+    /** What the astra gives its caster at the moment of release: a boon of its element, never a free full repair. */
+    private void boons(int kind) {
+        boolean all = kind == Astra.BRAHMA;
+        if (kind == Astra.AKASHA || all) ship.shieldEnergy = ship.shieldCap();
+        if (kind == Astra.VAYU || all) ship.boostEnergy = 100;
+        if (kind == Astra.PRITHVI) ship.iFrames = Math.max(ship.iFrames, Astra.STONE_SKIN);
+        if (all) ship.iFrames = Math.max(ship.iFrames, Astra.STONE_SKIN * 0.5f);
+        // Jala's boon is its blows: each hit mends the hull (see onAstraHit)
+    }
+
+    private void dropHeldCubes() {
+        for (int i = astra.size() - 1; i >= 0; i--) {
             AstraCube c = astra.get(i);
-            // fanned back from the nose, so the volley leaves as a volley
-            float a = ship.facing + (float) Math.PI
-                    + (i - (ASTRA_CUBES - 1) * 0.5f) * 0.16f;
-            c.arm(a, ASTRA_SPEED, i < targets.length ? targets[i] : null);
+            if (c.armed) continue;
+            debris(c.x, c.y, 90, crestR(), crestG(), crestB());
+            astra.remove(i);
         }
-        // THE WIRE: a guest seat names the foes it aimed at and the hub arms the same volley
-        // there — the Astra lands for real, and the kill pays the pilot who fired it.
-        if (astraWire != null) {
-            int[] ids = new int[ASTRA_CUBES];
-            int n = 0;
-            for (int i = 0; i < astra.size() && i < ASTRA_CUBES; i++) {
-                Enemy t = astra.get(i).target;
-                if (t != null) ids[n++] = t.netId;
+    }
+
+    /** Grow the cage to the cubes the invocation has earned so far, spaced evenly round the hull. */
+    private void syncCage() {
+        int want = Astra.cubesAt(astraKind, astraCharge);
+        int held = 0;
+        float orbit = 0;
+        for (AstraCube c : astra) if (!c.armed) { held++; orbit = c.orbit; }
+        for (int i = held; i < want; i++) {
+            AstraCube c = new AstraCube(ship.x, ship.y, 0f, 0f, null, 0f);
+            c.armed = false;
+            c.element = Astra.cubeElement(astraKind, i);
+            c.orbit = orbit;
+            c.spin = fxRng.nextFloat() * 6.2831853f; // so no two start in phase
+            astra.add(c);
+            held++;
+        }
+        int j = 0;
+        for (AstraCube c : astra) if (!c.armed) c.slot = (float) (j++ * 2 * Math.PI / Math.max(1, held));
+    }
+
+    /** Re-pick the locks: living foes inside the view and range, those nearest the line of the nose first. */
+    private void refreshLocks() {
+        int cap = Math.min(astraLocks.length, Astra.locksAt(astraKind, astraCharge));
+        astraLockCount = 0;
+        float[] score = new float[astraLocks.length];
+        for (Enemy e : enemies) {
+            if (e.dead || e.dismissed || e.voice || e.ghost || e.bossHidden || e.submerged()) continue;
+            float dx = e.x - ship.x, dy = e.y - ship.y;
+            if (Math.abs(dx) > Astra.VIEW_HALF_W || Math.abs(dy) > Astra.VIEW_HALF_H) continue;
+            float d = (float) Math.sqrt(dx * dx + dy * dy);
+            if (d > Astra.LOCK_RANGE) continue;
+            float off = Math.abs(wrapAngle((float) Math.atan2(dy, dx) - ship.facing));
+            float sc = off * 420f + d;   // a foe off the nose costs like 420 px per radian
+            int at = astraLockCount;
+            while (at > 0 && score[at - 1] > sc) {
+                if (at < cap) { astraLocks[at] = astraLocks[at - 1]; score[at] = score[at - 1]; }
+                at--;
             }
-            astraWire.astra(ids, n);
+            if (at < cap) { astraLocks[at] = e; score[at] = sc; }
+            if (astraLockCount < cap) astraLockCount++;
         }
-        // the tell at the hull: one ring in the element, and the crest breaking out of it
-        // ONE ring, and a big one. The ring is a sprite scaled to its diameter with nearest
-        // filtering: at ~9x (this radius) the art reads as the shockwave it was drawn to be, but
-        // an 80 px ring at 4x is a fat donut pasted over the ship. The grandeur comes from
-        // twenty cubes leaving at once, not from stacking circles.
-        addEffect(Effect.ring(ship.x, ship.y, 170f, el[0], el[1], el[2]));
-        for (int i = 0; i < ASTRA_CUBES; i++) // a spark off each cube as it lets go
-            debris(ship.x, ship.y, 340, cr, cg, cb);
-
-        if (lives < MAX_LIVES) lives++; // a life comes back, to the cap
     }
 
-    /** The loka's own element, and the crest colour lifted toward white. Hoisted out of the
-     *  release because the charge, the release and every cube impact all want the same pair. */
-    public float[] elementRgb() { return TATVA_RGB[LokaTable.at(lokaIndex).shards[0]]; }
-
-    /** The foe the host's ledger stamped with this id — the guest's Astra names its targets
-     *  in the host's own numbering, so the hub can arm the same volley. */
-    public Enemy enemyByNetId(int id) {
-        for (Enemy e : enemies) if (e.netId == id && !e.dead && !e.ghost) return e;
-        return null;
-    }
-
-    /** A guest's release, resolved on the host: the same volley, from that seat's hull, aimed
-     *  at the same foes — and the kills pay the pilot who fired them. */
-    public void astraFor(int seat, int[] ids) {
+    /** A volley a guest seat looses, resolved on the host: the same cubes, from that seat's hull, at the same foes,
+     *  and the kills pay the pilot who fired them. (The guest paid its own shards and keeps its own boons.) */
+    public void astraFor(int seat, int kind, float power, int[] ids) {
+        if (kind < 0 || kind >= Astra.KINDS) return;
         Ship from = ship;
         if (seat != 0) {
             if (seat == partnerSeat && partner != null) {
@@ -1087,79 +1517,101 @@ public class World {
                     if (gh.seat == seat && gh.ship != null) { from = gh.ship; break; }
             }
         }
+        float dm = Astra.damageMult(Math.max(0f, Math.min(1f, power)));
         for (int i = 0; i < ids.length; i++) {
             Enemy t = enemyByNetId(ids[i]);
             if (t == null) continue;
-            AstraCube c = new AstraCube(from.x, from.y, 0f, 0f, t, ASTRA_DAMAGE);
-            c.arm(from.facing + (float) Math.PI
-                    + (i - (ASTRA_CUBES - 1) * 0.5f) * 0.16f, ASTRA_SPEED, t);
+            AstraCube c = new AstraCube(from.x, from.y, 0f, 0f, t, 0f);
+            c.element = Astra.cubeElement(kind, i);
+            c.dress(c.element, dm);
+            c.arm(from.facing + (i - (ids.length - 1) * 0.5f) * 0.18f, Astra.SPEED[c.element], t);
             c.owner = seat; // the kill is theirs
             astra.add(c);
         }
     }
 
-    /** The colour of the Astra in flight - its own loka's tatva, not the loka the pilot stands in. */
-    public float[] astraRgb() { return TATVA_RGB[LokaTable.at(astraFired).shards[0]]; }
+    /** The foe the host's ledger stamped with this id — the guest's astra names its targets in the host's own
+     *  numbering, so the hub can loose the same volley. */
+    public Enemy enemyByNetId(int id) {
+        for (Enemy e : enemies) if (e.netId == id && !e.dead && !e.ghost) return e;
+        return null;
+    }
 
-    public float crestR() { float[] e = astraRgb(); return e[0] + (1f - e[0]) * CREST_LIFT; }
-    public float crestG() { float[] e = astraRgb(); return e[1] + (1f - e[1]) * CREST_LIFT; }
-    public float crestB() { float[] e = astraRgb(); return e[2] + (1f - e[2]) * CREST_LIFT; }
-
-    /** The ASTRA_CUBES nearest living enemies, nearest first. One pass of insertion into a
-     *  caller-sized array: the roster is hundreds long and this runs once per release, so the
-     *  simple O(n*k) selection is cheaper than any sort. */
-    private Enemy[] pickTargets(int want) {
-        Enemy[] best = new Enemy[Math.min(want, enemies.size())];
-        int filled = 0;
-        for (Enemy e : enemies) {
-            if (e.dead || e.dismissed) continue;
-            float d = (e.x - ship.x) * (e.x - ship.x) + (e.y - ship.y) * (e.y - ship.y);
-            int at = filled;
-            while (at > 0 && dist2(best[at - 1], ship) > d) {
-                if (at < best.length) best[at] = best[at - 1];
-                at--;
-            }
-            if (at < best.length) best[at] = e;
-            if (filled < best.length) filled++;
+    /** What a cube does the instant it lands: splash the crowd round the foe, mend the pilot, or carry on to the next
+     *  foe (the Gale chains). True when the cube is spent. */
+    private boolean onAstraHit(AstraCube c) {
+        Enemy t = c.target;
+        float[] e = TATVA_RGB[c.element];
+        float cr = e[0] + (1f - e[0]) * CREST_LIFT, cg = e[1] + (1f - e[1]) * CREST_LIFT, cb = e[2] + (1f - e[2]) * CREST_LIFT;
+        addEffect(Effect.ring(c.x, c.y, 26, cr, cg, cb));
+        addEffect(Effect.ring(c.x, c.y, 46, e[0], e[1], e[2]));
+        for (int i = 0; i < 12; i++) { // a burst of its own element
+            float a = (float) (i * Math.PI * 2 / 12 + fxRng.nextFloat() * 0.4f), v = 120f + fxRng.nextFloat() * 220f;
+            addEffect(Effect.spark(c.x, c.y, (float) Math.cos(a) * v, (float) Math.sin(a) * v, 4f, 0.35f + fxRng.nextFloat() * 0.25f,
+                    c.element == 4 ? 4f : 3f, i % 3 == 0 ? 1f : cr, i % 3 == 0 ? 1f : cg, i % 3 == 0 ? 1f : cb));
         }
-        // trim any unfilled tail
-        for (int i = 0; i < best.length; i++) if (best[i] == null) {
-            int j = i;
-            while (j < best.length && best[j] == null) j++;
-            if (j < best.length) System.arraycopy(best, j, best, i, best.length - j);
-            break;
+        if (c.splash > 0 && t != null) {
+            addEffect(Effect.ring(c.x, c.y, c.splash, e[0], e[1], e[2]));
+            for (Enemy o : enemies) {
+                if (o == t || o.dead || o.dismissed || o.voice || o.ghost) continue;
+                float dx = o.x - t.x, dy = o.y - t.y;
+                if (dx * dx + dy * dy <= c.splash * c.splash) o.hurt(c.damage * Astra.SPLASH_SHARE, this, c.owner);
+            }
+        }
+        if (c.heal > 0 && c.owner == 0 && !clientSeat) ship.hp = Math.min(ship.maxHp(), ship.hp + c.heal);
+        if (c.chain > 0 && t != null) {
+            Enemy next = nextChainTarget(t, c.last);
+            if (next != null) {
+                c.chain--;
+                c.last = t;
+                c.target = next;
+                c.life = Math.max(c.life, 1.5f);
+                return false; // it flies on
+            }
+        }
+        return true;
+    }
+
+    /** The nearest living foe to `from` within chain reach, other than the one just struck. */
+    private Enemy nextChainTarget(Enemy from, Enemy skip) {
+        Enemy best = null;
+        float bd = 360f * 360f;
+        for (Enemy o : enemies) {
+            if (o == from || o == skip || o.dead || o.dismissed || o.voice || o.ghost) continue;
+            float dx = o.x - from.x, dy = o.y - from.y, d = dx * dx + dy * dy;
+            if (d < bd) { bd = d; best = o; }
         }
         return best;
     }
 
-    private static float dist2(Enemy e, vajra.ship.Ship s) {
-        if (e == null) return Float.MAX_VALUE;
-        return (e.x - s.x) * (e.x - s.x) + (e.y - s.y) * (e.y - s.y);
-    }
-
-    /** Cubes wind up, then advance and retire. Rock is never consulted - that is the whole
-     *  point of them. */
+    /** The invocation builds, cubes in flight fly and retire. Rock is never consulted - that is the whole point of them. */
     public void updateAstra(float dt) {
-        if (forgeWind > 0) {
-            forgeWind -= dt;
-            float k = windK();
-            for (AstraCube c : astra) c.hold(ship, dt, k, WIND_R_OUT, WIND_R_IN);
-            // one spark off the cage per frame, so the charge is never a static picture
-            if (fxRng.nextFloat() < 0.6f) {
-                AstraCube c = astra.get(fxRng.nextInt(astra.size()));
-                debris(c.x, c.y, 120, crestR(), crestG(), crestB());
+        if (astraCd > 0) astraCd -= dt;
+        if (astraInvoking) {
+            if (ship.hp <= 0 || runEnded()) {
+                astraCancel(); // a hull that is gone invokes nothing, and loses nothing
+            } else {
+                astraCharge = Math.min(astraCharge + dt, Astra.WIND_FULL + 3f);
+                float k = windK();
+                syncCage();
+                for (AstraCube c : astra) if (!c.armed) c.hold(ship, dt, k, WIND_R_OUT, WIND_R_IN);
+                refreshLocks();
+                ship.trauma = Math.max(ship.trauma, 0.1f + 0.2f * k);
+                if (fxRng.nextFloat() < 0.6f && !astra.isEmpty()) { // a spark off the cage, so the charge is never a static picture
+                    AstraCube c = astra.get(fxRng.nextInt(astra.size()));
+                    debris(c.x, c.y, 120, crestR(), crestG(), crestB());
+                }
             }
-            if (forgeWind <= 0) release();
-            return;                       // the cage does not also start homing this frame
         }
         astraPunch *= (float) Math.exp(-4.5f * dt);
 
         for (int i = astra.size() - 1; i >= 0; i--) {
             AstraCube c = astra.get(i);
-            boolean hit = c.think(this, dt, ASTRA_TURN);
+            if (!c.armed) continue; // held cubes ride the cage, they do not hunt yet
+            boolean hit = c.think(this, dt, c.turn);
+            if (hit && !onAstraHit(c)) hit = false; // a chaining cube lives on
             if (hit || c.life <= 0 || c.x < -200 || c.x > width + 200
                     || c.y < -200 || c.y > height + 200) {
-                if (hit) addEffect(Effect.ring(c.x, c.y, 26, crestR(), crestG(), crestB()));
                 astra.remove(i);
             }
         }
@@ -1179,6 +1631,7 @@ public class World {
     }
 
     public boolean blockedPx(float x, float y) {
+        if (Boundary.hit(boulders, x, y, 0f, 1600f)) return true;
         for (TileMap m : maps) if (m.solidPx(x, y)) return true;
         return false;
     }
@@ -1195,10 +1648,29 @@ public class World {
         }
         collideBuf[0] = x;
         collideBuf[1] = y;
+        if (Math.abs(y + h / 2 - 1600f) < Boundary.DEPTH + 160f) pushOutBoulders(collideBuf, w, h);
         for (float[] shop : shops) // a shop's board and legs are solid: no flying through them
             for (float[] wall : DOCK_WALLS)
                 pushOutRect(collideBuf, w, h, shop[0] + wall[0], shop[1] + wall[1], wall[2], wall[3]);
         return collideBuf;
+    }
+
+    /** A rect (corner xy, size w x h) pushed out of any boulder it overlaps: along the line from the rock's centre to the
+     *  nearest point of the rect, by the overlap. */
+    private void pushOutBoulders(float[] xy, float w, float h) {
+        for (int pass = 0; pass < 2; pass++)
+            for (float[] b : boulders) {
+                float r = b[2] * 0.85f;
+                float nx = Math.max(xy[0], Math.min(b[0], xy[0] + w)), ny = Math.max(xy[1], Math.min(b[1], xy[1] + h));
+                float dx = nx - b[0], dy = ny - b[1], d2 = dx * dx + dy * dy;
+                if (d2 >= r * r) continue;
+                float d = (float) Math.sqrt(d2);
+                if (d < 1e-3f) { dx = 0f; dy = 1f; d = 0f; }
+                else { dx /= d; dy /= d; }
+                float push = r - d;
+                xy[0] += dx * push;
+                xy[1] += dy * push;
+            }
     }
 
     // Solid parts of a shop: x, y, w, h as world offsets from the sign centre. The posts' inner
@@ -1304,7 +1776,7 @@ public class World {
         int stage = boss != null ? 3 : g >= GAZE_WATCHING ? 2 : g >= GAZE_NOTICED ? 1 : 0;
         if (stage <= gazeStage) return;
         gazeStage = stage; // a burst of kills that jumps a stage plays only the stage it landed on
-        cue(stage == 1 ? Cue.GAZE_NOTICED : stage == 2 ? Cue.GAZE_WATCHING : Cue.GAZE_ROUSED);
+        cue(stage == 1 ? Cue.GAZE_NOTICED : stage == 2 ? Cue.GAZE_WATCHING : Cue.GAZE_ROUSED); // each ruler's own words: Scenes reads this.stage
     }
 
     /** The seal: every kind's kill quota filled — only then does Bala notice the ship. */
@@ -1375,24 +1847,33 @@ public class World {
      *  and the gold gate across the north corridor opens to the next loka. */
     public void victory(Enemy b) {
         bossDead = true;
-        won = true;
-        cue(Cue.BALA_FALLS);
-        victoryT = 0;
+        boolean last = stage >= lastStage();
+        boolean bala = stage == 0;
+        if (last) { // the first-loka world ends with its ruler, after the banner lap; the campaign goes on, up into Sutala's coming-soon hall
+            if (!campaign) won = true;
+            victoryT = 0;
+        }
+        cue(bala ? Cue.BALA_FALLS : Cue.BHAIRAVA_FALLS);
+        Codex.unlock(this, bala ? Codex.BALA : Codex.BHAIRAVA);
         score.add(Score.BOSS);
-        popups.push(new Popups.Spec().text("BALA SLAIN").img("bala").at(b.x, b.y + 40)
-                .color(1f, 215 / 255f, 0).scale(1.8f).life(2.2f));
+        Popups.Spec slain = new Popups.Spec().text(LokaTable.at(lokaIndex).boss.toUpperCase() + " SLAIN");
+        if (bala) slain.img("bala");
+        popups.push(slain.at(b.x, b.y + 40).color(1f, 215 / 255f, 0).scale(1.8f).life(2.2f));
         for (Enemy e : enemies)
             if (!e.dead && e.commander == b) {
                 e.dismissed = true;
                 e.commander = null;
             }
-        hangar.coins += Math.round(150 * (float) Math.sqrt(LokaTable.at(lokaIndex).hpScale)); // the ruler's purse grows with his loka
-        Chatter.wardenFalls(this); // the voices pay what a fall promised: Maya's letter
-        for (int c = 72; c <= 88; c++) tileMapBoss.set(c, 93, TileMap.EMPTY);
-        addEffect(Effect.ring(WORLD_CX, 20560, 260, 1f, 0.84f, 0.3f));
+        hangar.coins += Balance.purse(stage);                                  // the ruler's purse: its share of the loka's budget
+        hazards.ring = false;                                                  // the ash ring goes out with its herald
+        if (bala) Chatter.wardenFalls(this); // the voices pay what a fall promised: Maya's letter
+        for (int c = sealC0; c <= sealC1; c++) sealMap.set(c, sealRow, TileMap.EMPTY);
+        wallVersion++;                                                          // the baked wall chunks must be redone
+        addEffect(Effect.ring(axisX, sealMap.oy + (sealRow + 1) * TileMap.TILE, 260, 1f, 0.84f, 0.3f));
         addEffect(Effect.ring(b.x, b.y, 500, 1f, 0.84f, 0.3f));
         addEffect(Effect.ring(b.x, b.y, 260, 1f, 1f, 1f));
         ship.trauma = Math.min(1f, ship.trauma + 0.5f);
+        if (!last) beginStage(stage + 1);                                      // Bala's door is open: Vitala's ruler is next
     }
 
     /** Mid-berserk deployment: a gold elite pair at his old post, straight into his ring (cap 6). */

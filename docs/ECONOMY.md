@@ -1,91 +1,98 @@
-# The economy, hull scaling, and weapon scaling
+# The economy, the difficulty curve, and the plan for seven lokas
 
-One design for the seven-loka game. The numbers below are in code (`ShipDef`, `WeaponDef`,
-`Hangar`, `LokaTable`) and pinned by `EconomyTest`; change a number there and the test says what
-you broke.
+One design for the whole game. The numbers live in code - `world/Balance` (income and the in-loka ramp), `world/LokaTable` (hull and fire
+multipliers), `ship/ShipDef` and `weapon/WeaponDef` (what is for sale) - and are pinned by `BalanceTest` and `EconomyTest`: change a number and
+the test says what you broke. `BalanceTest` MEASURES the built lokas (it walks the generated world enemy by enemy and chest by chest) instead of
+trusting a model, because the first model was wrong (below).
 
-## 1. What a pilot earns
+## 0. What was wrong, and what changed
 
-A thoroughly cleared Atala pays about **1,250 coins**: ~227 enemies at 2 / 4 / 6 coins by rank
-(plus a few shards), five hidden caches at 100, the ruler's purse of 150. Every payment is
-multiplied by `sqrt(hpScale)` of the loka, so deeper lokas pay more but not as fast as they hurt:
+- **Vitala's garrison was graded as Atala.** Enemies were scaled by the *deepest loka the pilot had reached*, and the static garrison is placed at
+  world generation, when that is always Atala: Vitala's 341 units had hull x1.0 and fire x1.0, not x1.35 / x1.2. Every unit is now graded by the loka
+  it **stands in** (`World.add`), and pays by it (`LootSystem`).
+- **Income was assumed, not measured.** The old table said a Vitala clear pays ~1,450; measured, it paid ~4,280 (its 29 chests alone were ~2,650).
+  Income is now a **budget per loka** (`Balance.gross`) split into shares, and each earner pays its share of it.
+- **No grade inside a loka.** Atala's first band was as hard as its last. A loka now teaches before it tests (section 2).
+- Chests, caches and the ruler's purse paid `sqrt(hull scale)` of a hand-picked number; they now pay their share of the loka's budget.
 
-| loka | hp x | fire x | clear pays | a pilot keeps (65%) |
-|---|---|---|---|---|
-| Atala | 1.00 | 1.00 | ~1,250 | ~810 |
-| Vitala | 1.35 | 1.20 | ~1,450 | ~940 |
-| Sutala | 1.75 | 1.45 | ~1,650 | ~1,070 |
-| Talatala | 2.30 | 1.70 | ~1,900 | ~1,235 |
-| Mahitala | 3.00 | 2.00 | ~2,170 | ~1,410 |
-| Rasatala | 4.00 | 2.35 | ~2,500 | ~1,625 |
-| Patala | 5.50 | 2.80 | ~2,930 | ~1,900 |
+## 1. Income: a budget per loka
 
-Cache and ruler purses now follow the same `sqrt(hpScale)` as drops, so they stay the same share of a
-loka's pay. **Everything that can be bought, in total, costs about 23,000 coins; a full-clear run of
-all seven lokas pays about 13,850.** So a pilot affords roughly 40-60% of the whole hangar: a
-build, not a checklist.
+A **thorough clear** of loka `L` pays `gross(L) = 1700 x 1.28^L` coins. A **typical pilot** (most of it, not all) banks 45% of that.
 
-## 2. Hulls - one per loka, each a role
-
-Mk-1 is the hull you wake in. One more hull opens per loka (`LokaTable.unlockShip`), and a hull is
-priced so that hull + x.2 + x.3 is roughly one loka's keep (`EconomyTest` allows 0.6x-2.6x).
-
-| hull | role | opens | price | x.2 | x.3 (+shards) | hull pts | notes |
+| loka | hull x | fire x | thorough clear | typical pilot keeps | chests | caches | purse |
 |---|---|---|---|---|---|---|---|
-| Mk-1 Vajra | all-rounder | start | - | 120 | 300 | 100 | the baseline |
-| Mk-2 Kite | scout: fast, thin | Atala | 260 | 140 | 300 (+3) | 90 | speed 435, turn 200 |
-| Mk-3 Aegis | the wall | Vitala | 520 | 260 | 520 (+4) | 170 | 10% mitigation |
-| Mk-4 Hive | fire rate | Sutala | 700 | 350 | 700 (+4) | 140 | x.2 reload x0.80 |
-| Mk-5 Lance | precision | Talatala | 900 | 450 | 900 (+5) | 150 | x.2 damage x1.30 |
-| Mk-6 Mortar | slow, heavy | Mahitala | 1,150 | 580 | 1,150 (+5) | 230 | 8% mitigation |
-| Mk-7 Vajra-7 | the best of them | Rasatala | 1,500 | 750 | 1,500 (+5) | 240 | 5% mitigation |
+| Atala | 1.00 | 1.00 | 1,700 | 765 | 10 | 5 x 90 | 240 |
+| Vitala | 1.35 | 1.20 | 2,176 | 979 | 19 | 5 x 115 | 305 |
+| Sutala | 1.75 | 1.45 | 2,785 | 1,253 | 16 | 5 x 145 | 390 |
+| Talatala | 2.30 | 1.70 | 3,565 | 1,604 | 16 | 5 x 185 | 500 |
+| Mahitala | 3.00 | 2.00 | 4,563 | 2,054 | 16 | 5 x 235 | 640 |
+| Rasatala | 4.00 | 2.35 | 5,841 | 2,629 | 16 | 5 x 305 | 820 |
+| Patala | 5.50 | 2.80 | 7,477 | 3,365 | 16 | 5 x 390 | 1,045 |
 
-- **x.3 needs x.2**, and takes shards: `3 + minLoka/2` of any element. A tier you have not bought is
-  a locked silhouette in the bay - nobody sees what a ship or its upgrade looks like until it is theirs.
-- **Hull growth keeps pace with fire.** Effective hull points go from 100 to ~253 (2.5x) against
-  enemy fire that goes 1.0x to 2.8x; the rest of the gap is skill and the other two roads below.
+Shares of a clear: **kills 34%** (2 / 4 / 6 coins by rank x `sqrt(hull scale)`, paid by `LootSystem`), **chests 26%** (spread over the chests the
+loka is built with: `Balance.CHESTS`), **caches 26%** (five, 100 -> 390), **ruler's purse 14%**. Measured today (`BalanceTest`): Atala 1,652 of
+1,700 (x0.97), Vitala 2,322 of 2,176 (x1.07).
 
-## 3. Weapons - three roads to power
+**Shards and coins.** A shard sells for 20 coins (`Hangar.SHARD_SELL`) but is worth more as an astra release or a rank III / x.3 tier, so the pilot
+is meant to *keep* them. Chests pay shards too (Atala 3, Vitala 5).
 
-Enemy hulls climb 5.5x by Patala. A pilot's damage climbs the same road three ways, each opened by
-a different loka:
+## 2. Difficulty: three layers
 
-1. **A better pattern.** Fifteen patterns, offered five / three / two / two / two / one / none by
-   loka (Atala: Single Bolt free, Light MG 80, Double 90, Buckshot 110, Burst 120; Vitala: Aim 160,
-   Piercer 170, Twin Burst 200; Sutala: Heavy 240, Wallbore 260; Talatala: Missile 340, Charge 320;
-   Mahitala: Bomb 380, Laser 460; Rasatala: Tracking 560). A pattern the pilot's loka does not offer
-   yet is a lock on the wheel.
-2. **Rank.** Each owned pattern can be *tempered*: **rank II** (60% of the price, never under 60c)
-   hits **25% harder**; **rank III** (130% of the price, never under 150c, plus **2 shards**) hits
-   **50% harder and gains one ability**. ENTER on the pattern already in the guns buys the next rank.
-3. **A hull tier.** Damage tiers on Kite, Hive, Lance, Mortar and Vajra-7 add x1.25-x1.35.
+1. **The loka's grade** (`LokaTable`): hull x1.0 / 1.35 / 1.75 / 2.30 / 3.0 / 4.0 / 5.5 (about x1.3 a loka), fire x1.0 / 1.2 / 1.45 / 1.7 / 2.0 / 2.35 / 2.8
+   (about x1.2 a loka). Fire grows slower than hulls on purpose: the enemy gets tougher faster than it gets deadly, so bullets stay readable.
+2. **The band's grade** (`Balance.ramp`): inside a loka the hull runs x0.88 at its first band to x1.12 at its last; fire runs half as far (x0.94 ->
+   x1.06). The average of a loka is still its table number. `BalanceTest` pins that difficulty rises band by band **and never steps back at a loka's
+   door** (Atala's last band 1.12 < Vitala's first 1.19).
+3. **Rank** (`Enemy.rankScale/RANK_DAMAGE`): leaders and elites are bigger bodies and fire x1.45 / x1.9 in their courts, in every loka.
 
-Rank III abilities - always a trait the pattern did not have, from flags every weapon already uses:
+The pilot answers with three roads of power (section 4), priced so a typical pilot affords a *build*, not everything.
 
-| pattern | ability | pattern | ability |
-|---|---|---|---|
-| Single Bolt | true bolt (aim assist 12 deg) | Heavy Shell | concussive (splash 55) |
-| Double Bolt | lancing pair (pierces enemies) | Light MG | seeking stream (homing) |
-| Burst | chasing burst (homing) | Charge Shot | piercing charge |
-| Twin Burst | reads the gap (aim assist 14 deg) | Laser | long beam (+300 range) |
-| Buckshot | shredder (pierces enemies) | Bomb | wide blast (+45 splash) |
-| Missile | hunter (+120 homing) | Tracking Missiles | a third head (+1 missile) |
-| Aim Shot | bends to its mark (homing) | Piercer | wall-piercer |
-| Wallbore | total bore (pierces enemies) | | |
+## 3. What is for sale
 
-**Does it keep pace?** `EconomyTest.aPilotsBestDamageKeepsPaceWithTheEnemysHull`: best offered
-pattern at rank III with a damage tier, over the starter's damage per second, must be at least 70% of
-that loka's hp multiplier. It is, loka by loka.
+`BalanceTest.thePlanForTheSevenLokasHolds`: a typical pilot banks about **12,650 coins** over seven lokas against **23,450** of things to buy
+(**54%**). Prices stay the hand-tuned ladder below; the test fails if either side drifts out of 40-80%.
 
-## 4. The astras
+| hull | role | opens | price | x.2 | x.3 (+shards) | hull pts |
+|---|---|---|---|---|---|---|
+| Mk-1 Vajra | all-rounder | start | - | 120 | 300 | 100 |
+| Mk-2 Kite | scout | Atala | 260 | 140 | 300 (+3) | 90 |
+| Mk-3 Aegis | the wall (10% mitigation) | Vitala | 520 | 260 | 520 (+4) | 170 |
+| Mk-4 Hive | fire rate | Sutala | 700 | 350 | 700 (+4) | 140 |
+| Mk-5 Lance | precision | Talatala | 900 | 450 | 900 (+5) | 150 |
+| Mk-6 Mortar | slow, heavy | Mahitala | 1,150 | 580 | 1,150 (+5) | 230 |
+| Mk-7 Vajra-7 | the best | Rasatala | 1,500 | 750 | 1,500 (+5) | 240 |
 
-Astras are not bought with coins. Five shards of a loka's own element forge that loka's Astra once, five
-more buy each release. You carry every Astra on; `X` picks the one `F` spends. A loka's shards are the
-only road to its Astra, which is why you hurry toward the loka whose element you are short of.
+A hull with both tiers costs about one loka's *typical keep* (`EconomyTest`: 0.6x - 2.6x). Weapons: 15 patterns, offered 5 / 3 / 2 / 2 / 2 / 1 / 0 by loka,
+80 -> 560 coins, tempered to rank II (60% of the price, +25% damage) and III (130% + 2 shards, +50% damage and an ability).
 
-## 5. What to tune first when playing
+## 4. Power keeps pace
 
-1. `World`'s hostile quota and the gaze stages (`GAZE_NOTICED`, `GAZE_WATCHING`).
-2. The 65% keep rate in `EconomyTest` - if real pilots keep 80%, raise hull prices ~20%.
+Enemy hulls climb x5.5 by Patala. A pilot's damage climbs the same road three ways: a better **pattern**, a higher **rank**, a **hull tier** (x1.25-1.35).
+`EconomyTest.aPilotsBestDamageKeepsPaceWithTheEnemysHull`: best offered pattern at rank III with a damage tier, over the starter's damage per second,
+is at least 70% of the loka's hull multiplier. Hull points climb 100 -> ~250 against fire x2.8.
+
+## 5. The astras
+
+Not bought with coins: five shards of a loka's own element forge its Astra, five more buy each release (`world/Astra`).
+
+## 6. Checklist for building a new loka (Sutala next)
+
+1. A `LokaTable` row exists (hull / fire grade, ruler, shard element, hull that opens, seed).
+2. Pick its **content**: enemies, chests (`Balance.CHESTS[l]`), five caches, a ruler. Kill coins at the loka's pay should come to **34%** of
+   `Balance.gross(l)` (BalanceTest tolerates +-30% on the share, +-18% on the total).
+3. Give it six bands in the region list and make sure `Balance.BAND_FIRST/BAND_LAST` name them (they are already planned: 12-17, 18-23, ...).
+4. Add the loka to `BalanceTest.measure` (it measures the built lokas; today two) and run it. If it is rich, cut chest coins by adding chests or
+   lowering a share; if poor, add a chest or two. Never raise a single payout without touching the budget.
+5. Its hull (`ShipDef.minLoka`) and patterns (`WeaponDef.minLoka`) are offered when the pilot reaches it.
+
+## 7. Switches that make this moot while testing
+
+`ShipDef.TEST_PRICING = true` (hull and tier prices at a twentieth) and `Hangar.UNLOCK_ALL` (`-Dvajra.testunlock`, default **true**: every hull, tier and
+pattern owned, 999,999 coins) are test-build switches. The real economy only plays when both are off.
+
+## 8. What to tune first when playing
+
+1. `Balance.GROSS_BASE` / `GROWTH` (how rich a clear is), `TYPICAL` (how much of it a real pilot banks).
+2. `Balance.RAMP_LOW/HIGH` (how steep a loka is inside).
 3. Rank price factors (0.6 / 1.3) if tempering outcompetes buying the next pattern.
-4. Shard drop rates (`LootSystem.LOOT_SHARD`) - rank III and x.3 both draw on them.
+4. Shard drop rates (`LootSystem.LOOT_SHARD`): rank III and x.3 both draw on them.

@@ -58,7 +58,7 @@ recommendation is in the last column. (The game keeps the Bhagavata order.)
 | loka | what the text says | game ruler today | suggestion |
 |---|---|---|---|
 | **Atala** | Bala, son of Maya, who made 96 magics (maya). His yawn made three kinds of women; visitors are given a drink brewed with *hataka* gold and are bewitched | Bala | keep. Theme: **illusion and enchantment** |
-| **Vitala** | Hara-Bhava (Shiva) and Gauri; the river Hataki runs gold, from which *hataka* is made | Agnihotra | keep Agnihotra as the *ruler*, make **Hara-Bhava's shrine** the loka's checkpoint. Theme: **gold and fire** |
+| **Vitala** | Hara-Bhava (Shiva) and Gauri; the river Hataki runs gold, from which *hataka* is made | Bhairava | keep Bhairava as the *ruler*, make **Hara-Bhava's shrine** the loka's checkpoint. Theme: **gold and fire** |
 | **Sutala** | Bali, richer than Indra's heaven, who gave the three steps. Vamana-Trivikrama stands at his door as doorkeeper | Takshaka | **Bali** is the stronger ruler; Takshaka belongs to the nagas below. The doorkeeper at Bali's gate is the Trivikrama echo |
 | **Talatala** | Maya the danava, master of all the *mayavis*, protected by Shiva; the Tripura cities | Kalanemi | **Maya** himself - and Maya Vana in Atala makes him the father we have already met |
 | **Mahatala** | Many-headed serpents of Kadru, the Krodhavasha: Kuhaka, Takshaka, Kaliya, Sushena. They fear Garuda | Hiranyaksha | **Takshaka** (with Kaliya as an ally). Hiranyaksha is a Rasatala daitya |
@@ -181,7 +181,7 @@ ink = locked by loka. ENTER buys or fits, TAB changes rail, ESC leaves.
 6. [done] Unused files moved to `unused/` (see `unused/README.md`).
 7. [done] Grand gate parley, once per new loka; speech bubbles and a box-less narrator.
 8. next: `World.currentLoka` (position, not deepest) for shard colour and enemy scale; band ramp; one hull per loka unlock.
-9. next: Vitala (cavern, roster reskin via a second palette in `tools/enemy_art`, Agnihotra, Hara-Bhava's shrine).
+9. next: Vitala (cavern, roster reskin via a second palette in `tools/enemy_art`, Bhairava, Hara-Bhava's shrine).
 10. [done] The economy, hull and weapon scaling (docs/ECONOMY.md): one hull and a few patterns per loka, weapon ranks and abilities.
 11. [done] The script rewritten in the story's words (docs/SCRIPT.md); the three people redesigned (docs/NPC_BIBLE.md): own art, a scene for the first meeting, bubbles after, a job tracker and toasts on the HUD.
 12. next: Bala's own sprite sheet (he still wears the older art) and Vitala's roster.

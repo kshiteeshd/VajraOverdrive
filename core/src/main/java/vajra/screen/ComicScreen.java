@@ -8,16 +8,15 @@ import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.Align;
+import java.util.function.Supplier;
 import vajra.flow.Flow;
 import vajra.flow.FlowState;
-import vajra.profile.Profiles;
 
-/** THE STORY: the pre-game comic, one panel at a time, shown before the title menu the first time
- *  the game is opened. {@link StoryScript} holds the panels and the narrator's line for each; the
+/** THE STORY: the pre-game comic, one panel at a time, shown when NEW GAME is chosen, before the run begins. {@link StoryScript} holds the panels and the narrator's line for each; the
  *  narrator speaks in a black band under the art, typed slowly like every scene in the game.
  *
  *  <p>SPACE / ENTER / click: finish the line, then bring up the next panel. LEFT / A: back a panel.
- *  ESC: skip the story. The last panel's turn hands over to the menu. With no art on disk the
+ *  ESC: skip the story. The last panel's turn (or ESC) hands over to what NEW GAME was starting. With no art on disk the
  *  screen is skipped, so the game runs the same without it. Panels are loaded one ahead and freed
  *  behind, so nineteen big textures are never resident at once. */
 public class ComicScreen implements FlowState {
@@ -30,6 +29,7 @@ public class ComicScreen implements FlowState {
     private final Flow flow;
     private final Ui ui;
     private final SpriteBatch batch;
+    private final Supplier<FlowState> next; // what comes after the last panel (or ESC)
     private final GlyphLayout layout = new GlyphLayout();
     private final Texture[] tex = new Texture[StoryScript.PANELS.length];
     private int at;
@@ -40,17 +40,22 @@ public class ComicScreen implements FlowState {
         return Gdx.files.internal(StoryScript.PANELS[0].file).exists();
     }
 
-    /** The screen to open the game on: the story if it has art and this pilot has not read it,
-     *  else the menu. */
-    public static FlowState firstOrHome(Flow flow, Ui ui, SpriteBatch batch) {
-        if (!Profiles.active().storySeen && available()) return new ComicScreen(flow, ui, batch);
-        return new HomeScreen(flow, ui, batch);
+    /** Is the story switched off? Only the tests do that (-Dvajra.nostory=true), so a menu test can press NEW GAME
+     *  and land in the run. Read on every call so a test can flip it. */
+    static boolean off() { return Boolean.getBoolean("vajra.nostory"); }
+
+    /** NEW GAME's first stop: the story, then {@code next} (the run). With no art on disk, or the story switched
+     *  off, it is simply {@code next}. */
+    public static FlowState before(Flow flow, Ui ui, SpriteBatch batch, Supplier<FlowState> next) {
+        if (off() || !available()) return next.get();
+        return new ComicScreen(flow, ui, batch, next);
     }
 
-    public ComicScreen(Flow flow, Ui ui, SpriteBatch batch) {
+    public ComicScreen(Flow flow, Ui ui, SpriteBatch batch, Supplier<FlowState> next) {
         this.flow = flow;
         this.ui = ui;
         this.batch = batch;
+        this.next = next;
         load(0);
         load(1);
     }
@@ -111,9 +116,7 @@ public class ComicScreen implements FlowState {
     }
 
     private void finish() {
-        Profiles.active().storySeen = true;
-        Profiles.save();
-        flow.set(new HomeScreen(flow, ui, batch));
+        flow.set(next.get());
     }
 
     @Override

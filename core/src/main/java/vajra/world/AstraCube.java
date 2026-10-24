@@ -10,9 +10,8 @@ import vajra.enemy.Enemy;
  *  is answerable to exactly one enemy, so the Astra reaches through a chamber instead of only
  *  hitting what it can see.
  *
- *  <p>Rendering is done in the shape pass from the spin, not with a sprite: the cube's three
- *  visible faces are projected from a rotating 3D frame, which is what sells it as solid.
- *  {@link #spin} is world time, not a delta, so the rotation is frame-rate independent.
+ *  <p>Rendering is done in the shape pass (screen/AstraFx): a glowing orb while held, a bolt of its element in flight,
+ *  drawn along {@link #tx}/{@link #ty}, the positions it has flown through.
  */
 public class AstraCube {
     public float x, y;
@@ -26,6 +25,23 @@ public class AstraCube {
     public float spin;           // world time; drives the 3D tumble
     public float spinRate = 5.5f;
     public boolean dead;
+    /** The last positions flown through, newest first: the bolt's trail. The renderer fills it ({@link #mark}). */
+    public final float[] tx = new float[14], ty = new float[14];
+    public int tn;
+
+    /** Which tatva this cube is (an index into World.TATVA): it colours the cube and fixes what it does on landing.
+     *  A Brahmastra's cubes carry all five. */
+    public int element;
+    /** Steering, in radians a second, and the per-kind effects {@link #dress} fills in. */
+    public float turn = 5.5f;
+    /** Further foes it chains on to after a hit (the Gale). */
+    public int chain;
+    /** Blast radius round the foe it strikes (the Pyre), px; 0 = none. */
+    public float splash;
+    /** Hull the pilot gains per hit (the Flood). */
+    public float heal;
+    /** The foe it struck last, so a chain does not turn straight back on it. */
+    public Enemy last;
 
     /** A cube is HELD while the Astra winds up, and ARMED once it lets go. Held cubes do not
      *  hunt: they hang in a shell around the hull, spiralling in as the charge builds. That
@@ -44,6 +60,16 @@ public class AstraCube {
         this.damage = damage;
     }
 
+    /** Fit this cube to its element and the strength of the release: damage, steering, chain, splash, heal. */
+    public void dress(int element, float damageMult) {
+        this.element = element;
+        this.damage = Astra.DAMAGE[element] * damageMult;
+        this.turn = Astra.TURN[element];
+        this.chain = Astra.CHAIN[element];
+        this.splash = Astra.SPLASH[element];
+        this.heal = Astra.HEAL_PER_HIT[element];
+    }
+
     /** The held state: ride a shrinking circle round the hull. `k` is charge progress 0..1 and
      *  drives both the radius and the tumble, so the shell tightens and spins up together. */
     public void hold(vajra.ship.Ship s, float dt, float k, float outerR, float innerR) {
@@ -55,10 +81,22 @@ public class AstraCube {
         life = 99f;                           // a held cube never runs out on its own
     }
 
+    /** Remember where the bolt is, if it has moved on since the last mark. Drawing-only state. */
+    public void mark() {
+        if (tn > 0 && (tx[0] - x) * (tx[0] - x) + (ty[0] - y) * (ty[0] - y) < 16f) return;
+        int keep = Math.min(tn, tx.length - 1);
+        System.arraycopy(tx, 0, tx, 1, keep);
+        System.arraycopy(ty, 0, ty, 1, keep);
+        tx[0] = x;
+        ty[0] = y;
+        tn = keep + 1;
+    }
+
     /** Send it on its way. Called once, at the release. */
     public void arm(float angle, float speed, Enemy target) {
         this.target = target;
         this.armed = true;
+        this.tn = 0;
         this.life = 4f;
         this.vx = (float) Math.cos(angle) * speed;
         this.vy = (float) Math.sin(angle) * speed;

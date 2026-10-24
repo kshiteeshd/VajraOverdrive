@@ -7,7 +7,7 @@ import vajra.ship.Hangar;
 import vajra.ship.ShipDef;
 
 /** The save is ONE number now: the best run score. Everything else a run builds — coins,
- *  tiers, patterns, pieces, forged charges — is deliberately NOT persisted, because
+ *  tiers, patterns, pieces, shards — is deliberately NOT persisted, because
  *  a new run starts broke and a new game resets everything to its defaults. */
 class SaveTest {
 
@@ -21,12 +21,10 @@ class SaveTest {
         h.magnet = 0.45f;
         h.shards[Hangar.AGNI] = 3;
         h.shards[Hangar.JALA] = 1;
-        h.forgeCharges[0] = 2;
         h.pieces[3] = true;
         h.owned[2][0] = true;
         h.owned[2][1] = true;
         h.owned[6][2] = true;
-        h.forgeCharges[0] = 2;
         h.weaponOwned[5] = true;
         h.weaponOwned[14] = true;
         return h;
@@ -48,9 +46,7 @@ class SaveTest {
         assertEquals(0, fresh.weaponIndex, "no pattern carried over");
         assertEquals(15f, fresh.magnet, 0.0001f, "magnet back to its start");
         assertEquals(0, fresh.shards[Hangar.AGNI]);
-        assertEquals(0, fresh.forgeCharges[0]);
         assertFalse(fresh.pieces[3], "no Vajrayudha band carried over");
-        assertEquals(0, fresh.forgeCharges[0], "no forged charges carried over");
         for (int i = 0; i < ShipDef.ALL.length; i++)
             for (int t = 0; t < 3; t++)
                 assertEquals(i == 0 && t == 0, fresh.owned[i][t],

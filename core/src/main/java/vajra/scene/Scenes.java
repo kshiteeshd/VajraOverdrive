@@ -49,16 +49,31 @@ public final class Scenes {
                 voiceKaliya(w, s);
                 break;
             case BALA_WAKES:
-                if (w.boss != null) s.add(ruler(w.boss, CLOSE, "STAND DOWN. THIS ONE IS MINE."));
+                if (w.boss != null) s.add(ruler(w, w.boss, CLOSE, "STAND DOWN. THIS ONE IS MINE."));
                 s.add(think(w, CLOSE, "I CAN HEAR IT HUM IN HIS HAND."));
                 break;
             case GAZE_NOTICED:
-                s.add(pit(MID, 2.0f, "FAR ABOVE, IN BALA'S HAND, A PIECE OF THE VAJRA GROWS WARM.",
+                if (w.stage == 1) {
+                    s.add(pit(w, MID, 2.0f, "FAR ABOVE, IN BHAIRAVA'S HAND, THE SECOND PIECE GROWS WARM.",
+                            "IT TELLS HIM EVERY TIME VITALA BURNS."));
+                    s.add(think(w, CLOSE, "THE GOLD IS WARM TOO. THE PIECE IS LISTENING.").pan(2.0f));
+                    break;
+                }
+                s.add(pit(w, MID, 2.0f, "FAR ABOVE, IN BALA'S HAND, A PIECE OF THE VAJRA GROWS WARM.",
                         "IT TELLS HIM EVERY TIME ATALA BLEEDS."));
                 s.add(think(w, CLOSE, "I FEEL IT. IT FEELS ME.").pan(2.0f));
                 break;
             case GAZE_WATCHING:
-                s.add(pit(MID, 2.0f, "THE LOWER BANDS GO QUIET."));
+                if (w.stage == 1) {
+                    s.add(pit(w, MID, 2.0f, "THE FORGES GO QUIET, ONE BY ONE."));
+                    s.add(new Shot(w.pitX, frame(w.pitY, MID), MID, "BHAIRAVA", false,
+                            "SOMEONE IS PUTTING OUT MY FIRES.",
+                            "THE PIECE SAYS IT IS ALL MINE. LET THEM BURN.")
+                            .speakerAt(w.pitX, w.pitY).tint(Palette.RULER[0], Palette.RULER[1], Palette.RULER[2]));
+                    s.add(think(w, CLOSE, "HE WILL BE WAITING IN THE ASH.").pan(2.0f));
+                    break;
+                }
+                s.add(pit(w, MID, 2.0f, "THE LOWER BANDS GO QUIET."));
                 float[] gold = Palette.RULER;
                 s.add(new Shot(World.PIT_X, frame(World.PIT_Y, MID), MID, "BALA", false,
                         "SOMEONE IS EMPTYING MY HOUSE.",
@@ -67,14 +82,42 @@ public final class Scenes {
                 s.add(think(w, CLOSE, "HE KNOWS I AM COMING.").pan(2.0f));
                 break;
             case GAZE_ROUSED:
+                if (w.stage == 1) {
+                    if (w.boss != null)
+                        s.add(ruler(w, w.boss, MID, "ENOUGH. ASH REMEMBERS EVERY ONE.",
+                                "THE LAST DOOR IS OPEN. COME AND BE BURNED.").pan(2.0f));
+                    s.add(think(w, CLOSE, "HARA. I AM COMING FOR IT.").pan(2.0f));
+                    break;
+                }
                 if (w.boss != null)
-                    s.add(ruler(w.boss, MID, "ENOUGH. I FELT EVERY ONE OF THEM GO.",
+                    s.add(ruler(w, w.boss, MID, "ENOUGH. I FELT EVERY ONE OF THEM GO.",
                             "THE LAST DOOR IS OPEN. I AM STANDING IN IT.").pan(2.0f));
                 s.add(think(w, CLOSE, "SON OF MAYA. I AM COMING FOR IT.").pan(2.0f));
                 break;
+            case VITALA_ENTER:
+                s.add(narr(w, CLOSE, "BALA'S DOOR OPENS ON VITALA: BLACK STONE, AND A RIVER OF LIQUID GOLD."));
+                s.add(narr(w, CLOSE, "THE HATAKI. FIRE DRINKS IT AND SPITS HATAKA GOLD. HARA AND GAURI KEEP THIS LOKA."));
+                s.add(think(w, CLOSE, "THE SECOND PIECE IS IN BHAIRAVA'S HAND.", "THE RIVER IS CARRYING ME UP TO HIM."));
+                break;
+            case VOICE_SELLER:
+                voiceSeller(w, s);
+                break;
+            case VOICE_MAID:
+                voiceMaid(w, s);
+                break;
+            case BHAIRAVA_WAKES:
+                if (w.boss != null) s.add(ruler(w, w.boss, CLOSE, "STAND DOWN. THE FIRE IS ASKING."));
+                s.add(think(w, CLOSE, "THE THIRD EYE IS OPENING."));
+                break;
+            case BHAIRAVA_FALLS:
+                if (w.boss != null)
+                    s.add(ruler(w, w.boss, CLOSE, "TAKE IT. IT NEVER KEPT ME WARM.", "IT ONLY MADE ME THE FIRE'S DOOR."));
+                s.add(think(w, CLOSE, "TWO PIECES. FIVE TO GO."));
+                s.add(narr(w, CLOSE, "THE SECOND PIECE ANSWERS. BEYOND THE GOLD DOOR, SUTALA'S WATERS WAIT."));
+                break;
             case BALA_FALLS:
                 if (w.boss != null)
-                    s.add(ruler(w.boss, CLOSE, "TAKE IT. IT NEVER MADE ME A KING.", "IT ONLY MADE ME A DOOR."));
+                    s.add(ruler(w, w.boss, CLOSE, "TAKE IT. IT NEVER MADE ME A KING.", "IT ONLY MADE ME A DOOR."));
                 s.add(think(w, CLOSE, "ONE PIECE. SIX TO GO."));
                 if (mayaMet(w))
                     s.add(narr(w, CLOSE, "A LETTER, CARRIED UP FROM MAYA VANA: HE HELD THE DOOR TOO LONG.",
@@ -186,11 +229,32 @@ public final class Scenes {
                 "SAY MY NAME TO TAKSHAKA, BELOW."));
     }
 
+    private static void voiceSeller(World w, List<Shot> s) {
+        Enemy v = Chatter.person(w, "SELLER");
+        if (v == null) return;
+        float cx = (v.x + w.ship.x) / 2, cy = frame((v.y + w.ship.y) / 2, WIDE);
+        s.add(person(v, "THE GOLD-SELLER", cx, cy, "A BHUTA OF HARA'S COURT. I WEIGH HATAKA GOLD."));
+        s.add(indra(w, cx, cy, "WHAT DOES A GHOST WANT WITH GOLD?"));
+        s.add(person(v, "THE GOLD-SELLER", cx, cy, "NOTHING. I ONLY KNOW WHERE IT LIES.",
+                "EVERY VAULT IN THE WALLS IS ON MY SCALE."));
+        s.add(person(v, "THE GOLD-SELLER", cx, cy, "LOOK TO YOUR COMPASS. IT WILL POINT."));
+    }
+
+    private static void voiceMaid(World w, List<Shot> s) {
+        Enemy v = Chatter.person(w, "MAID");
+        if (v == null) return;
+        float cx = (v.x + w.ship.x) / 2, cy = frame((v.y + w.ship.y) / 2, WIDE);
+        s.add(person(v, "GAURI'S MAID", cx, cy, "I KEEP HER LAMPS. LIGHT ONE, AND THE FIRE HOLDS ITS BREATH."));
+        s.add(indra(w, cx, cy, "HOW LONG?"));
+        s.add(person(v, "GAURI'S MAID", cx, cy, "SIX BREATHS. ENOUGH TO CROSS A VENT.",
+                "HER WELLS MEND WHAT THE FIRE BREAKS."));
+    }
+
     // --- the pit --------------------------------------------------------------------------
 
     /** The camera goes to the empty last band, where the ruler is - or will be. */
-    private static Shot pit(float zoom, float panSecs, String... lines) {
-        return new Shot(World.PIT_X, World.PIT_Y, zoom, null, false, lines).pan(panSecs);
+    private static Shot pit(World w, float zoom, float panSecs, String... lines) {
+        return new Shot(w.pitX, w.pitY, zoom, null, false, lines).pan(panSecs);
     }
 
     // --- speakers -------------------------------------------------------------------------
@@ -227,8 +291,8 @@ public final class Scenes {
     }
 
     /** The ruler, in gold, close. */
-    private static Shot ruler(Enemy who, float zoom, String... lines) {
+    private static Shot ruler(World w, Enemy who, float zoom, String... lines) {
         float[] c = Palette.RULER;
-        return new Shot(who.x, frame(who.y, zoom), zoom, "BALA", false, lines).follow(who).tint(c[0], c[1], c[2]);
+        return new Shot(who.x, frame(who.y, zoom), zoom, w.stage == 0 ? "BALA" : "BHAIRAVA", false, lines).follow(who).tint(c[0], c[1], c[2]);
     }
 }

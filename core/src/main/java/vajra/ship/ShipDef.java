@@ -27,7 +27,6 @@ public class ShipDef {
     public final float maxSpeed;
     public final float turnRate; // deg/s
     public final float boostMult;
-    public final float dashCd;
     public final float r, g, b;
     /** Fraction of incoming damage ignored (0 = none, 1 = invulnerable). Tank hulls
      *  take real mitigation so they can survive deep-loka fire. */
@@ -44,7 +43,7 @@ public class ShipDef {
     private static int priced(int cost) { return TEST_PRICING && cost > 0 ? cost / 20 : cost; }
 
     ShipDef(int id, String name, String flavor, int cost, int minLoka, float maxHp, float accel,
-            float maxSpeed, float turnRate, float boostMult, float dashCd,
+            float maxSpeed, float turnRate, float boostMult,
             float r, float g, float b, float damageReduction) {
         this.id = id;
         this.name = name;
@@ -56,7 +55,6 @@ public class ShipDef {
         this.maxSpeed = maxSpeed;
         this.turnRate = turnRate;
         this.boostMult = boostMult;
-        this.dashCd = dashCd;
         this.r = r;
         this.g = g;
         this.b = b;
@@ -69,20 +67,18 @@ public class ShipDef {
         public final int cost;
         public final float cooldownMult;
         public final float damageMult;
-        public final float dashCdMult;
         public final float speedBonus;
         public final float turnBonus;
         public final float hullBonus;
         public final float shieldBonus;
 
-        Upgrade(String label, String name, int cost, float cooldownMult, float damageMult, float dashCdMult,
+        Upgrade(String label, String name, int cost, float cooldownMult, float damageMult,
                 float speedBonus, float turnBonus, float hullBonus, float shieldBonus) {
             this.label = label;
             this.name = name;
             this.cost = ShipDef.priced(cost);
             this.cooldownMult = cooldownMult;
             this.damageMult = damageMult;
-            this.dashCdMult = dashCdMult;
             this.speedBonus = speedBonus;
             this.turnBonus = turnBonus;
             this.hullBonus = hullBonus;
@@ -90,16 +86,16 @@ public class ShipDef {
         }
 
         static Upgrade base(String label, String name) {
-            return new Upgrade(label, name, 0, 1f, 1f, 1f, 0f, 0f, 0f, 0f);
+            return new Upgrade(label, name, 0, 1f, 1f, 0f, 0f, 0f, 0f);
         }
     }
 
     private static ShipDef ship(int id, String name, String flavor, int cost, int minLoka,
                                 float maxHp, float accel, float maxSpeed,
-                                float turnRate, float boostMult, float dashCd, float r, float g, float b,
+                                float turnRate, float boostMult, float r, float g, float b,
                                 float damageReduction, Upgrade u2, Upgrade u3) {
         ShipDef d = new ShipDef(id, name, flavor, cost, minLoka, maxHp, accel, maxSpeed,
-                turnRate, boostMult, dashCd, r, g, b, damageReduction);
+                turnRate, boostMult, r, g, b, damageReduction);
         d.upgrades[0] = Upgrade.base((id + 1) + ".1", name);
         d.upgrades[1] = u2;
         d.upgrades[2] = u3;
@@ -107,8 +103,8 @@ public class ShipDef {
     }
 
     private static Upgrade up(String label, String name, int cost, float cooldownMult, float damageMult,
-                              float dashCdMult, float speedBonus, float turnBonus, float hullBonus, float shieldBonus) {
-        return new Upgrade(label, name, cost, cooldownMult, damageMult, dashCdMult, speedBonus, turnBonus, hullBonus, shieldBonus);
+                              float speedBonus, float turnBonus, float hullBonus, float shieldBonus) {
+        return new Upgrade(label, name, cost, cooldownMult, damageMult, speedBonus, turnBonus, hullBonus, shieldBonus);
     }
 
     /** An identity scan for the wire: whose row of the ladder this hull is. */
@@ -129,26 +125,26 @@ public class ShipDef {
     // Hull points climb about 2.4x from first to last, mitigation adds to it, against enemy fire that
     // climbs 2.8x - the rest of the gap is the pilot's skill and the hangar's other two roads.
     public static final ShipDef[] ALL = {
-            ship(0, "Vajra Mk-1", "the first blade", 0, 0, 100, 1850, 375, 180, 1.8f, 1.2f, 1f, 0.84f, 0.3f, 0f,
-                    up("1.2", "Rapid Cycler", 120, 0.82f, 1f, 1f, 0f, 0f, 0f, 0f),
-                    up("1.3", "Aegis Plate", 300, 1f, 1f, 1f, 0f, 0f, 40f, 15f)),
-            ship(1, "Kite Mk-2", "fast as rumor", 260, 0, 90, 2250, 435, 200, 2.0f, 1.0f, 0.3f, 0.8f, 1f, 0f,
-                    up("2.2", "Light Frames", 140, 1f, 1f, 1f, 50f, 10f, 0f, 0f),
-                    up("2.3", "Twin Link", 300, 0.80f, 1.25f, 1f, 0f, 0f, 0f, 0f)),
-            ship(2, "Aegis Mk-3", "the wall that walks", 520, 1, 170, 1550, 330, 160, 1.6f, 1.4f, 0.4f, 1f, 0.5f, 0.10f,
-                    up("3.2", "Reinforced Hull", 260, 1f, 1f, 1f, 0f, 0f, 60f, 0f),
-                    up("3.3", "Bulwark", 520, 1f, 1f, 0.92f, 0f, 0f, 0f, 55f)),
-            ship(3, "Hive Mk-4", "swarm logic", 700, 2, 140, 1850, 365, 180, 1.8f, 1.2f, 1f, 0.6f, 0.2f, 0f,
-                    up("4.2", "Swarm Lens", 350, 0.80f, 1f, 1f, 0f, 0f, 0f, 0f),
-                    up("4.3", "Seeker Chips", 700, 1f, 1.35f, 1f, 0f, 0f, 25f, 0f)),
-            ship(4, "Lance Mk-5", "reads the gap", 900, 3, 150, 2000, 405, 220, 1.8f, 1.1f, 0.75f, 0.5f, 1f, 0f,
-                    up("5.2", "Sharpened", 450, 1f, 1.30f, 1f, 0f, 0f, 0f, 0f),
-                    up("5.3", "Overdrive", 900, 0.85f, 1f, 1f, 45f, 15f, 0f, 0f)),
-            ship(5, "Mortar Mk-6", "arrives late, loudly", 1150, 4, 230, 1700, 350, 170, 1.7f, 1.3f, 1f, 0.35f, 0.3f, 0.08f,
-                    up("6.2", "Heavy Bands", 580, 1f, 1.35f, 1f, 0f, 0f, 0f, 0f),
-                    up("6.3", "Quickload", 1150, 0.76f, 1f, 0.80f, 0f, 0f, 0f, 0f)),
-            ship(6, "Vajra-7", "the seventh halo", 1500, 5, 240, 2350, 470, 240, 2.0f, 0.9f, 1f, 1f, 0.95f, 0.05f,
-                    up("7.2", "Angel Protocol", 750, 0.82f, 1.25f, 1f, 0f, 0f, 0f, 0f),
-                    up("7.3", "Seventh Halo", 1500, 1f, 1f, 0.72f, 0f, 0f, 50f, 50f))
+            ship(0, "Vajra Mk-1", "the first blade", 0, 0, 100, 1850, 375, 180, 1.8f, 1f, 0.84f, 0.3f, 0f,
+                    up("1.2", "Rapid Cycler", 120, 0.82f, 1f, 0f, 0f, 0f, 0f),
+                    up("1.3", "Aegis Plate", 300, 1f, 1f, 0f, 0f, 40f, 15f)),
+            ship(1, "Kite Mk-2", "fast as rumor", 260, 0, 90, 2250, 435, 200, 2.0f, 0.3f, 0.8f, 1f, 0f,
+                    up("2.2", "Light Frames", 140, 1f, 1f, 50f, 10f, 0f, 0f),
+                    up("2.3", "Twin Link", 300, 0.80f, 1.25f, 0f, 0f, 0f, 0f)),
+            ship(2, "Aegis Mk-3", "the wall that walks", 520, 1, 170, 1550, 330, 160, 1.6f, 0.4f, 1f, 0.5f, 0.10f,
+                    up("3.2", "Reinforced Hull", 260, 1f, 1f, 0f, 0f, 60f, 0f),
+                    up("3.3", "Bulwark", 520, 1f, 1f, 0f, 0f, 0f, 55f)),
+            ship(3, "Hive Mk-4", "swarm logic", 700, 2, 140, 1850, 365, 180, 1.8f, 1f, 0.6f, 0.2f, 0f,
+                    up("4.2", "Swarm Lens", 350, 0.80f, 1f, 0f, 0f, 0f, 0f),
+                    up("4.3", "Seeker Chips", 700, 1f, 1.35f, 0f, 0f, 25f, 0f)),
+            ship(4, "Lance Mk-5", "reads the gap", 900, 3, 150, 2000, 405, 220, 1.8f, 0.75f, 0.5f, 1f, 0f,
+                    up("5.2", "Sharpened", 450, 1f, 1.30f, 0f, 0f, 0f, 0f),
+                    up("5.3", "Overdrive", 900, 0.85f, 1f, 45f, 15f, 0f, 0f)),
+            ship(5, "Mortar Mk-6", "arrives late, loudly", 1150, 4, 230, 1700, 350, 170, 1.7f, 1f, 0.35f, 0.3f, 0.08f,
+                    up("6.2", "Heavy Bands", 580, 1f, 1.35f, 0f, 0f, 0f, 0f),
+                    up("6.3", "Quickload", 1150, 0.76f, 1f, 0f, 0f, 0f, 0f)),
+            ship(6, "Vajra-7", "the seventh halo", 1500, 5, 240, 2350, 470, 240, 2.0f, 1f, 1f, 0.95f, 0.05f,
+                    up("7.2", "Angel Protocol", 750, 0.82f, 1.25f, 0f, 0f, 0f, 0f),
+                    up("7.3", "Seventh Halo", 1500, 1f, 1f, 0f, 0f, 50f, 50f))
     };
 }

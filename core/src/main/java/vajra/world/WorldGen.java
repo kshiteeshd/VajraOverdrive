@@ -39,6 +39,10 @@ final class WorldGen {
         // Bala is not placed at all until the seal lifts — the arena starts empty of him.
         // the next loka's gate: gold across the arena's north corridor, opened only by the kill
         for (int c = 72; c <= 88; c++) w.tileMapBoss.set(c, 93, TileMap.GOLD);
+        w.sealMap = w.tileMapBoss;
+        w.sealRow = 93;
+        w.sealC0 = 72;
+        w.sealC1 = 88;
         for (int i = 0; i < w.orbs.length; i++) {
             float[] spot = w.randomOpenSpot(w.orbRng);
             w.orbs[i] = new Orb(spot[0], spot[1], 0.5f + i * 0.7f);
@@ -173,11 +177,18 @@ final class WorldGen {
         addVoice(Enemy.Kind.LANCE, "SCOUT", 2300, 0.50f, 2);
         addVoice(Enemy.Kind.LANCE, "MAYA", 1500, 0.75f, 2); // Maya Vana: her own woods
         addVoice(Enemy.Kind.LANCE, "KALIYA", 3700, 0.50f, 3); // the water road, Svapna Mandala
+        System.arraycopy(w.quota, 0, w.stageQuota[0], 0, w.quota.length);       // Bala's seal is the first stage's quota
+        w.sealMaps[0] = w.sealMap;
+        w.sealRows[0] = w.sealRow;
+        w.sealC0s[0] = w.sealC0;
+        w.sealC1s[0] = w.sealC1;
+        placeAtalaChests();
+        if (w.campaign) new VitalaGen(w, this).build();                        // and Vitala goes on the roof
     }
 
     /** A person at a post: off the roster (w.voices), awake to hover, named for the Chatter
      *  rail. Nobody here is a target; the voices are never counted by any roster law. */
-    private void addVoice(Enemy.Kind kind, String name, float cx, float depth, int band) {
+    void addVoice(Enemy.Kind kind, String name, float cx, float depth, int band) {
         float cy = w.regionStart[band] + depth * (w.regionEnd[band] - w.regionStart[band]);
         float[] spot = openNear(cx, cy, w.regionStart[band] + 240, w.regionEnd[band] - 240);
         Enemy v = new Enemy(kind, spot[0], spot[1]);
@@ -191,7 +202,7 @@ final class WorldGen {
 
     /** Spiral outward from the aim point until a spot is clear of rock for a ship-sized box.
      *  Clamped to the region so a checkpoint never lands in a neighbour's band. */
-    private float[] openNear(float cx, float cy, float minY, float maxY) {
+    float[] openNear(float cx, float cy, float minY, float maxY) {
         for (int ring = 0; ring <= 30; ring++) {
             for (int a = -ring; a <= ring; a++) {
                 for (int b = -ring; b <= ring; b++) {
@@ -206,7 +217,7 @@ final class WorldGen {
     }
 
     /** openNear, plus the compound door approach must be open so the bay can be reached. */
-    private float[] openNearShop(float cx, float cy, float minY, float maxY) {
+    float[] openNearShop(float cx, float cy, float minY, float maxY) {
         for (int ring = 0; ring <= 30; ring++) {
             for (int a = -ring; a <= ring; a++) {
                 for (int b = -ring; b <= ring; b++) {
@@ -229,7 +240,7 @@ final class WorldGen {
     }
 
     /** Fleet court: 1 commander + N ring + M backup. ponytail: one method places every set. */
-    private void court(Enemy.Kind cmd, Enemy.Kind ring, float ax, float ay, int n, int backups,
+    void court(Enemy.Kind cmd, Enemy.Kind ring, float ax, float ay, int n, int backups,
                        float patrol, float drift, float wake) {
         float room = openRoom(ax, ay, 200);
         if (room < 0.3f) backups = 0;
@@ -259,7 +270,7 @@ final class WorldGen {
         }
     }
 
-    private void sentryPair(float x, float y) {
+    void sentryPair(float x, float y) {
         for (float sx : new float[] { x - 60, x + 60 }) {
             Enemy e = new Enemy(Enemy.Kind.LANCE, sx, y);
             e.sentry = true;
@@ -268,7 +279,7 @@ final class WorldGen {
         }
     }
 
-    private void hatakaPair(float x, float y) {
+    void hatakaPair(float x, float y) {
         for (float sx : new float[] { x - 200, x + 200 }) {
             Enemy e = new Enemy(Enemy.Kind.HATAKA, sx, y - 100);
             e.wakeRange = 900;
@@ -282,7 +293,7 @@ final class WorldGen {
      *  about the world axis stays mirrored: each half of the pair sees the same overlaps and moves the
      *  same way. Each move goes through collide, so nobody is nudged into rock, and the spawn and home
      *  points travel with the body so the leash does not drag it back. */
-    private void relax() {
+    void relax() {
         java.util.List<Enemy> es = w.enemies;
         int n = es.size();
         float[] px = new float[n], py = new float[n];
@@ -290,10 +301,10 @@ final class WorldGen {
         for (int i = 0; i < n; i++) {
             twin[i] = -1;
             Enemy a = es.get(i);
-            if (a.guard || Math.abs(a.x - World.WORLD_CX) < 1) continue;
+            if (a.guard || Math.abs(a.x - w.axisX) < 1) continue;
             for (int j = 0; j < n; j++) {
                 Enemy b = es.get(j);
-                if (j != i && !b.guard && b.kind == a.kind && Math.abs(b.x - (2 * World.WORLD_CX - a.x)) < 1
+                if (j != i && !b.guard && b.kind == a.kind && Math.abs(b.x - (2 * w.axisX - a.x)) < 1
                         && Math.abs(b.y - a.y) < 1) {
                     twin[i] = j;
                     break;
@@ -315,7 +326,7 @@ final class WorldGen {
                     if (d2 >= need * need) continue;
                     float d = (float) Math.sqrt(d2);
                     if (d < 0.01f) { // an exact stack: split along the axis, away from the centre line
-                        dx = a.x <= World.WORLD_CX ? 1 : -1;
+                        dx = a.x <= w.axisX ? 1 : -1;
                         dy = 0;
                         d = 1;
                     }
@@ -341,7 +352,7 @@ final class WorldGen {
             for (int i = 0; i < n; i++)
                 if (px[i] != 0 || py[i] != 0) {
                     Enemy e = es.get(i);
-                    if (Math.abs(e.x - World.WORLD_CX) < 0.5f) px[i] = 0; // the centre line stays the centre line
+                    if (Math.abs(e.x - w.axisX) < 0.5f) px[i] = 0; // the centre line stays the centre line
                     if (twin[i] >= 0 && twin[i] < i) continue; // the right-hand twin is set from the left below
                     shove(e, px[i], py[i]);
                 }
@@ -349,11 +360,11 @@ final class WorldGen {
                 int j = twin[i];
                 if (j >= 0 && j < i) {
                     Enemy l = es.get(j), r = es.get(i);
-                    r.x = 2 * World.WORLD_CX - l.x;
+                    r.x = 2 * w.axisX - l.x;
                     r.y = l.y;
-                    r.homeX = 2 * World.WORLD_CX - l.homeX;
+                    r.homeX = 2 * w.axisX - l.homeX;
                     r.homeY = l.homeY;
-                    r.spawnX = 2 * World.WORLD_CX - l.spawnX;
+                    r.spawnX = 2 * w.axisX - l.spawnX;
                     r.spawnY = l.spawnY;
                 }
             }
@@ -373,7 +384,7 @@ final class WorldGen {
 
     /** Region-graded shop/checkpoint guards: a rank-1 leader on the post with two sentries
      *  flanking below it. Region 0 stays open — that is where the player spawns. */
-    private void guards(float x, float y, int region, Enemy.Kind keeper) {
+    void guards(float x, float y, int region, Enemy.Kind keeper) {
         Enemy lead = new Enemy(keeper, x, y + 90); // the keeper of the post leads; the region grades its sentries
         lead.rank = 1;
         lead.sentry = true;
@@ -393,8 +404,27 @@ final class WorldGen {
     /** A rock compound around each shop: ring wall with gold corners and a lintel over the
      *  door under the bay. The interior floor is carved clean out of whatever rock sits behind
      *  it first; a wall cell that would bury a posted enemy is left open instead. */
-    private void buildCompounds() {
-        for (float[] s : w.shops) { // clean courtyard: carve the interior out of region/gate rock
+    void buildCompounds() {
+        buildCompounds(0);
+    }
+
+    /** ATALA'S TREASURE (docs/TREASURE_CHESTS.md): pearl chests in the places off the road - the flanks of each band, the mirage wood's far edge,
+     *  the arena's rim. Nine of them; each is found by leaving the middle of the map. */
+    void placeAtalaChests() {
+        float[][] at = { {900, 2700, 1}, {4300, 3400, 1}, {700, 5000, 2}, {4500, 6100, 2}, {900, 6900, 2}, {4300, 8700, 3}, {800, 10300, 3},
+                {4400, 13200, 4}, {800, 15600, 4}, {4350, 18600, 5} };
+        for (float[] c : at) {
+            int r = (int) c[2];
+            float[] spot = openNear(c[0], c[1], w.regionStart[r] + 80, w.regionEnd[r] - 80);
+            if (!w.spotClear(spot[0], spot[1])) continue;
+            w.chests.add(new Chest(spot[0], spot[1], 0, -1));
+        }
+    }
+
+    /** The compounds of shops `from` onward: a ring wall with gold corners and a lintel, the interior carved clean. */
+    void buildCompounds(int from) {
+        for (int si = from; si < w.shops.length; si++) { // clean courtyard: carve the interior out of region/gate rock
+            float[] s = w.shops[si];
             float wx0 = s[0] - 5 * TileMap.TILE, wx1 = s[0] + 5 * TileMap.TILE;
             float wy0 = s[1] - 4.5f * TileMap.TILE, wy1 = s[1] + 4.5f * TileMap.TILE;
             for (TileMap m : w.maps) {
@@ -403,9 +433,9 @@ final class WorldGen {
                         m.set(tx, ty, TileMap.EMPTY);
             }
         }
-        TileMap[] all = new TileMap[w.maps.length + w.shops.length];
+        TileMap[] all = new TileMap[w.maps.length + (w.shops.length - from)];
         System.arraycopy(w.maps, 0, all, 0, w.maps.length);
-        for (int i = 0; i < w.shops.length; i++) {
+        for (int i = from; i < w.shops.length; i++) {
             int ox = (int) (w.shops[i][0] - 6 * TileMap.TILE), oy = (int) (w.shops[i][1] - 5.5f * TileMap.TILE);
             TileMap c = new TileMap(ox, oy, 12, 11);
             for (int ty = 0; ty < 11; ty++) {
@@ -419,7 +449,8 @@ final class WorldGen {
                     c.set(tx, ty, corner || lintel ? TileMap.GOLD : TileMap.ROCK);
                 }
             }
-            all[w.maps.length + i] = c;
+            c.skin = w.shops[i][1] >= Hataki.Y0 ? 1 : 0;
+            all[w.maps.length + i - from] = c;
         }
         w.maps = all;
     }
@@ -523,7 +554,7 @@ final class WorldGen {
     /** Nearest wall face around an open point: pushes {anchorX, anchorY, angle} — the flame
      *  points away from its rock (0 up, -90 right, 90 left, 180 down) — or nothing at all when
      *  there is no wall within reach. The candidate itself must be in open air. */
-    private void mount(ArrayList<float[]> out, float cx, float cy) {
+    void mount(ArrayList<float[]> out, float cx, float cy) {
         if (w.blockedPx(cx, cy)) return;
         float[][] dirs = { { 0, -1, 0 }, { -1, 0, -90 }, { 1, 0, 90 }, { 0, 1, 180 } };
         for (float[] d : dirs)

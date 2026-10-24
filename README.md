@@ -10,7 +10,7 @@ Patala. You climb to take them back. Atala is the first loka and its warden is *
 Puranas make him Atala's ruler, son of Maya). Only Atala exists in code today; the other six are
 specified in `world/LokaTable.java` and not yet built. Everything below describes what runs.
 
-**A run owns nothing on exit.** Coins, hulls, tiers, patterns and forged charges are all
+**A run owns nothing on exit.** Coins, hulls, tiers, patterns and shards are all
 built inside a run and die with it — a new game resets the hangar to its defaults. The only thing
 that persists is the best score, which is a record rather than progress.
 
@@ -70,14 +70,13 @@ logo wordmark back; that is an edit to the art and has not been made.
 | Q / E | Turn the nose by hand — Q counter-clockwise, E clockwise. **Only** the nose: Q no longer cycles hulls |
 | SPACE / LMB | Fire. SPACE fires along the nose; LMB also swings the nose onto the cursor (twin-stick). A pilot who has not been taught to fly is held to the first flight (see Tutorials) |
 | SHIFT | Boost, while thrusting — drains the energy meter |
-| C | Dash in the pushed direction (along the nose if no key held); 0.4 s i-frames — hull ghosts (50% alpha) and smears along the push; shots pass through |
-| **F** | **Release the Astra you have chosen** — spends one forged charge of that loka's Astra: 20 homing cubes leave the hull, each picks its own enemy and goes for it *through rock*, the hull is made whole, a life comes back, and 20 s of re-forging starts |
-| **X** | Choose which loka's Astra F spends. Every Astra you forge is carried on to the next loka |
+| **F** | **Invoke an astra: HOLD F, let go to loose it.** Cubes gather round the hull and foes in front of the nose are locked; the longer you hold, the more cubes and the harder they hit. Five shards of its element a release, paid at the loosing |
+| **X** | Choose which astra F invokes (Akasha, Vayu, Agni, Jala, Prithvi, or the Brahmastra of all five) |
 | G / RMB | Shield, drains while held. Its cost scales with what actually lands |
 | V / B | Next / previous owned weapon |
 | 1–7 / Z | Fit that hull / the next hull you own — a hull this run has not bought is a no-op |
 | ESC | The way out, everywhere: pause in flight, close the hangar, back from a page |
-| R | New run, after game over (a click no longer does it) |
+| R | New run, after a run's victory card (a click no longer does it) |
 | F11 / F12 | Fullscreen / swap the window between 1280×720 and 1920×1080 |
 
 Docking is automatic: fly into a shop bay and hold still.
@@ -145,6 +144,42 @@ wide-tracked gold heading flanked by diamonds with one divider under it, the **t
 (`Ornament.panel`) for every box, W/S to choose, ENTER to confirm, **ESC always the way out**, and the
 same footer key strip. The title menu says MULTIPLAYER and so does the page. `AllScreensTest` renders
 each page into `build/screen-*.png` and checks the frame.
+
+## Vitala, the second loka, on the roof of Atala (docs/VITALA_PLAN.md, docs/VITALA_ENEMIES.md, docs/TREASURE_CHESTS.md)
+
+The game's world is the **campaign world** (`World(seed, World.CAMPAIGN)`): Atala, and **Vitala on its roof**, one continuous map 47,600 px tall. Bala's
+gold door at the top of Atala opens straight into Vitala's Plunge; the pilot flies up into it and can fly back down. (`new World()` is still Atala alone, the
+unit tests' world; the menu's `VITALA` row starts a campaign run with the pilot already in Vitala, `World.vitala()`.) Nothing swaps and nothing replays: the
+opening scene plays once, at the start of a campaign run.
+
+- **Size:** Vitala is 5,200 x 27,000 px (Atala is 5,200 x 20,600). Its yojana meter runs 0-10,000 over its own length (`Hataki.YOJANA_PX`); Atala's runs 0-10,000
+  over its. `Hud.yojanaAt` and the depth tape follow whichever loka the hull is in.
+- **The Hataki** (`world/Hataki`): a river of liquid gold, one meandering centre line (pinned to the axis at every gate), a width, a speed - pure functions
+  of the world height. `World.tickVitala`: a drift in the pools, a hard pull in the Hearth Deep's rapids; enemies are carried too (not the boss).
+- **Fire vents** (`world/Vents`, `screen/VentImages`): a jet across the river on a 3 s beat; the Altar's rim vents open in the boss's second phase. A lit
+  shrine hushes the current and every vent for 6 s.
+- **The side caverns** (`MapGen.pockets`, `VitalaGen.placePockets`): about thirty, each a **vault** (a treasure chest), a **den** (a chest and the ambush that
+  guards it) or a **well** (an ember well that mends the hull once).
+- **Treasure chests** (`world/Chest`, `World.openChest`, `screen/ChestImages`): every loka hides its own (Atala's pearl chests, Vitala's basalt ones); you fly into
+  one and it pays coins and one useful thing. See `docs/TREASURE_CHESTS.md` for the table and the plan for the other lokas.
+- **Enemies** (original bestiary names): Agneya, Jvala, Tamra, Kila, Dhuma, Rekha and the boss Bhairava, ships drawn in a second palette. They fly **their own brain**
+  (`enemy/VitalaBrain`): formations (line, wedge, column, pincer, circle) that obey rank, and patterns - Agneya's dart run, Jvala's burning ground, Tamra's armour and
+  body-block, Kila's needles, Dhuma's smoke, Rekha's hairline - with the ground they lay in `world/Hazards`.
+- **Bhairava** (`enemy/BhairavaBrain`): a bone-and-ash capital ship (skull prow, third eye, ribcage hull, flame hair). An ash ring closes on the safe arena as he
+  falls; the ash charge, the ember fan, the cinder rain, the third eye; the Flood carries every hull east. His fall lifts the gold seal and ends the run.
+- **Stages:** `World.stage` (0 Bala, 1 Bhairava). Bala's fall opens his door and makes Vitala's ruler the quota's business instead of ending the run.
+- **The script and the people:** `VITALA_ENTER` plays once as the hull crosses Bala's door; the three gaze scenes and the wake and fall scenes speak in Bhairava's
+  words when `World.stage` is 1; two people stand in Vitala - the **Gold-Seller** (by the river in the Mouth; he is why the compass points at treasure) and **Gauri's
+  Maid** (in the Bhuta Court; she tells of the six-second hush and the wells) - each with a first-meeting scene, a sheet and a Codex page (five new pages).
+- **Hold your post** (docs/ENEMY_BIBLE.md, `PostsTest`): every enemy belongs to the band it was placed in. It wakes when the hull comes near, fights from its post or
+  formation within a 760 px tether, and when the hull goes (1.7 wake ranges) it flies home and sleeps there, formation restored. Nothing crosses a gate or enters Bhu Loka;
+  dives are short flanks within reach of the post; vents and the river no longer wake or float sleepers.
+- **Heat** (`Ship.heated`): past the Plunge, boost drains x0.7, the guns cycle 10% faster with 3 degrees of scatter, the boost tube glows hot; a lit shrine cools it.
+- **Layers:** each vent's flame stands up the shaft as a column on the three nearest layers, and the Hataki shows as a gold stripe on the nearest four.
+- **Keepers:** the gate-bull, the fire-priest and the assayer have their own sheets; **chest markers** are on the compass dial.
+- Tests: `VitalaTest` (the whole campaign is one connected road from the Atala spawn to Bhairava's sealed door; every shrine, shop, cache and chest is on it),
+  `VitalaMechanicsTest` (beat, current, hush, phasing, names, the two stages and the boss), `VitalaBrainTest` (each character, formations and rout, the hazards,
+  the chests, the wells, the opening not replayed, a soak flight through every awake court), `VitalaShotTest` (a picture per band and place, a frame guard).
 
 ## Enemies: the Atala bible and sheets
 
@@ -220,22 +255,21 @@ generated by `WorldMapImageTest` to `tools/atala_map.png`.
 
 ### Checkpoints and lives
 
-Each Atala band (regions 1–5 — Bhu Loka has none) carries **one checkpoint**, placed on open ground
-at 60% of the band's depth
-(spiral scan out of the band centre, clamped to its band). Its three crops are drawn at 2×
-(64×64) as one concentric stack — pink collector behind, gold globe over it, gold frame on top —
-all the same size, aligned on the centre. Both orbs take the exact same transform: one breath scale
-(±15% on a shared ~3 s sine) and one spin (45°/s about their own centres, same direction); the
-frame never moves. From the centre, tiny glow motes stream left and right behind the stack —
-12 of them, fading in and out over 70 px — and stop entirely once the checkpoint is spent.
+Each Atala band (regions 1-5 — Bhu Loka has none) carries **one checkpoint**, placed on open ground at 60% of the band's depth
+(spiral scan out of the band centre, clamped to its band). It is a **deepa-stambha, a stone lamp-altar** (`CheckpointImages`, painted
+pixel by pixel at start-up, no art files): an octagonal cut-stone plinth with a gold inlay ring broken by eight spokes, eight gold
+petals and a dark bowl with a gold lip, drawn at 72 px with a soft shadow. **Unspent, the lamp is cold:** a pink-white flame-seed hangs
+over the empty bowl on a thread of light, bobbing, a slow ring of twelve pink diamonds turns round the altar and pink sparks spiral up -
+a thing you can see from far off in the dark. **Fly through it** (48 px) and the seed drops in and the lamp **catches**: a gold ring
+and sixteen embers burst, and from then on a steady, flickering gold flame with a warm halo burns in the bowl and gold embers lift off
+it. A lit lamp is where you wake if you fall. The lamps are also the world's light: a warm 250 px pool from a lit one, a faint pink one
+from a cold one (in the lightmap), and a glow at the lamp's spot on each of the six nearest layers of the stack, so you see one
+shining down the shaft long before you reach it. `lwjgl3/.../CheckpointShotTest` writes `build/checkpoint-0-cold.png` and
+`-1-lit.png`.
 
-Fly through the stack to **spend the checkpoint**: the collector is taken (with a pink ring
-pop), what remains settles to 30% alpha and stays dim as the marker.
-
-You have **3 lives** (`MAX_LIVES` 5 is the cap a forged release lifts you back to). A death costs one and drops you at the most recent collected checkpoint
+You have **3 lives** (`MAX_LIVES` 5 is the most you can hold). A death costs one and drops you at the most recent collected checkpoint
 (the last one wins across bands); with none collected it falls back to the region entrance.
-The third death ends the run: the world freezes under a dimmer, `GAME OVER` comes up, and **R**
-starts a fresh one (new world, lives back to 3).
+There is no game over: the counter falls to zero and stays there, and the hull still wakes at the last lamp.
 
 ### Caches
 
@@ -259,15 +293,23 @@ the payout — **100 coins and +1 life** (once; touching again does nothing).
 
 ### Shops
 
-Each Atala band 1–4 carries **one hanging SHOP sign** (`assets/shop/`, a 32×32 crop drawn at
-4× = 128×128, like the checkpoints) — none in Bhu, none in the boss band — at 40% of the band's
-depth, always above the checkpoint at 60%, alternating right/left of centre (bands 1,3 on the right
-at x≈3700, bands 2,4 on the left at x≈1500), with the door approach kept clear of rock. Each sign
-stands inside a **rock compound**: first the courtyard interior is carved clean out of any region or
-gate rock behind it, then a 12×11 tile ring wall with gold corners and a gold lintel goes up, with a
-four-tile door directly under the bay — the wall is solid, the floor under the sign stays open,
-and you rise in through the door. The sign board and its two legs are also **solid** (you cannot
-fly through them).
+**Vanija's lotus berth.** Each Atala band 1-4 carries **one shop** (none in Bhu, none in the boss band) at 40% of the band's depth, always
+above the checkpoint at 60%, alternating right/left of centre (bands 1,3 on the right at x~3700, bands 2,4 on the left at x~1500), with
+the door approach kept clear of rock. It is the bay-master's quay, cut in the walls' own ivory stone and gold and PAINTED IN CODE
+(`ShopImages`, no art files): a chamfered stone lintel with a gold border and cornice hangs on two lotus-capped pillars; its face is
+Vanija's own emblem, the **tula** (the merchant's balance - two pans, a coin in one, a pearl in the other); two lamps hang from it, and
+two gold lamp-posts carry six lamp-pips each. Under it, in the marked dock square, is the **berth**: a round stone dais with eight
+studs and a lotus of eight gold petals round a dark mandala. The sign is the same 128x128 footprint as before, so the board and its legs
+are still solid (you cannot fly through them), and the whole sign stands inside a **rock compound** (a 12x11 tile ring wall with gold
+corners, carved out of any region or gate rock behind it, a four-tile door directly under the bay; the floor under the sign stays open
+and you rise in through the door).
+
+**A hull is drawn INTO the berth.** Enter the marked square and the berth pulls the hull gently to its centre (its speed bleeds off and
+it slides home, never leaving the square, so the pull cannot cancel the dock) while the six lamp-pips light one by one and the eight
+petals take the light in turn; two **gold clamps** close on the hull's flanks (drawn over it) and a steady warm bloom settles over
+the berth. Leave, and the clamps let go and the lights go out. The sign's two lamps are amber lights in the lightmap, the berth a warm
+250 px pool once a hull is seated, and every shop shines amber down the six nearest layers of the stack so you can find one from
+far away. `lwjgl3/.../ShopShotTest` writes `build/shop-0-parked-out.png`, `-1-settling.png` and `-2-docked.png`.
 
 **Docking is automatic.** Get the *whole* hull between the two dock-light posts — the marked
 square below the sign (`World.inDockBox` — a graze does not count) — and the dock sequence runs: `shop_doc1`…`shop_doc6` fill the bay lights over 0.6 s,
@@ -296,7 +338,6 @@ variants all pay 1 each, rolled per coin:
 |---|---|---|---|
 | rank 0 regular | 2 | 8% | 4% |
 | rank 1 commander / posted guard | 4 | 15% | 10% |
-| AstraCubeGeometryTest | 6 | 6 | 6 | 6 | 6 | **the cube is a cube**: the eight projected corners stay centred, never collapse, stay inside half*sqrt(3) of the centre, the silhouette changes as it turns and stays the size of a real solid (a face listed out of cyclic order is a bowtie whose signed area cancels to nothing - it measured 1.1 against a real cube's ~250), depth separates the faces so painter's order is well defined, and the six faces carry at least six brightness bands |
 | OrnamentTest | 3 | 3 | 3 | 3 | 3 || 3 || 3 || 3 || 3 || 3 | **the shared ornament resolves**: the class the title and pause screens both call actually exists and offers every method they use, and the geometry constants moved out of HomeScreen with it — a deleted helper fails here instead of at the next compile |
 | KeyHintsTest | 7 | **the control strip**: centred, and it CLEARS the weapon plate and the shard block (if either neighbour grows into it this fails rather than the two quietly overlapping), it sits low and under the depth tape, **the F cap reads the real Astra state** - not forged / ready / banking / cooling - **charging outranks everything**, the track shows what it is filling toward, and it reads the loka's own element so the cap agrees with the corner || ShardGaugeTest | 7 | 7 | 7 | 7 | 6 | **the shard block draws a row per element the LOKA pays, not one per tatva** - Atala pays Akasha alone so it is a single row, and it grows to two at Rasatala and five at Patala; every paid element has a colour and art; the block stays clear of the depth tape and fits the screen; the charge track is exactly as wide as a release costs, so one segment is one shard; and it reads forge progress - 3 of 5 fills three segments, forging does NOT spend the pile, and selling is the only way to lose ground |
 | SplashScreenTest | 7 | 7 | 7 | 7 | 7 || 7 || 7 || 7 | **the studio card's beat**: nothing is drawn through the 1.2 s delay, the logo is at 0.5 halfway up the rise and 1 at the top, holds at full alpha and falls back through 0.5 to 0, the hold is 5 s and the outro 2 s and slower than the rise, the logo is drawn 1.5x smaller (373 px), the curve never leaves 0..1, and it is not done a frame early | the field runs ink -> pale -> ink so the handover is not a flash; both curves stay inside 0..1; it is not done a frame early; and any input skips to the end |
@@ -329,97 +370,68 @@ from the deepest stack first); `[X]` in the hangar dumps the whole stock flat at
 (5 shards went for 100c). x.2 stays coins-only, and switching marks is still a free hotkey
 until the per-loka unlock rules land.
 
-**What the shards are FOR.** Coins buy stats (tiers). Shards buy **one thing: the Astra.**
-There is no second system and nothing to choose between.
+**What the shards are FOR.** Coins buy stats (tiers). Shards are **the fuel of the astras**, and nothing else:
+five shards of an element pay for one release of its astra. There is no forge to buy and no stored charge - the shard
+pile *is* the fuel, which makes selling shards a real choice against keeping them (`X` in the hangar sells the lot).
 
-The purity rule still stands (LOKA-LAWS 3): a shard only banks if the loka pays its element.
-Atala pays Akasha alone, so an Agni shard you somehow pick up is stock you can sell but never
-progress. What you see in Atala is therefore a single number going up.
+### The Astra rite
 
-### The Akasha Astra
+An astra is a divine weapon called down by an invocation, aimed, and loosed. The rite has three beats and one price
+(`vajra.world.Astra` holds the numbers; `World.astraBegin / astraLoose / astraCancel` run it):
 
-Shards buy this and nothing else. `Hangar.addShard` banks the loka's **own** element toward
-forging its weapon, and the forge runs itself as shards land - there is no key to press
-in the hangar and nothing to spend them on:
+1. **Invoke - HOLD F.** A cage of cubes gathers round the hull (a third of them at the start, all of them at full
+   strength after `WIND_FULL` 1.5 s) and the hull goes heavy (`WIND_THRUST` 0.4 on the stick). Foes *in view, within
+   900 px, nearest the line of the nose first* are **locked**: four corner brackets round each, as many locks as cubes.
+2. **Aim.** The nose is the aim - there is no second cursor to manage.
+3. **Loose - LET GO.** Each cube flies at a locked foe, round and round the locks; they steer and **go through rock**.
+   Let go before `WIND_MIN` 0.4 s and the **mantra falters**: nothing flies and nothing is spent. Let go with nothing in
+   front to answer and it falters too.
 
-- the first `FORGE_COST` = **5** shards **forge** it, and forging hands you the first release;
-- every `CHARGE_COST` = **5** after that buys one more release;
-- **forging is permanent.** `Hangar.forged[]` is a separate flag from the charge count, because
-  spending your only release must not drop you back on `FORGE_COST` for the next one.
+**The price** is `COST` = 5 shards of the astra's own element, paid *at the loosing, not at the start* - a hull that dies
+(or pauses, or docks) mid-invocation loses nothing. A short `COOLDOWN` of 6 s follows a release (0.5 s after a faltered
+one, so a stuttering key cannot flicker the cage). **Power** runs from 0 at the shortest invocation that counts to 1 at
+full strength: cubes `0.35 + 0.65 k` of the kind's full count, damage `0.7 + 0.6 power` of the listed.
 
-#### F does not release. It charges.
+**The astras** - five elements, each its own character, and a sixth:
 
-`FORGE_WIND` = **1.75 s**. Pressing F spends the release immediately and puts **twenty held
-cubes** in a shell around the hull, spiralling in from `WIND_R_OUT` 150 px to `WIND_R_IN` 58 px
-while the tumble winds up with them. `World.windK()` is that progress as one number, and the
-cage, the shake and the corner gauge all read off it.
+| Astra | Epithet | Cubes | Hit | What it does |
+|---|---|---|---|---|
+| Akasha | the Hunter | 16 | 70 | seeks its prey through rock; **the shield is refilled** |
+| Vayu | the Gale | 10 | 55 | fast (1500 px/s); **chains** to up to 3 further foes; **the boost is refilled** |
+| Agni | the Pyre | 8 | 85 | **bursts** on impact, 60% of the hit to everything within 120 px |
+| Jala | the Flood | 12 | 50 | **every hit mends the hull** by 3 |
+| Prithvi | the Mountain | 6 | 150 | few, heavy blows; **2 s of stone skin** (no damage) |
+| Brahmastra | the Last Arrow | 26 | all five | needs **5 shards of every element**; half of each astra's cubes, all five at once, shield and boost refilled and a second of stone skin |
 
-This is the difference between a button and a moment. Fired instantly, twenty cubes is a burst of
-numbers; held while the hull is heavy, it is a decision you are living inside. By the time the
-cage has closed, the player has already committed, and everything after is release.
+There is **no free repair and no extra life** any more: the old release mended the hull whole and handed back a life
+every time, which made it a panic button you could farm. Boons are of the element, and Jala's is its blows.
 
-**The charge costs you.** Thrust is cut to `WIND_THRUST` 0.33 and the **dash is locked out**
-(`Ship.winding`). Not "you cannot move" - that reads as a bug - but "you are committed and
-slow", which is what makes those 1.75 s a risk instead of a pause. Nothing else in the game
-takes the dash away, so losing it here is felt.
+**Choosing.** `X` steps `World.astraSel` to the next astra you can pay (it wraps); a choice that cannot be paid falls
+back to the first that can (`loadedAstra()`). The hangar's **ASTRA** rail is six cards - the element's own gem (the same
+art as the shard pickups and the HUD; the Brahmastra wears all five), its epithet, the releases you can pay for, what
+it does - and ENTER on a card chooses it.
 
-**The release**, when the charge runs out, is `FORGE_CD` 20 s starting, plus:
+**In a shared flight** the guest pays its own shards and keeps its own boons; the `ASTRA` plane carries
+`[kind][power][count][foe ids]` so the host looses the same volley from that seat's hull, and the kills pay the guest.
 
-- **the freeze** - `RELEASE_FREEZE` 0.14 s where `GameScreen` skips `world.update`. Impact is
-  mostly the absence of motion; without it the cubes and the shake land in the same frame and
-  neither reads;
-- **the punch** - `World.astraPunch` 1 decaying at `exp(-4.5 dt)`, fed into `updateZoom` as a
-  third pull. It pulls the view **back**, the only direction that camera ever moves;
-- the hull mended whole, shield refilled, 1.2 s of i-frames, a life back to the cap of 5.
+**How it looks** (`AstraFx`, drawn additively so it burns): the cubes are gone. Holding F opens a slow gold **yantra**
+(two counter-turning triangles in a ring) round the hull that tightens as the charge builds and, once full, spills a pulse
+ring; the held shards are glowing **orbs** on the shrinking circle, each dragging an arc of light. Loosed, each shard is a
+**bolt of its element** with a tapered trail drawn from the positions it flew through (`AstraCube.mark`): Akasha a
+spinning star-diamond, Vayu a thin gale with two wind-wisps, Agni a guttering fireball, Jala a teardrop with a rippling
+wake, Prithvi a stone shard shedding dust. A strike throws two rings and a burst of sparks in the element's colour.
+`AstraCube.hold/arm` is still one entity in both states, the cage and the volley.
 
-One charge at a time: `forgeReady()` also requires `forgeWind <= 0`, so mashing F cannot stack
-cages or queue releases.
-
-#### The volley
-
-Twenty cubes (`ASTRA_CUBES`) leave the hull fanned back from the nose; each picks **its own**
-target - the nearest living enemies, one per body, no enemy targeted twice - and steers at it at
-`ASTRA_SPEED` 900 px/s. **They go through rock.** That is the point: a cube that needed a clear
-line would be a worse bullet, and the Astra is fired into a crowd where much of it is behind
-cover. Each cube lands `ASTRA_DAMAGE` 90 - enough to kill any regular Atala unit and nothing to
-Bala. Fewer than 20 enemies and the extra cubes still come out, just untargeted.
-
-**The cubes are drawn as solids, not sprites.** `WorldRenderer.projectCube` rotates a cube's eight
-corners in 3D (yaw on world time, pitch a fraction behind it) and projects them with a mild
-perspective; the six faces are then drawn back-to-front, brightness taken from each rotated
-normal, so the tumble reads even on a flat fill. Painter's order does the occlusion, so no
-backface culling is needed. Three things in there are easy to get wrong and were:
-
-- the six face quads must be listed in **cyclic** order - index order gives a bowtie whose signed
-  area cancels to nothing, and every face vanishes (it measured 1.1 against a real cube's ~250);
-- the perspective divisor must be large - at P = 3.2 the near corner magnified 4x and it
-  rendered as a fisheye wedge;
-- the shading floor must be high. Akasha is a pale lavender `(0.72, 0.64, 1.00)`, so the
-  original `0.42 + 0.58t` floor landed the darkest faces at `(0.30, 0.27, 0.42)` - which on a
-  near-black field reads **grey, not violet**. It is `0.70 + 0.65t` now: the hue has to survive
-  the shading or the whole weapon does not look like the element it is made of.
-
-`AstraCubeGeometryTest` pins the first two. `AstraCube.hold/arm` is the same entity in both
-phases, so the cage and the volley are one thing in two states rather than two effects.
-
-**The release ring stays at one radius on purpose.** The ring is a *sprite* scaled to its
-diameter with nearest filtering: at ~9x (170 px) the art reads as the shockwave it was drawn to
-be, but an 80 px ring at 4x is a fat donut pasted over the ship. Grandeur comes from twenty
-cubes leaving at once, not from stacking circles.
-
-`ForgeTest` (18 tests) pins the economy, the charge and the release - including that F does not
-release, that nothing lets go early, that the cage only ever tightens, that the charge really
-does cost you speed and the dash, that mashing it is refused, and that a cube really does cross
-3000 px of open world and rock alike and lands its hit. `AstraScreenshotTest` renders the cage
-and the volley on the real Flow and pixel-checks that the cubes are violet. The purity rule is
-the same `LokaTable.pays` check the forge runs on.
-
+`AstraTest` (32 tests) pins the fuel, the invocation (holding builds the cage, letting go too soon is free, a dead hull
+loses nothing, a pause cancels for free, the cooldown), the aim (locks follow the nose, out-of-view foes are never
+locked, nothing locked means nothing spent), each astra's character, the Brahmastra, the choice and the wire.
+`AstraScreenshotTest` renders the cage, the locks and the volley on the real Flow.
 
 ### Save
 
 `vajra.save` holds exactly two fields: `version` and `best`. That is deliberate — the save file is
 **VERSION 2**, and v1 carried the whole hangar. Nothing else survives a run, so a new game resets
-coins, hulls, tiers, patterns and forged charges to their defaults and the only thing
+coins, hulls, tiers, patterns and shards to their defaults and the only thing
 carried forward is the best score.
 
 `SaveGame.deserialize` ignores a corrupt file or a foreign version rather than failing, and clamps
@@ -628,7 +640,7 @@ Rasatala, Patala. Below all seven lies Naraka, and the seven rest on the head of
 | # | Loka | Warden | Pays | Hull × | Fire × | Buys hulls 0… | Seed |
 |---|---|---|---|---|---|---|---|
 | 0 | Atala | Bala | Akasha | 1.00 | 1.00 | 1 | 11 |
-| 1 | Vitala | Agnihotra | Agni | 1.35 | 1.20 | 3 | 21 |
+| 1 | Vitala | Bhairava | Agni | 1.35 | 1.20 | 3 | 21 |
 | 2 | Sutala | Takshaka | Jala | 1.75 | 1.45 | 5 | 31 |
 | 3 | Talatala | Kalanemi | Prithvi | 2.30 | 1.70 | 6 | 41 |
 | 4 | Mahitala | Hiranyaksha | Vayu | 3.00 | 2.00 | 6 | 51 |
@@ -666,23 +678,22 @@ real bug.
 
 ## Ship
 
-24×24 collision box, centre-based coordinates. Starting hull, boost, shield and dash are all
+24×24 collision box, centre-based coordinates. Starting hull, boost and shield are all
 per-frame numbers in `Ship`:
 
 | Constant | Value |
 |---|---|
-| Friction | 9/s (not applied while a dash is running — the dash drives velocity itself: full from the first frame, eased to a stop) |
-| Dash | 1600 px/s held from the first frame, eased to a stop over the back half of 0.3 s, 0.4 s i-frames (shots pass through). The cooldown **starts when the burst ends**, not when it begins — the smear is movement, not dead time — and `DASH_EXIT` = 55% hands 55% of your entry speed back so one dash flows into the next push |
+| Friction | 9/s |
 | Boost | ×`boostMult` on accel and top speed, drains `BOOST_DRAIN` 24/s, regens `BOOST_REGEN` 7/s — **4.2 s of use off a full bar, ~14 s back**, cap 100, only while thrusting |
 | Shield | drains 18/s while held, regens 10/s, cap 50 + upgrades. A block costs **`SHIELD_PER_DAMAGE` × damage**, floor `SHIELD_MIN_COST` 5 — so a Hataka betray pellet is cheap to eat and a Bhavi shell is not. The meter prices the threat instead of charging a flat toll for anything |
-| Hit | 0.6 s invulnerability, +0.6 camera trauma; shield block adds +0.3, dash +0.25 |
-| Death | a life spent; full hull, trauma 1, respawn at the most recent checkpoint (else the region entrance), 1.5 s invulnerability. Zero lives = game over |
+| Hit | 0.6 s invulnerability, +0.6 camera trauma; shield block adds +0.3 |
+| Death | a life spent; full hull, trauma 1, respawn at the most recent checkpoint (else the region entrance), 1.5 s invulnerability. Zero lives changes nothing: there is no game over |
 
 Trauma decays at 1.6/s and drives camera shake (`±16 px × trauma²`). dt is clamped to 1/30 s.
-Shield and dash hits cost no hull. There is no ammo, no reload, no resource other than these meters.
+Shield hits cost no hull. There is no dash. There is no ammo, no reload, no resource other than these meters.
 
 **The dip.** There is no halo or state ring around the hull any more. When the ship is hit,
-shielding or dashing, the sprite is drawn `DIP_PX` = 5 px **low** and eases back up over ~1/16 s
+or shielding, the sprite is drawn `DIP_PX` = 5 px **low** and eases back up over ~1/16 s
 (`Ship.dip`, held for `DIP_TIME` 0.35 s). Feedback without an outline.
 
 **The plume is anchored, not eyeballed.** `ShipRenderer.tailPoint` puts the flame `PLUME_ANCHOR` =
@@ -695,7 +706,7 @@ wrong here, and were:
   ship. A separate screen-space nudge subtracted from `y` regardless of heading and shoved the flame
   back into the hull whenever the nose pointed down;
 - it reads `drawnY(s)`, so a hull dipped 5 px by a hit or a shield takes its flame down with it
-  instead of leaving the two sliding apart. The dash smear is anchored the same way.
+  instead of leaving the two sliding apart.
 
 `PlumeAnchorTest` pins all of it headless: the anchor is exactly `PLUME_ANCHOR` back at every
 heading, always on the exhaust side of the nose, above the hull when the nose points down, and it
@@ -707,18 +718,18 @@ Every hull except Mk-1 is **purchased**, and each loka opens more of them (`Loka
 gives the highest ship index buyable there). A run starts in Mk-1 with 0 coins and nothing else:
 `1-7` on an unbought hull does nothing, and `Q`/`Z` cycle only through hulls you actually own.
 
-| # | Name | Cost | Opens at | Flavour | HP | Accel | Max spd | Turn °/s | Boost | Dash cd | Colour |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | Vajra Mk-1 | free | — | the first blade | 100 | 1850 | 375 | 180 | 1.8 | 1.2 | gold |
-| 2 | Kite Mk-2 | 250c | Atala | fast as rumor | 85 | 2250 | 435 | 200 | 2.0 | 1.0 | cyan |
-| 3 | Aegis Mk-3 | 320c | Vitala | the wall that walks | 150 | 1550 | 330 | 160 | 1.6 | 1.4 | green |
-| 4 | Hive Mk-4 | 380c | Vitala | swarm logic | 100 | 1850 | 365 | 180 | 1.8 | 1.2 | orange |
-| 5 | Lance Mk-5 | 460c | Sutala | reads the gap | 95 | 2000 | 405 | 220 | 1.8 | 1.1 | pale cyan |
-| 6 | Mortar Mk-6 | 560c | Sutala | arrives late, loudly | 120 | 1700 | 350 | 170 | 1.7 | 1.3 | rust |
-| 7 | Vajra-7 | 700c | Talatala | the seventh halo | 110 | 2350 | 470 | 240 | 2.0 | 0.9 | white |
+| # | Name | Cost | Opens at | Flavour | HP | Accel | Max spd | Turn °/s | Boost | Colour |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | Vajra Mk-1 | free | — | the first blade | 100 | 1850 | 375 | 180 | 1.8 | gold |
+| 2 | Kite Mk-2 | 250c | Atala | fast as rumor | 85 | 2250 | 435 | 200 | 2.0 | cyan |
+| 3 | Aegis Mk-3 | 320c | Vitala | the wall that walks | 150 | 1550 | 330 | 160 | 1.6 | green |
+| 4 | Hive Mk-4 | 380c | Vitala | swarm logic | 100 | 1850 | 365 | 180 | 1.8 | orange |
+| 5 | Lance Mk-5 | 460c | Sutala | reads the gap | 95 | 2000 | 405 | 220 | 1.8 | pale cyan |
+| 6 | Mortar Mk-6 | 560c | Sutala | arrives late, loudly | 120 | 1700 | 350 | 170 | 1.7 | rust |
+| 7 | Vajra-7 | 700c | Talatala | the seventh halo | 110 | 2350 | 470 | 240 | 2.0 | white |
 
 Each ship has three tiers: **x.1 is the hull itself** (you bought it), x.2 and x.3 are bought on top
-— x.3 wants coins **and** 3 shards. Multipliers (cooldown, damage, dash cd) multiply together;
+— x.3 wants coins **and** 3 shards. Multipliers (cooldown, damage) multiply together;
 bonuses (speed, turn, hull, shield) add. Derived stats: `maxHp = def + hullBonus`,
 `maxSpeed = def + speedBonus`, `turnRate = radians(def + turnBonus)`, `shieldCap = 50 + shieldBonus`.
 
@@ -738,18 +749,37 @@ fly is the highest tier you own, so buying an upgrade changes the look. Primary/
 the loka palettes: mk_1 Atala pearl/gold, mk_2 Vitala ember/gold, mk_3 Sutala violet/lilac,
 mk_4 Talatala amber/cyan, mk_5 Mahatala sand/green, mk_6 Rasatala slate/crimson, mk_7 Patala gold/ruby.
 
+Every mark flies a **forged sheet** (`mk_<n>/mark<n>_sheet.png`, **128x128** cells, 34 frames per tier row: idle 12,
+hit 6, **boost 8**, bank left 4, bank right 4), made by `ship_forge/ShipForge_8.java`
+(`java ship_forge/ShipForge_8.java ship_forge/out8 [--mark N]`). The three tiers of a mark are three different
+colourways, not one hull recoloured: e.g. Mk-1 cyan / gold-lavender / ivory-gold, Mk-2 obsidian / steel-brass /
+gilded with white-hot veins, Mk-7 black-gold-red / silver-sapphire / void-ruby. While the boost is held the hull plays
+its **own boost form**: Mk-1 folds its wings back, Mk-2 sweeps armour and tusks, Mk-3 shuts its lotus into a bud, Mk-4
+pulls its cities into a tight orbit, Mk-5 tucks its heads into a comet, Mk-6 folds its blade fan, Mk-7 closes every
+floating piece on the core (two frames close in, six loop). Mark 6 is the asura war-throne; Mark 7 is the thin
+matte-black needle with a gold halo, red flaps and one huge exhaust. The sheets load with mipmaps (the hull draws at
+about a third of its texel size). The `ship_<n>.png` files remain as the fallback.
+
+**Enemy idles** are eight-frame loops (sheets are `assets/enemies/atala/<kind>.png`, 16x4 cells of 64: idle x8 + rage x8
+on rows 0/2/3, hit x2 + death x6 on row 1; regenerate with `python tools/gen_enemy_sheets.py`). Beyond the eye, each
+body now does something: Auris' fins beat and two motes orbit it, Hataka drips gold draught and a glint rides its
+dome, Lance's bead rides the slot while a pulse runs down the spine and the finial burns, Vakra throws lightning
+between its horns and trails tassels, Bhavi vents steam and sweeps its eyes, Mayavi's shards twinkle and light runs
+down the seam, Dvarapala's studs chase and a scan line crosses the door, Dipaka sheds embers and swirls its flame,
+Vanija's coins hop in a wave under a swaying beam.
+
 | Ship | Tier 2 | Tier 3 |
 |---|---|---|
 | Vajra Mk-1 | Rapid Cycler 120c — cooldown ×0.82 | Aegis Plate 300c — hull +40, shield +15 |
 | Kite Mk-2 | Light Frames 180c — speed +50, turn +10 | Twin Link 360c — cooldown ×0.80, damage ×1.25 |
-| Aegis Mk-3 | Reinforced Hull 220c — hull +60 | Bulwark 440c — shield +55, dash cd ×0.92 |
+| Aegis Mk-3 | Reinforced Hull 220c — hull +60 | Bulwark 440c — shield +55 |
 | Hive Mk-4 | Swarm Lens 240c — cooldown ×0.80 | Seeker Chips 480c — damage ×1.35, hull +25 |
 | Lance Mk-5 | Sharpened 280c — damage ×1.30 | Overdrive 560c — cooldown ×0.85, speed +45, turn +15 |
-| Mortar Mk-6 | Heavy Bands 320c — damage ×1.35 | Quickload 640c — cooldown ×0.76, dash cd ×0.80 |
-| Vajra-7 | Angel Protocol 400c — cooldown ×0.82, damage ×1.25 | Seventh Halo 800c — dash cd ×0.72, hull +50, shield +50 |
+| Mortar Mk-6 | Heavy Bands 320c — damage ×1.35 | Quickload 640c — cooldown ×0.76 |
+| Vajra-7 | Angel Protocol 400c — cooldown ×0.82, damage ×1.25 | Seventh Halo 800c — hull +50, shield +50 |
 
 A run starts with **0 coins** and dies with them: coins, hulls, tiers, patterns and
-forged charges are all built inside the run. Rank 0/1/elite pay 2/4/6 coins plus rolled health
+shards are all built inside the run. Rank 0/1/elite pay 2/4/6 coins plus rolled health
 (8/15/30%) and loka-keyed tatva shards (6/14/28%); Bala pays 25 coins, guaranteed health and the
 Atala band of the Vajrayudha; caches pay 100c and a life, the kill purse 150.
 
@@ -794,7 +824,7 @@ Hit resolution lives in `World`, not in `Bullet`:
 - Player bullet vs enemy: AABB overlap; splash weapons detonate on contact, pierce continues to the
   next body, plain shots die on the first hit
 - Enemy bullet vs ship: AABB against the 24×24 box, then `Ship.damage` — skipped entirely while
-  `iFrames > 0`, so a dash lets shots fly straight through
+  `iFrames > 0`, so a freshly respawned hull lets shots fly straight through
 - Ship vs enemy contact: both get a `World.KNOCK` (260 px/s) velocity kick along the contact line,
   in opposite directions — a small shove apart, no damage to the ship; the enemy also eats
   `World.RAM` (10) damage per touch at most once per 0.5 s (`contactCd`), and starts a 2 s
@@ -887,9 +917,136 @@ under 30% open and halve under 50 — R4's table total is 5 slots short of nomin
 reason. `World.add` carves a padded 16 px box around every home so no
 one spawns inside rock.
 
+## The land (flying over a world, not through space)
+
+`docs/WORLD_BIBLE.md` is the research (Bhagavata Purana 5.16-5.26, the Vishnu Purana's soil colours, the Mahabharata's
+Hiranyapura) and the render plan. The short version: the lower lokas are *bila-svarga*, earth-wide lands with cities,
+gardens, lakes and soil, lit by jewels because they have no sun - so the open space is **ground**, the rock is **raised
+ground**, and the ship is **in the air**.
+
+- **`Biome`** (one row per band of `World.regionStart`): soil ramp, water, trees, road, a pattern style (mandala rings,
+  throat ribs, mosaic), the frame's ambient light and its mist. Band 0 (Bhu Loka, "Avatarana") is real sunlit green
+  earth that cracks toward the gate; then Svarna Dvara (white soil, a gold-paved road), Maya Vana (a dark mirror-wood
+  with silver pools), Svapna Mandala (violet ground drawn with golden rings, lotus lakes), Bala Mukha (maroon ridges
+  like a throat), Bala's court (an ivory-and-gold mosaic).
+- **`GroundMap`** paints it: a pure function of the world (soil by a height field, patterns, water with shores, ripples
+  and lotus pads, a winding road, trees that cast shadows, glints); the same seed makes the same bytes, so chunk seams
+  cannot show. One texel = 4 world px; a 128x128-texel chunk paints in ~4 ms.
+- **`GroundLayer`** streams chunks (512 world px, an LRU of 96) as the camera nears; a jump paints the whole view at once.
+- **Lighting is per biome** (`Biome.ambient`, eased over 500 px at a boundary): the multiply pass is no longer one black.
+- **Altitude cues:** the hull and every body cast a shadow down-right; the walls cast theirs (`TileImages.drawShadow`);
+  the mist (the old nebula, now added light, never a dark overlay) drifts at 0.95 against the ground; and 90 motes of
+  jewel-dust slide past at 1.2-1.7x. The stars are gone (they would have been under the ground).
+- `lwjgl3/.../WorldShotTest` writes `build/world-0..7.png`: one real frame per band, plus the Svapna pillars and the
+  Svarna lamp road, each with a ring of hostile rounds in the air.
+
+**ATALA, STEP A (docs/ATALA_PLAN.md): the wall stack in the real game.** The old rock tiles are the play layer again
+(`World.walls` defaults to true; `-Dvajra.walls=false` sweeps them away after generation). Below the meadow the renderer stacks
+the same walls behind the play layer (`WorldRenderer.stackLayers`, the maths in `LayerStack`): `Biome.layers(y)` says how many -
+none on the open meadow, opening from y 1000 to a whole shaft by y 1500 (the descent), then 12 in the Golden Door, 15 in the Mirage
+Wood and the Dream Circle, 12 in the Yawn, 20 in the Hall of Belief, eased over 500 px at each boundary, the farthest layer fading
+in so the count never pops. Each layer is `0.96^k` the size of the one in front about the screen centre (so it slides by that
+fraction of the camera's move) and tinted toward the band's own deep colour (`Biome.deepTint`: warm in the Golden Door, teal in
+the Mirage Wood, violet, maroon, gold). Under the stack the raycast land (below) drops away to a far, hazed, double-size floor as
+the shaft opens. While a stack is up the lamp/mushroom light pools and the above-the-hull raycast pass are off (they would not
+line up with the far floor; they come back on the layers in step B), and the minimap draws the wall tiles over the land again.
+The old gate walls are real gates again (the boulder belt remains as the lip of the hole).
+
+**TEST BUILD, STEP A.2 (unlocked, faster, alive).** (1) **Everything is unlocked and free:** `Hangar.UNLOCK_ALL` (on by default; `-Dvajra.testunlock=false`
+for the real economy, which the unit tests use) gives every hull and tier, every pattern at rank III, 999,999 coins and 99 of every shard from the first frame,
+including a CONTINUEd run. (2) **Ten layers everywhere** (it was 10-20 by band). (3) **Speed** - the whole game frame at 1920x1080 went from about 11-13 ms to
+about 4.5-7 ms (`PerfProbeTest` times every render pass with `Probe`; `GameFrameProbeTest` times update + render + HUD and fails above 16 ms): the walls are
+**baked in 512 px chunks** (`TileChunks`: each chunk holds its soft shadow, side face and tiles in one premultiplied texture, so a layer is a handful of
+quads instead of thousands of tile sprites; mirage tiles stay live; a frame that lacks a chunk falls back to the per-tile path), the **far floor is raycast at half
+resolution** into a buffer and stretched (`TerrainLayer.drawHalf`), the **minimap's rock is baked once** with its land (`WorldThumb.rock`, built while the game
+loads) instead of a `blockedPx` per cell per frame, and the bullet filter only copies the frame when a bullet exists. (4) **Animated sprite sheets**: the
+checkpoint's altar is 8 frames (its gold chakra ring turns - fast while cold, slow once lit - and its petals breathe), with a 6-frame winged flame-seed that
+flutters on a figure-of-eight round the empty bowl while cold, a 6-frame pixel flame that licks in the bowl once lit, and four 4-frame lamp-bearers that circle
+the lit altar; the shop's sign is a 16-frame sheet for each of the 7 dock-light states (the tula's beam SEE-SAWS, its chains and pans ride the ends, a gold coin
+HOPS from pan to pan, a pearl rests in the other, the hanging lamps gutter, a pip runs up each idle dock post), and the berth's dais is 8 frames (a wave of light
+walks round the lotus petals). (5) **The shaft has a floor and a second population** (`Enemy.depth`): below the play layer's walls, a body's DEPTH is 0 on the
+layer and 1 at the floor; below 0.4 it has no body (no fire, no AI, nothing can touch it, rounds and the astra's locks pass it) and is drawn small and dark in a
+pit UNDER the walls. A **leader's call** (`EnemyDirector.tickBackup`): an awake rank-1 body with the hull within 1100 px has two calls (an elite three), one every
+7-11 s, and each raises two reserves of its own kind from the floor beside it (depth 1 to 0 over a second, a grit ring where they break the surface), following
+it; no more than four at once. **Scouts and skirmishers (Auris, Vakra) FLANK by diving**: every 9-15 s an awake rank-0 one sinks (0.8 s), runs beneath you
+(1.8 s) and surfaces 320-440 px from the hull at a clear spot. `EnemyDepthTest` pins all of it; `RiseShotTest` writes `build/rise.png`.
+
+**ATALA, STEP A.1 (the floor made stone, the world made dark and calm).** (1) **The far floor follows the stack:** it used to slide
+at a different speed from the last wall layer (a camera zoom and the shader's ground scale were set separately); now one number
+(`LayerStack.floorSpeed`, a half layer in front of the last layer, eased in from the meadow's own ground speed as the shaft opens)
+sets both the camera's zoom (`floorZoomMul`) and the lean, and a test proves the screen speed equals it. (2) **Closer layers, calmer
+motion:** the shrink per layer is 0.98 (was 0.96: the shaft is shallower, the last of 15 layers is 0.74 of the play layer), the lean
+is a quarter of what it was (22 px at most), and the far floor's own flight plane is 150 so its tall things do not swing against the
+layers. (3) **No greenery anywhere, not even on the surface:** every band's floor is stone in the wall tiles' own palette (sandstone,
+ivory, cold grey, violet, maroon, ivory and gold), laid as 64 px FLAGSTONES, each slab a shade of its own with dark seams; the
+trees became stone outcrops (stalagmites with the same cast shadows), the lotus pads and the blue water are gone (only the silver
+mirror pools of the Mirage Wood and the violet-gold hataka pools remain). (4) **Much darker:** every band's ambient is roughly
+half of what it was (the meadow 0.62, the Golden Door 0.30, the Mirage Wood 0.13-0.25), the floor is dimmed by 55% once the shaft
+is open, and the stacks' deepest colours are darker - so a fight's light (bullets, flashes, pools) is what you see.
+
+**ATALA, STEP B: the stack gets depth cues.** (1) **Contact shadows:** each of the five nearest layers throws a soft dark copy
+(9 px down-right) onto the layer behind it, and the play layer does the same. (2) **A leaning vanishing point:** the stack's centre
+rides toward where the hull is going (the hull's velocity x 0.12, at most 60 px, eased over about a quarter of a second), so the
+far layers drift by `lean x (1 - scale)` (`LayerStack.leanShift`) and the far land by half of it - the shaft tilts as you steer.
+(3) **Extruded tiles:** the play layer and the nearest six layers draw a thin dark copy (3 px down-right, 50% black) under the
+tiles: a wall has a side face and reads as thick. (4) **Motes between layers:** 48 soft additive lights per layer on the nearest
+eight, plus the air between the first layer and the play layer, each pinned to its own layer so it slides at that layer's speed,
+tinted by the band's accent. A frame in the Mirage Wood costs about 9 ms here.
+
+**Pseudo-3D from above, by raycasting flat planes** (`docs/WORLD_BUILD_PLAN.md`; no models anywhere):
+- **The land is one height map** (`TerrainBake`, 4 world px a texel, ~27 MB, baked on all cores in ~0.3 s while the game
+  loads; the flat ground shows until it lands). Every texel holds a colour and a height in **cut planes**: a tree is three
+  stacked discs, a mushroom two, a lamp a post and a head, a pillar a plinth, shaft and capital, a boulder five steps, a
+  mountain a terraced stack (a plane every 13 units), the throat's ribs, the mandala's rings and the court's dais low steps.
+- **`TerrainLayer` raycasts it** in a fragment shader: each pixel marches a ray from a camera hanging 900 above the flight
+  plane down through the map to the first plane it meets (44 steps + 5 of bisection), so parallax is exact, ridges hide
+  what is behind them, the sides of a plane are shaded by the slope the ray finds, and shadows are thrown toward a light
+  up-left. Pass A draws everything up to the flight plane (under the hull); pass B draws only what stands above it (pillar
+  crowns, crests), translucent, over the hull. A frame costs about 2 ms.
+- **Near and far from the ground** (`Altitude.fly(y)`, eased between stops): high over the meadow (430) and the dream-circle
+  (380) - the land small and slow, hazed - and low in the pass (120), the mirror-wood (90-105) and the mansion (90-100) -
+  the land large and quick, the crowns over the hull. Aim, collision and AI live on the flight plane and do not care.
+- **No walls.** `World.walls` (`-Dvajra.walls=true` brings the rock back) is off: the world is still generated with the
+  rock so placements keep their open spots, then the maps are emptied and the wall-rooted plants and torches dropped.
+- **The boundary of rocks and boulders between Bhu Loka and Atala** (`Boundary.belt`): three rows of 34-68 px boulders
+  across the whole world at y 1600 with a 520 px pass at the centre (the old grand door), solid to hulls, bodies and rounds
+  (`World.blockedPx`/`collide`), and the road is pinned through the pass. The same list is the picture (stepped, paling
+  stone) and the collision.
+- **Darkness.** Each band's ambient is much lower now (the meadow stays daylit; Atala is dim), and the light comes from
+  things: the hull's pool, enemies, and now **lamps, glowing mushrooms and pillar crowns** (`PropIndex.glows`, projected for
+  the current altitude).
+- **Bullets are the negative of what is behind them, nothing else about them changes.** Each bullet keeps its own art at its
+  own size; a small shader (`BulletImages.begin/end`) reads the finished frame behind it (one copy of the frame per draw run)
+  and paints the sprite's silhouette in the inverted colour, pushed away from mid-grey so it still reads over mid-tones, the
+  art's own light and dark riding on top. Over dark ground it is bright, over light ground dark, over green magenta, over violet
+  lime. Drawn once, over the finished frame (the foreground pass); without the shader it falls back to the plain
+  `GL_ONE_MINUS_DST_COLOR` negative.
+- **The map is the world, and opaque**: both minimaps fill an ink disc and then the land from `WorldThumb` (the whole
+  world sampled once per 32 px), and the vedic dial names the band.
+- `lwjgl3/.../WorldShotTest` writes `build/world-0..7.png` (one real frame per band, the mountains, the pillars, the boulder
+  belt, each with a ring of hostile rounds in the air) and times the raycaster.
+
+### The test area (world, variant two)
+
+Main menu: **TEST AREA** (between MULTIPLAYER and TUTORIALS; the menu is nine rows tall with CONTINUE now, so the pitch is
+26 and the first row 292). A free-flight area built from the OLD WALL TILES and nothing else: no ground, no sky, no stars, and
+**the ship is not drawn** (you fly by the walls and your rounds). The play layer is the real world's walls (they stop the hull
+and the rounds; the boulder belt is lifted out, enemies, story, shop and death are off). Behind it the SAME walls are stacked
+again **fifteen times** (`LayerStack`): each layer is **smaller** by the shrink factor about the screen centre (`0.96^k` by
+default) - so when the camera moves it slides by only that fraction of the distance, which is the parallax - and **darker and
+bluer** the further back; each can also peek out down-left of the one in front by `PEEK` px (0 by default). **Behind the last
+layer is the raycast world** (`TerrainLayer`, the land the game is built on), far and hazed but drawn **twice the size** the
+stack's depth alone would give it. W A S D fly, Q E turn, SPACE fire, SHIFT boost, G shield, `[` `]` change how fast the layers
+shrink (85-99%), `,` `.` how far each peeks out (0-40 px), `-` `=` how many layers (0-30), ESC returns.
+
+Smoothness: the whole stack is ONE sprite batch (no per-layer restarts, no full-screen haze quads - the tint carries the
+haze), and bullets only copy the frame when a round exists. Fifteen layers cost about 7 ms a frame here (worst 8 ms over a
+flight; `TestAreaShotTest` fails above 14 ms on average). It writes `build/test-area-*.png`.
+
 ## Presentation
 
-Draw order per frame: nebula (10% alpha, 2048 px tile, slow scroll) → stars + checkpoint
+Draw order per frame (the ground, mist and shadow passes now sit under what follows, and the motes over it;
+see **The land**): nebula (10% alpha, 2048 px tile, slow scroll) → stars + checkpoint
 particles (shapes) → plants (four variants — ping-pong sway over 3/3/12/8-frame sheets, grow/shrink pulse, all 1x, grass in side-by-side runs of 1-3, base-anchored on any rock
 face and rotated off it, roots tucked 4 px behind the face so the wall draws over them, never on a corner block, viewport-culled) →
 tiles (dual-grid wall art, native colours) → torch flames (rotated onto their wall face, 3-frame loops, 2× scale,
@@ -949,14 +1106,13 @@ charge glow, shield ring and hp-bar backing would all render opaque.
   sits exactly on the tail, anchored against `facing` and turning with it, while a thrust key is
   held — its level ramps with hold time (0 / 0.1 / 0.3 / 0.6 s → all four pack levels), boost runs
   that same ramp while shifting the hue crimson and doubling the plume length, drawn at half scale,
-  animated over 4 frames; a dash ghosts the hull to 50% alpha and smears it along the push key's
+  animated over 4 frames; the hull is drawn along the push key's
   world   axis — W up, S down, A left, D right, bare burst follows the nose — anchored on the
   trailing edge and squeezed across it, full from the first frame and easing out with the burst,
   with no particle trail; charge glow sits over the hull and
   the ship blinks while invulnerable
 - **HUD** — the bar block, drawn entirely in code (no image assets, no frame): three thin
-  the mockup over a dark track, each clipped to its value; a narrow gold dash pip right of
-  each tier; lives pips under the bars. Hull/shield/boost only - panel, portrait, coin and the
+  the mockup over a dark track, each clipped to its value; lives pips under the bars. Hull/shield/boost only - panel, portrait, coin and the
   shard block are elsewhere.
   * **CONTROL STRIP (KeyHints)** - the two run-scoped keys, bottom centre, as `[V] WEAPON` and
     `[F] ASTRA`. **Bottom centre because it is the only free stretch of the screen**: the weapon
@@ -1002,7 +1158,7 @@ charge glow, shield ring and hp-bar backing would all render opaque.
 
 - **Control screen** - `ControlScreen`, pushed from the home menu (CONTROLS row) and from
   pause. Lists every flight, hangar and system binding: W A S D thrust, Q / E turn, SPACE /
-  LMB fire, SHIFT boost, C dash, F Astra, G / RMB shield, V / B weapon cycle, 1–7 hull select,
+  LMB fire, SHIFT boost, F Astra, G / RMB shield, V / B weapon cycle, 1–7 hull select,
   Q / Z hull cycle, H / ENTER hangar, ESC, TAB, wheel zoom, F11 fullscreen, F12 window swap,
   T debug damage, R new run.
 
@@ -1036,7 +1192,7 @@ core/src/main/java/vajra/
   world/                      logic — never imports rendering classes
     World.java                world size, regions, runtime: hit resolution, bullets + effects,
                               aim assist, LOS, spawn helpers, checkpoints + lives, docking,
-                              per-seat cacheState[SLOTS][5], useForge() (the Akasha Astra)
+                              per-seat cacheState[SLOTS][5], astraBegin / astraLoose (the Astra rite)
     LokaTable.java            the seven lokas: warden, paid tatva, hp/dmg scales, hull unlocks,
                               seeds - one row per loka is what a new loka is
     WorldGen.java             build once: 5 maps + gates, order of battle, compounds, shops +
@@ -1130,12 +1286,18 @@ reproducible; the camera follows the ship and clamps to world bounds.
 | CacheTest | 11 | 11 | 11 | 11 | 11 || 11 || 11 || 11 || 11 || 11 | one cache per band just inside its entrance gate on open ground, only the local squad within the radius answers, shop/checkpoint site guards never answer, touch arms the squad and only the last fall pays out (100 coins + 1 life, no double pay), an empty pocket opens on touch, hunters converge and leave the leash behind, **cache state is per player seat**, every tier has its own speed and rank 1 runs hotter, every torch's stored sample is solid rock within 6 px behind its base, every plant's stored ledge sample is solid and clear of checkpoints, 1065 plants with Maya Vana holding the majority, grass tufts stand in side-by-side runs |
 | CheckpointImagesTest | 1 | 1 | 1 | 1 | 1 || 1 || 1 || 1 || 1 || 1 | all three 32x32 checkpoint crops exist on disk |
 | CheckpointTest | 4 | 4 | 4 | 4 | 4 || 4 || 4 || 4 || 4 || 4 | one per Atala band on open ground, collector spends it, death anchors at the most recent checkpoint, game over at zero lives |
-| CombatTest | 25 | 25 | 25 | 25 | 25 || 25 || 25 || 25 || 25 || 25 | damage and kills, pierce, splash crowd, enemy fire, rock cover both ways, auris firing, line of sight, shield vs live fire, beam sweep, dash pass-through, sparks fly off every hit, a long run holds together |
+| CombatTest | 25 | 25 | 25 | 25 | 25 || 25 || 25 || 25 || 25 || 25 | damage and kills, pierce, splash crowd, enemy fire, rock cover both ways, auris firing, line of sight, shield vs live fire, beam sweep, i-frame pass-through, sparks fly off every hit, a long run holds together |
 | DropTest | 10 | 10 | 10 | 10 | 10 || 10 || 10 || 10 || 10 || 10 | the loot table pays more the higher the rank (2/4/6 coins, Bala 25), one death fans every drop, coins settle then float (no gravity), health repairs a quarter of the hull capped at max, **shard rolls are 6/14/28% by rank**, shard rolls key off the loka with the architect's band at 100%, the magnet tugs loot at a fixed 15 power, **pickups expire after 40 s and fade over the last 4**, the seventh Vajrayudha band ends the run |
 | EnemyArtTest | 2 | 2 | 2 | 2 | 2 || 2 || 2 || 2 || 2 || 2 | every kind's idle_N files are gapless on disk; the animation walks every frame of a 1-6 frame cycle |
 | EnemyPlacementTest | 11 | 11 | 11 | 11 | 11 || 11 || 11 || 11 || 11 || 11 | 227-unit order of battle, nothing stationed in Bhu Loka, mirror symmetry (site guards excluded), homes carved clear of rock, sleep until approached then patrol, call to arms wakes the top three regions only, **every band grades through the loka curve, and all six bands are still Atala** |
 | FlowTest | 4 | 4 | 4 | 4 | 4 || 4 || 4 || 4 || 4 || 4 | the run-state machine's transitions |
-| ForgeTest | 17 | 18 | **the Akasha Astra**: five shards forge it once and five more buy a release, forging survives spending it, only the loka's own element pays, **F does not release - it charges for 1.75 s and nothing lets go early**, **the cage only ever tightens**, **the charge costs you your speed and the dash**, **mashing it is refused**, a release throws twenty cubes, every cube picks a DIFFERENT enemy, a cube crosses 3000 px through rock and lands its hit, and it refuses without a release in hand |
+| WallsOffTest | 2 | **the rock is off by default**: no solid tile anywhere, no wall-rooted plants or torches, the hull flies through where the gate wall stood; the switch brings the old rock back |
+| PropFieldTest | 3 | **the props are a pure function of the world**: the same chunk gives the same props, every tree on land and none on water or road, each band has its own things (trees, mushrooms, lamps, pillars), a pillar rises above the flight plane and a tree does not |
+| LayerStackTest | 4 | **the layered walls**: every layer behind is smaller than the one in front, the further back the darker and bluer, each peeks out down-left of the one before, and a far layer slides by a smaller fraction of the camera's move |
+| AltitudeTest | 3 | **how high the hull flies**: far over the meadow and the dream-circle, near in the pass, the mirror-wood and the mansion, never a jump between, and the projection scale is 1 at the flight plane |
+| TerrainBakeTest | 4 | **the height map**: the world at 4 px a texel, a pass through the boulder belt with every boulder raised, mountains flanking it in cut planes, trees standing up out of the meadow and none in the middle of a lake |
+| GroundMapTest | 5 | **the land is a pure function of the world**: a chunk paints the same bytes twice and is just the function sampled (no seams), every band reads as its own place (distinct mean colours, neither black nor white; the surface green, the mirror-wood cool, the throat warm), the light holds mid-band and eases across a boundary without a jump, a band is the last start below the point, a chunk paints fast enough to stream |
+| AstraTest | 32 | **the Astra rite**: five shards pay a release and nothing is forged, paid at the loosing, hold to invoke and let go to loose, a faltered mantra and a dead hull are free, the cage grows with the hold, locks follow the nose and ignore what is out of view, each astra's boon and character (shield, boost, stone skin, the Flood's mending, the Pyre's splash, the Gale's chain), the Brahmastra, X and the fallback, the guest's volley on the hub |
 | FramesTest | 1 | 1 | 1 | 1 || 1 || 1 || 1 || 1 || 1 | frame pacing helpers |
 | FxImagesTest | 5 | 5 | 5 | 5 | 5 || 5 || 5 || 5 || 5 || 5 | beam, ring and all 16 thrust frames cropped from the pack, white, opaque at the core and trimmed to their ink; the plant sway ping-pongs over any sheet length |
 | GateTest | 4 | 4 | 4 | 4 | 4 || 4 || 4 || 4 || 4 || 4 | Bhu Loka is bare, the five gate walls stand solid except at their centre doors, the hull crosses every doorway, hull-sized spawn->arena BFS inside the world bounds |
@@ -1152,7 +1314,7 @@ reproducible; the camera follows the ship and clamps to world bounds.
 | ScoreTest | 10 | 10 | 10 | 10 | 10 || 10 || 10 || 10 || 10 || 10 | kill value = loot tier + kind hp (every kind's own hp), combo multiplier steps at 5/10/15/20 capped at x5, the new tier pays on the bumping kill, window expiry drops the chain, death breaks the chain, total saturates at the ten digits, formation fall pays break then wipe, region entry pays once per band, checkpoint pays once, Bala's fall pays the flat 5000 |
 | SettingsTest | 3 | 3 | 3 | 3 | 3 || 3 || 3 || 3 || 3 || 3 | the settings screen |
 | ShipArtTest | 3 | 3 | 3 | 3 | 3 || 3 || 3 || 3 || 3 || 3 | every ship has three 32x32 variations on disk; variation follows the bought tier; plume levels ramp 0->3 with hold time and boost stretches the plume x2 on the same ramp |
-| ShipTest | 22 | 22 | 22 | 22 | 22 || 22 || 22 || 22 || 22 || 22 | screen-relative thrust/strafe, WASD never turns, Q CCW / E CW, **the dash cooldown starts at the burst tail and returns 55% of entry speed**, **the shield costs damage x1 with a floor of 5**, boost drain/regen, invulnerability, respawn at region start, the thrust hold ramp, exhaust trail and hull smoke, **the hull dips on hit and eases back** |
+| ShipTest | 22 | 22 | 22 | 22 | 22 || 22 || 22 || 22 || 22 || 22 | screen-relative thrust/strafe, WASD never turns, Q CCW / E CW, **the **the shield costs damage x1 with a floor of 5**, boost drain/regen, invulnerability, respawn at region start, the thrust hold ramp, exhaust trail and hull smoke, **the hull dips on hit and eases back** |
 | ShopTest | 6 | 6 | 6 | 6 | 6 || 6 || 6 || 6 || 6 || 6 | one sign per Atala band 1-4 (none in Bhu, none in the boss band), alternating sides above the checkpoint, full-hull bay docking runs to completion, leaving/closing parks the bay, the hull must fit entirely, sign board + legs are solid, 32x32 undocked + doc1..doc6 art on disk |
 | ShopUiTest | 14 | 14 | 14 | 14 | 14 | **the hangar**: the tab strip and its three sections, the opaque background, every hit box matches what is drawn, row baselines are single-sourced, owned/unowned/locked hull states, prices and afford states, **the ASTRA tab is one row and says what a release does**, the forge label tells forged-but-spent apart from not forged, and the footer hint |
 | TileMapTest | 8 | 8 | 8 | 8 | 8 || 8 || 8 || 8 || 8 || 8 | symmetry, south-north connectivity, open-space ratio, trim rule, push-out bounds, arena passages, maya vana corridor, edge mask over buried / west-exposed / off-grid / concave shapes |
@@ -1161,7 +1323,7 @@ reproducible; the camera follows the ship and clamps to world bounds.
 | WeaponTest | 11 | 11 | 11 | 11 | 11 || 11 || 11 || 11 || 11 || 11 | single/double/buckshot counts, burst scheduling, charge power and release gating, damage tier leaves bullet speed alone, laser vs beam, homing, wallbore, bomb ring |
 | WorldContactTest | 4 | 4 | 4 | 4 | 4 || 4 || 4 || 4 || 4 || 4 | contact shoves both apart along the contact line, no contact means no shove, ram damage with its cooldown and the recovery window, hp bar eases onto the new value |
 | WorldMapImageTest | 1 | 1 | 1 | 1 | 1 || 1 || 1 || 1 || 1 || 1 | writes `tools/atala_map.png` from the live World |
-| HudScreenshotTest *(lwjgl3)* | 3 | renders one scene per shop tab plus the flight HUD and pixel-checks the frameless bar block, the three fill colours, the dark track regions, the life pips, the dash pip, the score and combo, and the yojana tape, against the public layout constants |
+| HudScreenshotTest *(lwjgl3)* | 3 | renders one scene per shop tab plus the flight HUD and pixel-checks the frameless bar block, the three fill colours, the dark track regions, the life pips, the score and combo, and the yojana tape, against the public layout constants |
 
 ## Not built
 
@@ -1173,12 +1335,14 @@ beyond the placeholder set.
 
 ## The story
 
-The first time a pilot opens the game, after the studio card, the story plays panel by panel: 19 panels over
-three pages, each with the narrator's line typed in a black band beneath (SPACE finishes the line, then turns the
-panel; A goes back; ESC skips; it does not replay). The art is `assets/story/pN-K.png`, cut and cleaned from the
-three source pages in `story_panels/` by `python tools/story/split_panels.py`; the lines are in
-`core/.../screen/StoryScript.java`. In the story, Trivikrama is Vishnu, who asks Indra to lend him the Vajra,
-breaks it in seven and sends a piece to each loka, to test Indra's faith.
+Choosing **NEW GAME** plays the story before the run begins: 19 panels over three pages, each with the narrator's
+line typed in a black band beneath (SPACE finishes the line, then turns the panel; A goes back; ESC skips the whole
+story straight into the run). The title screen comes first and is never the story; CONTINUE never replays it. The art
+is `assets/story/pN-K.png`, cut and cleaned from the three source pages in `story_panels/` by
+`python tools/story/split_panels.py`; the lines are in `core/.../screen/StoryScript.java`. With no art on disk NEW GAME
+goes straight to the run. In the story, Trivikrama is Vishnu, who asks Indra to lend him the Vajra, breaks it in seven
+and sends a piece to each loka, to test Indra's faith. (Tests run with `-Dvajra.nostory=true` so a menu test can press
+NEW GAME and land in the run.)
 
 ## Continue
 
@@ -1190,3 +1354,42 @@ and wrecks taken, the people already met and the jobs they gave. CONTINUE does n
 meeting. Foes still standing wake at full armour. NEW GAME over a save asks once (press ENTER again) before it
 erases it; dying with no lives left, or winning, ends the run and clears it. Multiplayer flights are never parked.
 The save lives in the pilot's `profiles.json` (`run`); tests write theirs under `build/testdata/`.
+
+## The vedic HUD (alternative flight instruments)
+
+The classic HUD is untouched and is still the default. **F9** (in a run, or anywhere) or **SETTINGS > HUD** swaps to the
+**vedic** instrument set, `core/.../screen/VedicHud.java`, and back; the choice is saved per pilot (`settings.hudStyle`:
+0 classic, 1 vedic). It follows the pilot's own sketch, in a quiet muted gold, every instrument hanging from one 18-unit
+margin, drawn straight onto the game with no tinted plate behind them:
+
+- **Top-left:** a round **weapon medallion** (the pattern's card, the weapon key under it), and out of it a long glass
+  **health tube** - a capsule on its side, the hull a liquid flowing in it (jade, amber, vermilion and pulsing under 30%),
+  ringed in gold bands. The **lives** are small rings under the tube (dashed once spent), the pattern's name beside them.
+- **Bottom-left:** the **minimap** dial with two curved **glass tubes** round it: the **shield** (sky) is the left half and
+  the **boost** (saffron) the right, each a gold-railed bore the liquid fills from the bottom up. The liquid has a darker
+  body and a brighter top, light bands drift along it (faster while the shield is up, much faster with streaks while you
+  boost), bubbles rise, and the front is a sloshing meniscus; a spent shield shows a thin red edge. On the dial itself:
+  a radar sweep that makes each body ping as it passes, **awake** foes red and **sleeping** ones grey, leaders ringed
+  pale and elites ringed gold, post-keepers amber squares, **people** blue, the **commander** a pulsing diamond held on
+  the edge when far, **loot** (coins as specks, health as green plus, shards in their tatva, the Vajrayudha piece as a
+  pulsing star), **incoming rounds**, the other hulls of a shared flight in their seat colours, Maya's wrecks while she
+  asks for them, and the gate, bay and checkpoint markers as before.
+- **Top-centre:** **Bala's gaze** as an eye whose lid and iris open as he notices you - and only then: it stays shut away
+  while he is unaware of you (gaze stage 0) and fades in once he has noticed.
+- **Bottom-right:** **one small astra gem** in a ring of five cells, and nothing else (no counts, no labels): the
+  loaded astra's own element gem, a cell lit for each shard of the five a release costs (the Brahmastra's five are the
+  five elements), a whole glowing ring meaning a release is in hand, a thin gold line draining while it recovers, and
+  while you HOLD F the ring fills from the top in the astra's colour with a gold tick where the mantra starts to count.
+  A small gold number appears only when more than one release is in hand. `X` chooses.
+- **Right edge:** the **world meter** is the classic one - the depth tape and the loka's name and yojana.
+
+The score, the combo, the hull-and-purse line, the crew, the jobs and the toasts are the classic HUD's (the hull-and-purse
+line and the crew sit below the medallion in this set).
+
+**The weapon key** (both HUDs): **tap V** for the next pattern you own (B for the previous); **hold V** and a solo flight **pauses** with
+the picture **blurred** behind it (`Blur`: a two-pass gaussian over a quarter-size copy; a shared flight cannot pause, so it
+crawls instead) and the **weapon wheel** opens round the screen centre - point the mouse at a pattern, let go to fit it (the dead
+centre keeps what you have). While a session owns V for push-to-talk, B is the weapon key instead.
+
+**There is no dash.** The dash, its cooldown, its i-frames, its hull smear and its upgrade multipliers have been removed
+from the ship, the hangar and every HUD (id 4 of the primer, the old dash lesson, is retired and never reused).

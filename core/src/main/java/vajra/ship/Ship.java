@@ -7,20 +7,14 @@ import vajra.world.World;
 /** The player ship. Screen-relative flight: WASD pushes along the world axes, so D is always
  *  right and W is always up — and it never turns the ship. The nose is a separate thing: it
  *  follows the cursor, or Q/E, and otherwise holds its heading.
- *  Meters: boost energy, dash charge + i-frames, shield energy, hull. Centre-based coordinates. */
+ *  Meters: boost energy, shield energy, hull (i-frames only follow a respawn). Centre-based coordinates. */
 public class Ship {
     public static final float W = 24, H = 24;
     private static final float THRUST_EASE = 18f; // input ramps over ~1/18 s: taps and flips glide
     private static final float AIM_EASE = 15f;    // the nose glides onto the cursor, never whips
-    private static final float DASH_SPEED = 1600;
-    public static final float DASH_TIME = 0.3f;
-    /** Thrust multiplier while the Astra winds up. A third is enough to drift out of trouble
-     *  and far too slow to dodge properly - the gap where the charge gets dangerous. */
-    public static final float WIND_THRUST = 0.33f;
-    private static final float DASH_IFRAMES = 0.4f;
-    // The dash hands back a slice of the speed you had going in, so a burst flows into the
-    // next push instead of dumping the ship to a dead stop at the end of the smear.
-    private static final float DASH_EXIT = 0.55f;
+    /** Thrust multiplier while an astra is being invoked (F held). Under half is enough to drift out of trouble
+     *  and too slow to dodge properly - the gap where holding on gets dangerous. */
+    public static final float WIND_THRUST = 0.4f;
     // Boost: 4.2s of use from full, ~14s back. Enough to cross a duel or cross a band, short
     // enough that spending it is a decision (it used to be 2.2s of use against a 20s wait).
     private static final float BOOST_DRAIN = 24f;
@@ -46,11 +40,11 @@ public class Ship {
     public float thrustX, thrustY; // last thrust input — the plume hangs against it
     private float moveX, moveY;    // eased thrust actually pushing this frame
     public float thrustHold;       // seconds the current thrust has been held; drives the plume ramp
-    public float dashCd, dashTime, iFrames, invuln;
+    /** Seconds the boost has been held, 0 while it is not: the sheet's boost clip closes in over its first moments. */
+    public float boostT;
+    public float iFrames, invuln;
     private float exhaustT, smokeT; // particle cadence: exhaust while pushing, smoke when dying
-    public float dashDirX, dashDirY; // unit push direction the last dash took; steers the deform
-    private float preVx, preVy;     // velocity going into the dash, handed back on the way out
-    public float dip;               // 0..1 hull press-down: hit / shield / dash, no halo needed
+    public float dip;               // 0..1 hull press-down: hit / shield, no halo needed
     public float dipT;
     public float trauma;
     /** THE FORGED BANK: -1..1, eased toward the hull's sideways push (A leans left, D leans
@@ -62,10 +56,10 @@ public class Ship {
     /** How long the hull swallows damage between hits: ~5 ms. A stream lands continuously,
      *  and each landing re-punches the hit clock — the sheet's flash is the hit tell. */
     public static final float HIT_GAP = 0.005f;
-    /** True while the Akasha Astra is winding up. The renderer dips the hull further on this. */
+    /** True while an astra is being invoked. The renderer dips the hull further on this. */
     public boolean winding;
 
-    private boolean prevDash, prevFire;
+    private boolean prevFire;
 
     public Ship(float x, float y, ShipDef def, Hangar hangar) {
         this.x = x;
@@ -87,13 +81,10 @@ public class Ship {
         if (invuln > 0) invuln -= dt;
         hitT += dt; // the hit clock only ever climbs: hits set it back to zero
         if (iFrames > 0) iFrames -= dt;
-        if (dashCd > 0) dashCd -= dt;
-        boolean wasDashing = dashTime > 0; // the burst ended this frame: hand the speed back
-        if (dashTime > 0) dashTime -= dt;
         if (dipT > 0) dipT -= dt;
         // THE DIP: the hull sits a few px low while it is hit, shielding or bursting, and
         // eases back up. It replaces the state ring — feedback without a halo around the ship.
-        float dipWant = (dipT > 0 || dashTime > 0 || shieldOn) ? 1f : 0f;
+        float dipWant = (dipT > 0 || shieldOn) ? 1f : 0f;
         dip += (dipWant - dip) * (1f - (float) Math.exp(-16f * dt));
 
         shieldOn = in.shield() && shieldEnergy > 0;
@@ -101,9 +92,8 @@ public class Ship {
         shieldEnergy = Math.max(0, Math.min(shieldCap(), shieldEnergy));
 
         // THE CHARGE HAS WEIGHT. While the Astra winds up the hull is heavy: thrust is cut to a
-        // third and the dash is locked out. Not "you cannot move" - that reads as a bug - but
-        // "you are committed and slow", which is what makes the 1.75 s a decision instead of a
-        // pause. Nothing else in the game takes the dash away, so losing it here is felt.
+        // third. Not "you cannot move" - that reads as a bug - but "you are committed and slow",
+        // which is what makes the 1.75 s a decision instead of a pause.
         winding = w.winding();
         float tx = in.thrustX(), ty = in.thrustY();
         if (winding) { tx *= WIND_THRUST; ty *= WIND_THRUST; }
@@ -112,7 +102,8 @@ public class Ship {
         if (tx != 0 || ty != 0) thrustHold += dt;
         else thrustHold = 0;
         boosting = in.boost() && boostEnergy > 0 && (tx != 0 || ty != 0);
-        boostEnergy += boosting ? -BOOST_DRAIN * dt : BOOST_REGEN * dt;
+        boostT = boosting ? boostT + dt : 0f;
+        boostEnergy += boosting ? -BOOST_DRAIN * (heated ? HEAT_DRAIN : 1f) * dt : BOOST_REGEN * dt;
         boostEnergy = Math.max(0, Math.min(100, boostEnergy));
 
         // Nose: the cursor wins, then Q/E. Thrust never turns the ship — WASD is pure translation.
@@ -124,7 +115,7 @@ public class Ship {
         }
 
         // THRUST EASE: the push ramps in and out instead of snapping, so taps and direction
-        // changes glide — the ship never lurches. The dash and the plume use the raw input.
+        // changes glide — the ship never lurches. The plume uses the raw input.
         float ease = 1f - (float) Math.exp(-THRUST_EASE * dt);
         moveX += (tx - moveX) * ease;
         moveY += (ty - moveY) * ease;
@@ -135,30 +126,8 @@ public class Ship {
         float leanWant = Math.max(-1f, Math.min(1f, tx));
         lean += (leanWant - lean) * ease;
 
-        boolean d = in.dash() && !winding;      // the charge owns the dash
-        if (d && !prevDash && dashCd <= 0) {
-            dashTime = DASH_TIME;
-            // the cooldown starts when the burst ENDS, not when it begins: the smear is not
-            // dead time, it is 0.3s of free movement, and the gap after it is what you wait.
-            iFrames = Math.max(iFrames, DASH_IFRAMES);
-            float dx = tx, dy = ty, m = (float) Math.sqrt(dx * dx + dy * dy);
-            if (m < 0.01f) { // no input: burst along the nose
-                dx = (float) Math.cos(facing);
-                dy = (float) Math.sin(facing);
-                m = 1f;
-            }
-            dashDirX = dx / m;
-            dashDirY = dy / m;
-            preVx = vx;
-            preVy = vy;
-            trauma = Math.min(1, trauma + 0.25f);
-        }
-        prevDash = d;
-        if (wasDashing && dashTime <= 0) dashCd = dashCd(); // the wait starts at the tail of the smear
-
         float a = accel() * (boosting ? boostMult() : 1f);
-        if (dashTime <= 0) {
-            if (wasDashing) { vx = preVx * DASH_EXIT; vy = preVy * DASH_EXIT; }
+        {
             // drag before thrust, with the rate tuned to the stat itself (accel/maxSpeed):
             // coasting converges exactly on maxSpeed(), so the SPD figure and the speed
             // upgrades are real numbers instead of decoration
@@ -174,9 +143,6 @@ public class Ship {
                 vx = vx / sp * maxSp;
                 vy = vy / sp * maxSp;
             }
-        } else {
-            vx = dashDirX * DASH_SPEED * dashEase(dashTime);
-            vy = dashDirY * DASH_SPEED * dashEase(dashTime);
         }
 
         x += vx * dt;
@@ -195,10 +161,9 @@ public class Ship {
         weapon.update(dt, this, w, f);
 
         // EXHAUST: a dense burst of tiny plume-coloured motes from behind the hull — fast, fanned
-        // at random around the tail axis, each riding its own diminishing sine. Never during the
-        // dash (the ghost rule: ShipTest.dashLeavesNoParticles).
+        // at random around the tail axis, each riding its own diminishing sine.
         exhaustT -= dt;
-        if ((tx != 0 || ty != 0) && dashTime <= 0 && exhaustT <= 0) {
+        if ((tx != 0 || ty != 0) && exhaustT <= 0) {
             exhaustT = boosting ? 0.006f : 0.01f; // a lot of them: 100-166 spawns/s
             float rear = (float) Math.atan2(-Math.sin(facing), -Math.cos(facing));
             float rx = x + (float) Math.cos(rear) * (H / 2 + 6);
@@ -228,15 +193,7 @@ public class Ship {
         }
     }
 
-    /** Dash curve, shared by burst speed and hull smear: full thrust from the first frame,
-     *  held through the front half of the dash, then eased to a stop over the back half. */
-    public static float dashEase(float dashTime) {
-        float t = 1f - dashTime / DASH_TIME;
-        return t < 0.5f ? 1f : 4f * (1f - t) * (1f - t);
-    }
-
     public void damage(float amount, World w) {
-        if (w.gameOver) return;
         if (invuln > 0 || iFrames > 0) return;
         if (shieldOn && shieldEnergy > 0) {
             // scaled to what actually landed: a 5-damage betray ring is cheap to eat, a
@@ -257,12 +214,6 @@ public class Ship {
             w.score.breakCombo(); // death drops the chain before anything else
             trauma = 1;
             w.lives = Math.max(0, w.lives - 1);
-            if (w.lives == 0) {
-                w.gameOver = true; // all lives spent: the hull stays where it fell, the screen freezes
-                hp = 0;
-                trauma = 0;
-                return;
-            }
             hp = maxHp();
             float[] a = w.respawnAnchor(); // most recent checkpoint, else the region entrance
             x = a[0];
@@ -278,8 +229,12 @@ public class Ship {
     public float maxSpeed() { return def.maxSpeed + hangar.speedBonus(def); }
     public float turnRate() { return (float) Math.toRadians(def.turnRate + hangar.turnBonus(def)); }
     public float boostMult() { return def.boostMult; }
-    public float dashCd() { return def.dashCd * hangar.dashCdMult(def); }
     public float shieldCap() { return 50 + hangar.shieldBonus(def); }
-    public float cooldownMult() { return hangar.cooldownMult(def); }
+    /** HEAT (docs/VITALA_PLAN.md section 5): in Vitala's fire the boost drains slower (x0.7), the guns cycle 10% faster and throw a few degrees of
+     *  scatter. World.tickVitala sets it while the hull is in the forge-lands and no shrine has hushed the band. */
+    public boolean heated;
+    public static final float HEAT_DRAIN = 0.7f, HEAT_COOLDOWN = 0.9f, HEAT_SCATTER_DEG = 3f;
+
+    public float cooldownMult() { return hangar.cooldownMult(def) * (heated ? HEAT_COOLDOWN : 1f); }
     public float damageMult() { return hangar.damageMult(def); }
 }

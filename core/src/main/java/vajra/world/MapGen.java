@@ -213,14 +213,124 @@ final class MapGen {
         return m;
     }
 
+    // ---- VITALA: the river cavern (docs/VITALA_PLAN.md) --------------------------------------------------------------
+
+    /** What a side cavern is FOR (docs/TREASURE_CHESTS.md): every pocket off the river holds something. */
+    public static final int VAULT = Chest.VAULT, WELL = Chest.WELL, DEN = Chest.DEN;
+
+    /** The side caverns of Vitala, {cx, cy, rx, ry, side, type}: one off the river every ~600 px through the four river bands, alternating
+     *  sides. A VAULT holds a treasure chest, a WELL an ember well that mends the hull, a DEN a chest guarded by an ambush that wakes when it is
+     *  touched. */
+    static java.util.List<float[]> pockets() {
+        java.util.ArrayList<float[]> out = new java.util.ArrayList<>();
+        Random rng = new Random(0x417A1AL);
+        int k = 0;
+        for (float y = Hataki.Y0 + 3300f; y < Hataki.START[5] - 500f; y += 560f + rng.nextInt(160)) {
+            boolean nearGate = false;
+            for (int g = 2; g <= 4; g++) nearGate |= Math.abs(y - Hataki.START[g]) < 460f;
+            if (nearGate) continue;
+            float side = (k & 1) == 0 ? -1f : 1f;
+            float rx = 250f + rng.nextInt(110), ry = 150f + rng.nextInt(80);
+            float reach = Hataki.half(y) + 190f + 300f + rx + rng.nextInt(80);
+            float cx = Math.max(rx + 120f, Math.min(Hataki.WIDTH - rx - 120f, Hataki.centre(y) + side * reach));
+            int type = new int[] {VAULT, WELL, DEN, VAULT, DEN, WELL}[k % 6];
+            out.add(new float[] {cx, y, rx, ry, side, type});
+            k++;
+        }
+        return out;
+    }
+
+    /** Half the width of the river cavern at a height (river, banks and the swelling chambers). */
+    static float cavernHalf(float y) {
+        float chamber = 320f * (float) Math.pow(Math.max(0f, Math.sin(y / 700f + 0.4f)), 2.0);
+        return Hataki.half(y) + 190f + chamber;
+    }
+
+    /** The Gold Assay bays: one in each river band, on alternating banks, each with a hall of its own cut into the bank. {x, y} */
+    static float[][] shopSpots() {
+        float[][] out = new float[4][2];
+        for (int i = 0; i < 4; i++) {
+            int r = i + 1;
+            float y = Hataki.START[r] + 0.40f * (Hataki.END[r] - Hataki.START[r]);
+            out[i][0] = Math.max(420f, Math.min(Hataki.WIDTH - 420f, Hataki.centre(y) + (i % 2 == 0 ? 1f : -1f) * (cavernHalf(y) + 150f)));
+            out[i][1] = y;
+        }
+        return out;
+    }
+
+    private static final float[][] SHOPS = shopSpots();
+
+    /** Is the world open air at this point: the shaft of the Plunge, the river cavern with its chambers and side caverns, the Altar hall. */
+    static boolean vitalaOpen(float wx, float wy, java.util.List<float[]> pockets) {
+        float c = Hataki.centre(wy), ly = wy - Hataki.Y0;
+        float rough = 40f * (GroundMap.rnd((int) (wx / 64f), (int) (wy / 64f), 0x771A) - 0.5f);
+        boolean open;
+        if (wy < Hataki.START[1]) {
+            float half = 330f + 130f * (float) Math.sin(wy / 330f) + Math.max(0f, 900f - ly) * 0.5f;
+            open = Math.abs(wx - c) < half + rough;
+        } else if (wy < Hataki.START[5]) {
+            float half = cavernHalf(wy);
+            if (wy > Hataki.START[5] - 700f) half = Math.max(half, 300f);
+            open = Math.abs(wx - c) < half + rough;
+        } else {
+            open = false;
+        }
+        if (!open && wy >= Hataki.START[5] - 40f) { // the Altar: a round forge-hall, and the north passage to the sealed gate
+            float dx = (wx - Hataki.ALTAR_X) / 900f, dy = (wy - Hataki.ALTAR_Y) / 780f;
+            open = dx * dx + dy * dy < 1f || (wy > Hataki.ALTAR_Y + 600f && Math.abs(wx - Hataki.ALTAR_X) < 200f)
+                    || (wy < Hataki.ALTAR_Y && Math.abs(wx - Hataki.ALTAR_X) < 300f);
+        }
+        if (wy >= Hataki.HEIGHT - 300f) {                                         // SUTALA, COMING SOON: the passage runs on past the gold door into a closed hall
+            float hx = (wx - Hataki.HALL_X) / 1000f, hy = (wy - Hataki.HALL_Y) / 720f;
+            open = (Math.abs(wx - Hataki.ALTAR_X) < 200f && wy < Hataki.HEIGHT + 500f) || hx * hx + hy * hy < 1f;
+        }
+        if (!open && wy < Hataki.HEIGHT)
+            for (float[] s : SHOPS) {
+                float dx = (wx - s[0]) / 330f, dy = (wy - s[1]) / 300f;
+                if (dx * dx + dy * dy < 1f) { open = true; break; }
+            }
+        if (!open)
+            for (float[] p : pockets) {
+                float dx = (wx - p[0]) / p[2], dy = (wy - p[1]) / p[3];
+                if (dx * dx + dy * dy < 1f) { open = true; break; }
+                // the tunnel from the cavern's edge to the pocket, three tiles tall
+                float lo = Math.min(p[0], c), hi = Math.max(p[0], c);
+                if (Math.abs(wy - p[1]) < 52f && wx > lo && wx < hi) { open = true; break; }
+            }
+        return open;
+    }
+
+    /** Vitala's whole cavern as ONE map from its floor to its roof (a pure function of the world position, so no band seams): the shaft, the
+     *  river cavern and the Altar hall, then the usual smoothing and trim. It sits on Atala's roof (oy = Hataki.Y0), on the same axis. */
+    static TileMap vitala() {
+        int cols = 161, rows = (int) Math.ceil((Hataki.LENGTH + Hataki.SUTALA_LEN) / TileMap.TILE);
+        TileMap m = new TileMap(24, Hataki.Y0, cols, rows);
+        java.util.List<float[]> pockets = pockets();
+        for (int ty = 0; ty < rows; ty++)
+            for (int tx = 0; tx < cols; tx++) {
+                float wx = 24 + tx * TileMap.TILE + 16, wy = Hataki.Y0 + ty * TileMap.TILE + 16;
+                if (tx <= 1 || tx >= cols - 2 || !vitalaOpen(wx, wy, pockets)) m.set(tx, ty, TileMap.ROCK);
+            }
+        smooth(m, cols / 2, 2);
+        for (int tx = 0; tx < cols; tx++) m.set(tx, rows - 1, TileMap.ROCK);          // smoothing leaves a gap at each end for a map above to join: Sutala's hall is the roof of the world
+        removeSpecks(m);
+        trim(m);
+        return m;
+    }
+
     /** Full-width gate wall across a band boundary, doorway on the centre column so it lands
      *  on both neighbouring caverns' mouth (both are open at mid, cols=161 maps: x 2328..2872).
      *  The world spans x 0..5200: this grid runs x -8..5208, so no ship can slip past the ends.
      *  The doorway is open for the wall's full height (a lintel row would seal it); grand gates
      *  step the opening in over the top two rows for an arch, with gold pillars flanking it. */
     static TileMap gateWall(float y, int halfDoor, boolean grand) {
-        int rows = 6, cols = 163;
-        TileMap m = new TileMap(-8, y - rows * TileMap.TILE / 2f, cols, rows);
+        return gateWall(-8, 163, y, halfDoor, grand);
+    }
+
+    /** A gate wall of any width: `cols` columns from `ox`, its doorway on the middle column. */
+    static TileMap gateWall(float ox, int cols, float y, int halfDoor, boolean grand) {
+        int rows = 6;
+        TileMap m = new TileMap(ox, y - rows * TileMap.TILE / 2f, cols, rows);
         int mid = cols / 2;
         for (int ty = 0; ty < rows; ty++)
             for (int tx = 0; tx < cols; tx++) {

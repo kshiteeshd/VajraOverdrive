@@ -75,7 +75,7 @@ public class SplashScreen implements FlowState {
     @Override
     public void update(float dt) {
         t += dt;
-        if (done(t)) flow.set(ComicScreen.firstOrHome(flow, ui, batch)); // the story once, then the menu
+        if (done(t)) flow.set(new HomeScreen(flow, ui, batch)); // hands over to the menu
     }
 
     @Override

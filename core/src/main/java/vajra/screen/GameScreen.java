@@ -38,7 +38,15 @@ public class GameScreen implements FlowState, ShipControls {
     private final Ui ui;
     private final Flow flow;
     private final WorldRenderer worldR;
+    /** Which loka a fresh run opens in: 0 Atala (the campaign), 1 Vitala (the test entry; the campaign gets there through Bala's gold door). */
+    private int startLoka;
     private final Hud hud;
+    // THE WEAPON WHEEL: tap the weapon key to step, hold it to open the wheel (see WeaponWheel)
+    private final WeaponWheel wheel;
+    private final Blur blur = new Blur();
+    private boolean wheelDown, wheelOpen;
+    private float wheelHold;
+    private int wheelKey, wheelHover = -1;
     private final OrthographicCamera camera;
     private final FitViewport viewport;
     private final Vector3 mouseV = new Vector3();
@@ -82,7 +90,17 @@ public class GameScreen implements FlowState, ShipControls {
         this(batch, flow, ui, seed, null);
     }
 
+    /** A run that opens in Vitala (the second loka), the hangar as the save has it. */
+    public static GameScreen vitala(SpriteBatch batch, Flow flow, Ui ui) {
+        return new GameScreen(batch, flow, ui, 0, null, 1);
+    }
+
     private GameScreen(SpriteBatch batch, Flow flow, Ui ui, long seed, String savedRun) {
+        this(batch, flow, ui, seed, savedRun, 0);
+    }
+
+    private GameScreen(SpriteBatch batch, Flow flow, Ui ui, long seed, String savedRun, int loka) {
+        this.startLoka = loka;
         this.resume = savedRun;
         this.batch = batch;
         this.flow = flow;
@@ -95,7 +113,9 @@ public class GameScreen implements FlowState, ShipControls {
         this.shopUi = new BayUi(ui);
         this.world = loadWorld();
         this.worldR = new WorldRenderer(batch, ui, world);
+        WorldThumb.of(world);   // bake the minimap's land now, while loading, not in the first frame
         this.hud = new Hud(ui);
+        this.wheel = new WeaponWheel(ui);
         this.shop = new BayController(world, shopUi);
         this.coach = newCoach();
         if (vajra.net.Net.active()) // a live co-op seat: the game planes land on the current world
@@ -115,13 +135,14 @@ public class GameScreen implements FlowState, ShipControls {
      *  forged charges, all of it is built inside the run and dies with it. The save
      *  only contributes the best score. */
     private World loadWorld() {
-        World w = new World(seed);
+        World w = startLoka == 1 ? World.vitala(seed) : new World(seed, World.CAMPAIGN);   // the campaign: Atala, and Vitala on its roof
         SaveGame.load(w.hangar);
         w.selectShip(w.hangar.shipIndex);
         w.selectWeapon(w.hangar.weaponIndex);
         w.multiplayer = vajra.net.Net.session != null; // its own book, not the campaign one
         if (resume != null && !w.multiplayer) { // CONTINUE: the saved run over the fresh world, once
             vajra.world.RunSave.restore(w, resume);
+            if (vajra.ship.Hangar.UNLOCK_ALL) w.hangar.unlockAll(); // (test build: a parked run is unlocked too)
             resume = null;
         }
         if (vajra.net.Net.active()) // co-op: the guest runs only its hull; the host runs the fight
@@ -154,6 +175,8 @@ public class GameScreen implements FlowState, ShipControls {
                 flow.set(new LobbyScreen(flow, ui, batch));
                 return true;
             }
+            dropWheel();
+            world.astraCancel(); // a half-held invocation is let go for free
             flow.push(new PauseScreen(flow, ui, batch, world)); // the run freezes underneath
             return true;
         }
@@ -163,13 +186,16 @@ public class GameScreen implements FlowState, ShipControls {
             return true;
         }
         if (keycode == Input.Keys.F) {
-            // THE AKASHA ASTRA. Guarded on runEnded: the world is frozen under the results card,
-            // and a release would otherwise mend the hull and hand back a life after game over.
-            if (!runEnded()) world.useForge();
+            // THE ASTRA RITE: F down begins the invocation (the cage gathers); F up looses it (see keyUp).
+            if (!runEnded()) world.astraBegin();
             return true;
         }
-        if (keycode == Input.Keys.X) { // choose which loka's Astra the next F spends
+        if (keycode == Input.Keys.X) { // choose which astra the next F invokes
             world.cycleAstra();
+            return true;
+        }
+        if (keycode == Input.Keys.T) { // wear the next colourway (a, b, c) of the hull you fly
+            world.hangar.cycleLook(world.hangar.shipIndex);
             return true;
         }
         if (keycode == Input.Keys.Z) { // next hull you own (Q and E are the nose, always)
@@ -180,16 +206,46 @@ public class GameScreen implements FlowState, ShipControls {
             world.selectShip(keycode - Input.Keys.NUM_1); // a hull you do not own is a no-op
             return true;
         }
-        if (keycode == Input.Keys.V) {
-            if (vajra.net.Net.active()) return false; // V is the push-to-talk whenever a session lives
-            world.selectWeapon(world.hangar.cycleWeapon(world.hangar.weaponIndex, 1));
+        // THE WEAPON KEY: V, or B while a session owns V for push-to-talk. A tap steps (V next, B previous), a hold
+        // opens the wheel; which of the two it was is only known on release (keyUp) or after OPEN_AFTER seconds.
+        boolean session = vajra.net.Net.active();
+        int wk = session ? Input.Keys.B : Input.Keys.V;
+        if (keycode == wk) {
+            wheelDown = true;
+            wheelHold = 0;
+            wheelKey = wk;
             return true;
         }
-        if (keycode == Input.Keys.B) {
+        if (keycode == Input.Keys.B) { // solo: B is a plain "previous weapon"
             world.selectWeapon(world.hangar.cycleWeapon(world.hangar.weaponIndex, -1));
             return true;
         }
-        return false;
+        return false; // V in a session is push-to-talk
+    }
+
+    @Override
+    public boolean keyUp(int keycode) {
+        if (keycode == Input.Keys.F) { // LET GO: the astra flies (or the mantra falters, if it was not held long enough)
+            world.astraLoose();
+            return true;
+        }
+        if (!wheelDown || keycode != wheelKey) return false;
+        wheelDown = false;
+        if (wheelOpen) { // let go on the wheel: fit what the mouse points at
+            int[] own = WeaponWheel.owned(world.hangar);
+            if (wheelHover >= 0 && wheelHover < own.length) world.selectWeapon(own[wheelHover]);
+            wheelOpen = false;
+            wheelHover = -1;
+        } else { // a tap: step to the next (V) or the previous (B in a session)
+            world.selectWeapon(world.hangar.cycleWeapon(world.hangar.weaponIndex, wheelKey == Input.Keys.B ? -1 : 1));
+        }
+        return true;
+    }
+
+    /** Closes the wheel without choosing (a menu took the keys, a scene started, the run ended). */
+    private void dropWheel() {
+        wheelDown = wheelOpen = false;
+        wheelHover = -1;
     }
 
     @Override
@@ -216,9 +272,19 @@ public class GameScreen implements FlowState, ShipControls {
     }
 
     /** A fresh run: a new world from the saved hangar, and the story beats replay with it. */
+    /** Put `nw` in play (a restart): its bay controller, the thumb of its land. The renderer's land is the campaign world's, which every run shares. */
+    private void swapWorld(World nw) {
+        world = nw;
+        WorldThumb.of(world);
+        shop = new BayController(world, shopUi);
+        director.skip();
+        simAcc = 0;
+    }
+
     private void restart() {
         resume = null; // a restart is a new game, never the old save
-        world = loadWorld();
+        World nw = loadWorld();
+        swapWorld(nw);
         shop = new BayController(world, shopUi);
         coach = newCoach();
         endSaved = false;
@@ -267,6 +333,20 @@ public class GameScreen implements FlowState, ShipControls {
         if (!armed && !Gdx.input.isButtonPressed(Input.Buttons.LEFT) && !Gdx.input.isButtonPressed(Input.Buttons.RIGHT))
             armed = true; // the click that pressed PLAY is released: the mouse is the pilot's now
         if (bootFade > 0) bootFade = Math.max(0, bootFade - delta / 0.3f);
+        if (wheelDown) {
+            if (shop.isOpen() || runEnded() || director.active()) dropWheel();
+            else {
+                wheelHold += delta;
+                if (!wheelOpen && wheelHold >= WeaponWheel.OPEN_AFTER) wheelOpen = true;
+                if (wheelOpen) {
+                    Vector2 m = ui.at(Gdx.input.getX(), Gdx.input.getY());
+                    wheelHover = WeaponWheel.pick(WeaponWheel.owned(world.hangar).length, m.x - WeaponWheel.CX, m.y - WeaponWheel.CY);
+                }
+            }
+        }
+        if (world.astraInvoking && (shop.isOpen() || director.active())) world.astraCancel(); // a menu or a scene took the keys
+        // the wheel PAUSES a solo flight; a shared one cannot stop (a pause would be a free dodge), so it crawls
+        float simDelta = wheelOpen ? (vajra.net.Net.session == null ? 0f : delta * WeaponWheel.SLOW) : delta;
         if (!shop.isOpen() && !runEnded() && !director.active()) {
             // RELEASE FREEZE. The world holds still for a fraction of a second the instant the
             // Astra lets go. Impact is mostly the absence of motion: without this the cubes and
@@ -279,7 +359,7 @@ public class GameScreen implements FlowState, ShipControls {
                 // flies identical frames everywhere. A slow frame sheds its backlog instead
                 // of spiralling; a fast frame banks at most one step (feels identical, keeps
                 // the accumulator from drifting ahead of real time).
-                simAcc += delta;
+                simAcc += simDelta;
                 if (simAcc > 2 * STEP) simAcc = 2 * STEP; // never run more than 2 steps/frame
                 int steps = 0;
                 while (simAcc >= STEP && steps < MAX_STEPS) {
@@ -341,7 +421,7 @@ public class GameScreen implements FlowState, ShipControls {
             while (!world.cues.isEmpty()) vajra.scene.Scenes.finish(world.cues.poll(), world);
             return;
         }
-        if (director.active() || shop.isOpen() || world.gameOver || world.cues.isEmpty()) return;
+        if (director.active() || shop.isOpen() || world.cues.isEmpty()) return;
         vajra.world.Cue cue = world.cues.poll();
         director.start(vajra.scene.Scenes.build(cue, world), camera,
                 () -> vajra.scene.Scenes.finish(cue, world));
@@ -359,9 +439,14 @@ public class GameScreen implements FlowState, ShipControls {
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
         worldR.render(world, camera, viewport);
+        if (wheelOpen && !director.active()) {
+            blur.render(batch, 1.6f);   // the held wheel: the flight behind it goes soft
+            ui.applyViewport();
+        }
         if (director.active()) director.render(batch);
         else {
             hud.render(batch, world, worldR.ships(), shop.isOpen() ? shopUi : null);
+            if (wheelOpen) wheel.render(batch, world, wheelHover);
             if (!shop.isOpen()) talk.render(batch, world, camera);
             if (coach.lesson() >= 0 && !shop.isOpen() && !runEnded())
                 CoachPrompt.render(ui, batch, coach.lesson(), world.clock);
@@ -398,7 +483,7 @@ public class GameScreen implements FlowState, ShipControls {
 
     @Override
     public boolean fire() {
-        return coach.canFire() && rawFire(); // the trigger is handed over once the pilot has flown
+        return !wheelOpen && coach.canFire() && rawFire(); // the trigger is handed over once the pilot has flown
     }
 
     private boolean rawFire() {
@@ -411,11 +496,6 @@ public class GameScreen implements FlowState, ShipControls {
     }
 
     @Override
-    public boolean dash() {
-        return pressed(Input.Keys.C);
-    }
-
-    @Override
     public boolean shield() {
         // F belongs to the Akasha Astra now, so the shield lives on G and the right mouse
         // button. G was the Tatva Lance's key and the Astra replaced it.
@@ -424,7 +504,7 @@ public class GameScreen implements FlowState, ShipControls {
 
     @Override
     public boolean mouseAim() {
-        return armed && coach.canFire() && Gdx.input.isButtonPressed(Input.Buttons.LEFT);
+        return !wheelOpen && armed && coach.canFire() && Gdx.input.isButtonPressed(Input.Buttons.LEFT);
     }
 
     @Override
@@ -452,6 +532,8 @@ public class GameScreen implements FlowState, ShipControls {
     public void dispose() {
         if (vajra.net.Net.session == null) vajra.profile.Profiles.saveRun(world); // closed mid-flight: parked
         if (vajra.net.Net.active()) vajra.net.Net.session.listen(null); // no planes to a dead world
+        wheel.dispose();
+        blur.dispose();
         worldR.dispose();
         hud.dispose();
     }

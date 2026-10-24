@@ -17,14 +17,14 @@ class HomeTest {
     @Test
     void theMenuCursorWrapsBothWays() {
         assertEquals(1, HomeScreen.move(0, 1));
-        assertEquals(6, HomeScreen.move(0, -1), "up from the top wraps to QUIT");
-        assertEquals(0, HomeScreen.move(6, 1), "down from the bottom wraps to the top");
+        assertEquals(8, HomeScreen.move(0, -1), "up from the top wraps to QUIT");
+        assertEquals(0, HomeScreen.move(8, 1), "down from the bottom wraps to the top");
     }
 
     @Test
     void withNoSaveTheRowsAreNewGameMultiplayerAndTheRest() {
         assertArrayEquals(
-                new String[] {"NEW GAME", "MULTIPLAYER", "TUTORIALS", "PROFILE", "SETTINGS", "UPDATE", "QUIT"},
+                new String[] {"NEW GAME", "MULTIPLAYER", "TEST AREA", "VITALA", "TUTORIALS", "PROFILE", "SETTINGS", "UPDATE", "QUIT"},
                 HomeScreen.rows(false));
     }
 
@@ -48,7 +48,7 @@ class HomeTest {
     /** The bottom row must clear the footer hint. This is the collision that actually happened. */
     @Test
     void theMenuClearsTheFooterHint() {
-        float bottom = HomeScreen.menuY() - 7 * HomeScreen.pitch(); // the bottom of eight rows (with CONTINUE)
+        float bottom = HomeScreen.menuY() - 8 * HomeScreen.pitch(); // the bottom of nine rows (with CONTINUE)
         assertTrue(bottom - 14 > HINT_TOP + 10,
                 "QUIT at y" + bottom + " runs into the hint at y" + HINT_TOP);
     }

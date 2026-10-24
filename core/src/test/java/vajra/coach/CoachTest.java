@@ -41,6 +41,10 @@ class CoachTest {
     @Test
     void theSheetIsWholeAndEveryGroupHasLessons() {
         for (int i = 0; i < Lessons.COUNT; i++) {
+            if (i == Lessons.RETIRED_DASH) { // the dash is gone: its slot stays empty so saved books keep their meaning
+                assertNull(Lessons.ALL[i], "the retired slot is never refilled");
+                continue;
+            }
             Lesson l = Lessons.ALL[i];
             assertNotNull(l, "lesson " + i);
             assertEquals(i, l.id);

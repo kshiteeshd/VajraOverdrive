@@ -101,34 +101,30 @@ class BayTest {
     }
 
     @Test
-    void anAstraCardSelectsOnlyAForgedWeapon() {
+    void anAstraCardMakesItTheOneFInvokes() {
         World w = new World();
         BayController c = bay(w);
         c.ui().setRail(BayUi.ASTRA);
         c.ui().setAstra(2);
+        assertEquals(0, w.astraSel, "the Akasha astra is the default");
         c.act();
-        assertEquals(0, w.astraLoka, "an unforged Astra cannot be chosen");
-        w.hangar.forged[2] = true;
-        w.hangar.forgeCharges[2] = 1;
+        assertEquals(2, w.astraSel, "ENTER on a card chooses it");
+        c.ui().setAstra(vajra.world.Astra.BRAHMA);
         c.act();
-        assertEquals(2, w.astraLoka);
+        assertEquals(vajra.world.Astra.BRAHMA, w.astraSel, "the Brahmastra card too");
     }
 
     @Test
-    void theAstraYouCarryIsTheOneFSpendsAndADryOneFallsBackToTheDeepest() {
+    void theAstraChosenIsTheOneFInvokesAndAnUnpayableChoiceFallsBackToOneThatCanFly() {
         World w = new World();
-        w.hangar.forged[0] = true;
-        w.hangar.forgeCharges[0] = 1;
-        w.hangar.forged[2] = true;
-        w.hangar.forgeCharges[2] = 1;
-        w.astraLoka = 0;
-        assertEquals(0, w.readyAstra());
-        assertTrue(w.cycleAstra(), "X steps to the next forged one");
-        assertEquals(2, w.astraLoka);
-        assertTrue(w.useForge());
-        assertEquals(0, w.hangar.forgeCharges[2], "the chosen one was spent");
-        assertEquals(1, w.hangar.forgeCharges[0], "and the other is untouched");
-        assertEquals(0, w.readyAstra(), "the dry selection falls to what is still in hand");
+        w.hangar.shards[vajra.world.Astra.AKASHA] = 5;
+        w.hangar.shards[vajra.world.Astra.AGNI] = 5;
+        w.astraSel = vajra.world.Astra.AKASHA;
+        assertEquals(vajra.world.Astra.AKASHA, w.loadedAstra());
+        assertTrue(w.cycleAstra(), "X steps to the next astra you can pay");
+        assertEquals(vajra.world.Astra.AGNI, w.astraSel);
+        w.hangar.shards[vajra.world.Astra.AGNI] = 0;
+        assertEquals(vajra.world.Astra.AKASHA, w.loadedAstra(), "the dry choice falls to what can still fly");
     }
 
     @Test
@@ -180,10 +176,12 @@ class BayTest {
         assertTrue(BayUi.hullState(h, ShipDef.ALL[1], 0).startsWith("LOCKED"), "an unbought hull reads LOCKED");
         assertTrue(BayUi.hullState(h, ShipDef.ALL[5], 0).startsWith("OPENS"));
         assertEquals("FITTED", BayUi.weaponState(h, WeaponDef.ALL[0]));
-        assertEquals("SEALED", BayUi.astraState(h, 3, 0));
-        h.forged[0] = true;
-        h.forgeCharges[0] = 1;
-        assertEquals("1 CHARGE", BayUi.astraState(h, 0, 0));
+        assertEquals("0 / 5 SHARDS", BayUi.astraState(h, 3));
+        h.shards[0] = 5;
+        assertEquals("1 RELEASE READY", BayUi.astraState(h, 0));
+        h.shards[0] = 10;
+        assertEquals("2 RELEASES READY", BayUi.astraState(h, 0));
+        assertEquals("NEEDS 5 OF EACH", BayUi.astraState(h, vajra.world.Astra.BRAHMA));
     }
 
     @Test
@@ -211,7 +209,7 @@ class BayTest {
     void theCardsFitTheScreenAndNeverSitOnEachOther() {
         assertTrue(BayUi.stripX(0) >= 40 && BayUi.stripX(6) + BayUi.STRIP_W <= Ui.UI_W - 40, "strip fits");
         assertTrue(BayUi.tierX(0) >= 40 && BayUi.tierX(2) + BayUi.TIER_W <= Ui.UI_W - 40, "tiers fit");
-        assertTrue(BayUi.astraX(0) >= 40 && BayUi.astraX(6) + BayUi.AST_W <= Ui.UI_W - 40, "astra cards fit");
+        assertTrue(BayUi.astraX(0) >= 40 && BayUi.astraX(vajra.world.Astra.KINDS - 1) + BayUi.AST_W <= Ui.UI_W - 40, "astra cards fit");
         assertTrue(BayUi.STRIP_Y > BayUi.TIER_Y + BayUi.TIER_H + 16, "the strip clears the tier row");
         assertTrue(BayUi.STRIP_Y + BayUi.STRIP_H + 8 < BayUi.RULE_Y, "even the lifted card clears the header rule");
         assertTrue(BayUi.TIER_Y > BayUi.STATUS_Y + 24, "the tier row clears the status line");

@@ -10,7 +10,7 @@ two that are inference are marked *(inferred)*.
 
 `SHIP` (30 Hz) sends: hull id, hp fraction, x, y, vx, vy, sender clock, iFrames. That is all.
 
-The renderer (`ShipRenderer`) draws a hull from `facing`, `thrustX/Y`, `thrustHold`, `boosting`, `dashTime`,
+The renderer (`ShipRenderer`) draws a hull from `facing`, `thrustX/Y`, `thrustHold`, `boosting`,
 shield state and weapon charge. **None of those cross the wire.** On a mirror hull they keep their
 construction defaults. Consequences, all visible in the code:
 
@@ -20,7 +20,7 @@ construction defaults. Consequences, all visible in the code:
 | Engine plume | `ShipRenderer.drawPlume` returns early when `thrustX == 0 && thrustY == 0`, which is always true on a mirror. |
 | Exhaust sparks | They are spawned inside `Ship.update`. A mirror is never `update`d, only glided (`partner.x += vx*dt`). |
 | Critical-hull smoke | Also spawned inside `Ship.update`. A dying partner trails nothing. |
-| Boost heat, dash smear, shield bubble, charge glow | All driven by fields the mirror never receives. |
+| Boost heat, shield bubble, charge glow | All driven by fields the mirror never receives. |
 | Their muzzle flash | `applyShot` adds the bullet only; the flash is spawned at the *local* fire choke (`World.spawnBullet`). |
 
 ### Cause 2: effects are local state, and nothing replicates them
@@ -47,7 +47,7 @@ one bit and one byte, and the effect is then drawn by exactly the code that draw
 | Field | Size | Replaces what was missing |
 |---|---|---|
 | `facing` | u8 (256 steps over 2 pi) | hull turning and the aim line |
-| flags | u8: thrusting, boosting, dashing, shield on, firing, charging, dead | plume, boost heat, dash smear, bubble, muzzle, charge glow |
+| flags | u8: thrusting, boosting, shield on, firing, charging, dead | plume, boost heat, bubble, muzzle, charge glow |
 | `thrust` / `charge` | u8 + u8 | plume power level, charge ratio |
 
 The packet goes from 25 to about 31 bytes at 30 Hz. Per pilot that is under 1 kB/s: free.
@@ -56,7 +56,7 @@ The packet goes from 25 to about 31 bytes at 30 Hz. Per pilot that is under 1 kB
 
 Pull the exhaust and smoke blocks out of `Ship.update` into `Ship.emitFx(dt, w)`.
 `Ship.update` calls it for your hull; `Ship.mirrorUpdate(dt, w)` calls the **same method** for a mirror, after
-setting `thrustX/Y`, `boosting`, `dashTime` and `facing` from the last packet. There is then one definition of
+setting `thrustX/Y`, `boosting` and `facing` from the last packet. There is then one definition of
 what exhaust looks like, so the two can never drift apart. Smoke needs no flag: the mirror's hp fraction already
 arrives, and `hp < 30%` triggers it exactly as it does for you.
 
@@ -136,7 +136,7 @@ who go down the same road behind him.
 - **Different protagonists and a different question.** Solo asks *"will Indra keep faith?"*. The Host asks *"what
   is loyalty when you were told not to come?"* Trivikrama's test reaches the Maruts too, and it is a quieter
   one.
-- **Different enemies.** Solo fights the **rulers** (Bala, Agnihotra, Bali, Maya, Takshaka, Puloman, Vasuki).
+- **Different enemies.** Solo fights the **rulers** (Bala, Bhairava, Bali, Maya, Takshaka, Puloman, Vasuki).
   The Host fights their **captains**, which the world plan already names (Hiranyaksha, Kalanemi, Taraka-style
   lieutenants). No boss is shared, so neither mode spoils or duplicates the other.
 - **A different job.** Indra opens each loka's door by force. The Host is the thing that **holds it open
@@ -151,7 +151,7 @@ One sortie per loka, 6 to 8 minutes, one objective, one captain. That is the sim
 | # | Loka | Objective | Captain |
 |---|---|---|---|
 | 1 | Atala | **Hold the arch** until Indra's relay passes | Bala's war-captain |
-| 2 | Vitala | **Escort** the gold-tide barge through fire vents | Agnihotra's smith |
+| 2 | Vitala | **Escort** the gold-tide barge through fire vents | Bhairava's smith |
 | 3 | Sutala | **Recover** the doorkeeper's lantern (no hostile gate guards: a rare peaceful one, with a catch) | Bali's steward |
 | 4 | Talatala | **Re-route** a shifting maze to open the door | Kalanemi |
 | 5 | Mahatala | **Survive** Garuda's shadow (a timed evacuation) | Kaliya's brood-mother |

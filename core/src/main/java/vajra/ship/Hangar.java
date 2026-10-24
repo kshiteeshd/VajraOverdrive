@@ -3,7 +3,7 @@ package vajra.ship;
 import vajra.weapon.WeaponDef;
 import vajra.world.LokaTable;
 
-/** The purse, the shard stock, what you own, and what you have forged.
+/** The purse, the shard stock, and what you own.
  *
  *  <p>A RUN OWNS NOTHING THAT OUTLIVES IT. Coins, tiers, patterns and pieces are all built
  *  inside a run and die with it (a run left mid-flight is PARKED whole, hangar included, in the pilot's
@@ -11,19 +11,14 @@ import vajra.world.LokaTable;
  *  only thing that outlives a run is {@link #best}, the high score, which is a record rather
  *  than progress.
  *
- *  <p>Coins buy magnitudes (hulls and their tiers). Shards buy behavior — either as a tatva
- *  loka's forged weapon ({@link #forgeCharges}).
+ *  <p>Coins buy magnitudes (hulls and their tiers). Shards are the fuel of the astras: five shards of an element
+ *  are what one release of its astra costs, paid when it is loosed (vajra.world.Astra). There is nothing to forge.
  */
 public class Hangar {
     public static final int SHARD_COST = 3;  // x.3 tiers want shards on top of their coin price
     public static final int SHARD_SELL = 20; // coins per shard
     // tatva indexes, == World.TATVA order
     public static final int AKASHA = 0, VAYU = 1, AGNI = 2, JALA = 3, PRITHVI = 4;
-
-    /** Shards of the loka's own element that FORGE the weapon - the one big payment. */
-    public static final int FORGE_COST = 5;
-    /** Further shards per stored release, once the weapon exists. */
-    public static final int CHARGE_COST = 5;
 
     public int coins = 0; // a new run is broke — every coin is earned inside it
     public long best;     // the one thing that persists: best run score
@@ -32,19 +27,68 @@ public class Hangar {
     public float magnet = 15f;
     public final int[] shards = new int[5];         // Pancha Tatva stock (index = World.TATVA)
     public final boolean[] pieces = new boolean[7]; // Vajrayudha: one per loka
-    public final int[] forgeProgress = new int[LokaTable.COUNT]; // shards banked toward the next forge/charge
-    public final int[] forgeCharges = new int[LokaTable.COUNT];   // releases left on that loka's weapon
-    public final boolean[] forged = new boolean[LokaTable.COUNT]; // forged ONCE, permanently
     public final boolean[][] owned = new boolean[ShipDef.ALL.length][3];
     public final boolean[] weaponOwned = new boolean[WeaponDef.ALL.length];
     /** Each pattern's temper: 0 = rank I, 1 = II, 2 = III (see WeaponDef.ranked). */
     public final int[] weaponRank = new int[WeaponDef.ALL.length];
+    /** Which tier's LOOK each hull wears: -1 = the highest owned (the real economy), else 0, 1 or 2 when the pilot has chosen one (the three
+     *  colourways of every mark can then be flown side by side, which is what a test build needs). Stats still follow the tiers owned. */
+    public final int[] look = new int[ShipDef.ALL.length];
     public int shipIndex;
     public int weaponIndex;
 
+    /** TEST BUILD: every hull, every tier, every pattern at its top rank, a fat purse and a full stock of shards, from the first frame
+     *  (-Dvajra.testunlock=false for the real economy; the unit tests turn it off). */
+    public static final boolean UNLOCK_ALL = Boolean.parseBoolean(System.getProperty("vajra.testunlock", "true"));
+
     public Hangar() {
+        java.util.Arrays.fill(look, -1);
         owned[0][0] = true;   // the starting hull comes with the run
         weaponOwned[0] = true; // and the Single Bolt
+        if (UNLOCK_ALL) unlockAll();
+    }
+
+    /** Take over another hangar's whole state: the purse, the stock, the hulls and tiers, the patterns, the looks, the chosen hull and pattern
+     *  (a pilot carrying a run from one loka into the next). */
+    public void copyFrom(Hangar o) {
+        coins = o.coins;
+        best = o.best;
+        loka = o.loka;
+        magnet = o.magnet;
+        System.arraycopy(o.shards, 0, shards, 0, shards.length);
+        System.arraycopy(o.pieces, 0, pieces, 0, pieces.length);
+        for (int i = 0; i < owned.length; i++) System.arraycopy(o.owned[i], 0, owned[i], 0, owned[i].length);
+        System.arraycopy(o.weaponOwned, 0, weaponOwned, 0, weaponOwned.length);
+        System.arraycopy(o.weaponRank, 0, weaponRank, 0, weaponRank.length);
+        System.arraycopy(o.look, 0, look, 0, look.length);
+        shipIndex = o.shipIndex;
+        weaponIndex = o.weaponIndex;
+    }
+
+    /** Own everything and pay for nothing: all hulls and tiers, all patterns at rank III, 999999 coins, 99 of every shard. */
+    public void unlockAll() {
+        for (boolean[] hull : owned) java.util.Arrays.fill(hull, true);
+        java.util.Arrays.fill(weaponOwned, true);
+        java.util.Arrays.fill(weaponRank, WeaponDef.RANKS - 1);
+        coins = Math.max(coins, 999_999);
+        java.util.Arrays.fill(shards, 99);
+    }
+
+    /** The sprite variation (1..3) hull `id` wears: the chosen look if it is owned, else the highest tier bought. */
+    public int variation(int id) {
+        int chosen = look[id];
+        if (chosen >= 0 && chosen < 3 && owned[id][chosen]) return chosen + 1;
+        return owned[id][2] ? 3 : owned[id][1] ? 2 : 1;
+    }
+
+    /** Wear the next owned look of hull `id` (the test build's T key): a, b, c, a... Returns the variation now worn (1..3). */
+    public int cycleLook(int id) {
+        int now = variation(id) - 1;
+        for (int step = 1; step <= 3; step++) {
+            int t = (now + step) % 3;
+            if (owned[id][t]) { look[id] = t; return t + 1; }
+        }
+        return now + 1;
     }
 
     /** True when this run has bought the hull (x.1 is the ship itself). */
@@ -159,55 +203,12 @@ public class Hangar {
         return paid;
     }
 
-    /** THE FORGED WEAPON: only the loka's OWN element feeds it (LOKA-LAWS 3), so the forge
-     *  has the same purity rule as always: only the loka's own element pays. The first FORGE_COST
-     *  banks the weapon itself, and every CHARGE_COST after that buys a release.
-     *
-     *  <p>`forged` is separate from the charge count on purpose: forging ONCE is permanent, so
-     *  spending your only charge must not drop you back to paying FORGE_COST for the next one. */
-    public int addShard(int tatva, int lokaIndex) {
-        if (tatva < 0 || tatva >= shards.length) return 0;
+    /** A shard of `tatva` drops into the pile. True when that shard completes another set of
+     *  {@link vajra.world.Astra#COST}: one more release of that element's astra is now in hand. */
+    public boolean addShard(int tatva) {
+        if (tatva < 0 || tatva >= shards.length) return false;
         shards[tatva]++;
-        if (!LokaTable.at(lokaIndex).pays(tatva)) return 0;
-        forgeProgress[lokaIndex]++;
-        int gained = 0;
-        for (int guard = 0; guard < 64; guard++) {
-            if (!forged[lokaIndex]) {
-                if (forgeProgress[lokaIndex] < FORGE_COST) break;
-                forgeProgress[lokaIndex] -= FORGE_COST;
-                forged[lokaIndex] = true;
-                forgeCharges[lokaIndex]++;  // forging it hands you the FIRST release
-                gained++;
-                continue;
-            }
-            if (forgeProgress[lokaIndex] < CHARGE_COST) break;
-            forgeProgress[lokaIndex] -= CHARGE_COST;
-            forgeCharges[lokaIndex]++;
-            gained++;
-        }
-        return gained;
-    }
-
-    /** Has this loka's weapon been forged? Permanent once true - spending a release cannot
-     *  unmake it, or the next FORGE_COST would be owed all over again. */
-    public boolean isForged(int lokaIndex) {
-        return lokaIndex >= 0 && lokaIndex < forged.length && forged[lokaIndex];
-    }
-
-    /** What the next shard banks toward: forging the weapon, or one more release. */
-    public int forgeNeed(int lokaIndex) {
-        return isForged(lokaIndex) ? CHARGE_COST : FORGE_COST;
-    }
-
-
-    public boolean hasForgeCharge(int lokaIndex) {
-        return forgeCharges[lokaIndex] > 0;
-    }
-
-    public boolean spendForgeCharge(int lokaIndex) {
-        if (forgeCharges[lokaIndex] <= 0) return false;
-        forgeCharges[lokaIndex]--;
-        return true;
+        return shards[tatva] % vajra.world.Astra.COST == 0;
     }
 
     public float cooldownMult(ShipDef d) {
@@ -219,12 +220,6 @@ public class Hangar {
     public float damageMult(ShipDef d) {
         float m = 1;
         for (int t = 1; t <= 2; t++) if (owned[d.id][t]) m *= d.upgrades[t].damageMult;
-        return m;
-    }
-
-    public float dashCdMult(ShipDef d) {
-        float m = 1;
-        for (int t = 1; t <= 2; t++) if (owned[d.id][t]) m *= d.upgrades[t].dashCdMult;
         return m;
     }
 

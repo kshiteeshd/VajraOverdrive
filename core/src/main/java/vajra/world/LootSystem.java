@@ -23,7 +23,7 @@ public final class LootSystem {
 
     public void drop(World world, Random rng, Enemy e) {
         int tier = e.boss ? 3 : e.elite ? 2 : e.rank == 1 ? 1 : 0;
-        float hpScale = LokaTable.at(world.lokaIndex).hpScale;
+        float hpScale = LokaTable.at(world.lokaAt(e.spawnY)).hpScale;    // a foe pays by the loka it stood in
         int coinN = e.boss ? Math.round(BOSS_LOOT_COINS * (float) Math.sqrt(hpScale))
                 : lootCoins(LOOT_COINS, tier, hpScale);
         boolean mend = rng.nextFloat() < LOOT_HEALTH[tier];
@@ -68,14 +68,14 @@ public final class LootSystem {
             world.hangar.coins++;
             world.addEffect(Effect.ring(p.x, p.y, 12, 1f, 0.84f, 0.3f));
         } else if (p.type == Pickup.SHARD) {
-            // feeds the tatva stock AND the loka's forge: only its own element pays both
-            int charged = world.hangar.addShard(p.variant, world.lokaIndex);
+            // the shard drops into the pile; every set of five is one more release of that element's astra
+            boolean set = world.hangar.addShard(p.variant);
             float[] c = World.TATVA_RGB[p.variant];
             world.addEffect(Effect.ring(p.x, p.y, 16, c[0], c[1], c[2]));
-            if (charged > 0)
+            if (set)
                 world.popups.push(new Popups.Spec()
-                        .text(world.hangar.forgeCharges[world.lokaIndex] == 1
-                                ? "THE ASTRA IS FORGED" : "THE ASTRA CHARGES")
+                        .text(vajra.world.Astra.NAME[p.variant] + (world.hangar.shards[p.variant] == vajra.world.Astra.COST
+                                ? " ANSWERS" : " x" + vajra.world.Astra.releases(world.hangar, p.variant)))
                         .img("taptam").at(world.ship.x, world.ship.y + 34)
                         .color(c[0], c[1], c[2]).scale(1.25f).life(1.8f));
         } else if (p.type == Pickup.PIECE) {

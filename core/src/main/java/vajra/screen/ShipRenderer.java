@@ -4,9 +4,7 @@ import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.math.Matrix4;
 import vajra.ship.Ship;
 
 /** Ship art. The sprite (vajra_ships, one variation per upgrade tier) is the real hull; the
@@ -19,17 +17,14 @@ public class ShipRenderer {
     private static final float SIZE = 128 / 3f;
     private static final float ART_HALF = SIZE / 2f;  // where the hull ART actually ends
     private static final float PLUME_SCALE = 2;
-    private static final float DASH_STRETCH = 1.6f, DASH_SQUASH = 0.7f; // smear into the push
-    public static final float DIP_PX = 5;  // how far the hull sinks when hit / shielding / dashing
+    public static final float DIP_PX = 5;  // how far the hull sinks when hit / shielding
     /** How far back along the exhaust axis the plume is anchored: just past the hull ART's
      *  edge (ART_HALF = 20) plus a gap. This used to be HALF + 6 = 18 — which is INSIDE a 40 px
      *  sprite, so the flame was drawn under the hull instead of off its tail. */
     public static final float PLUME_ANCHOR = ART_HALF + 3f;
-    private static final Matrix4 IDENT = new Matrix4(); // setTransformMatrix copies it, never mutates it
 
     private final ShipImages art = new ShipImages();
     private final FxImages fx;
-    private final Matrix4 deform = new Matrix4();
     private final TextureRegion fallbackWhite;  // 1x1 white pixel fallback for when sprite art is missing
 
     public ShipRenderer(FxImages fx) {
@@ -45,8 +40,7 @@ public class ShipRenderer {
 
     /** The sprite's variation follows the ship's highest bought tier: 1, 2 or 3. */
     public static int variation(Ship s) {
-        boolean[][] owned = s.hangar.owned;
-        return owned[s.def.id][2] ? 3 : owned[s.def.id][1] ? 2 : 1;
+        return s.hangar.variation(s.def.id);
     }
 
     public boolean hasArt(Ship s) {
@@ -58,27 +52,21 @@ public class ShipRenderer {
         return art.get(shipId, variation1to3);
     }
 
-    /** Sprite hull, nose up in the art, so it turns to facing - 90°. Dashing ghosts the hull:
-     *  half transparent and smeared along the push key's world axis — W grows up, S down,
-     *  A left, D right (a bare burst follows the nose), squeezed across it.
+    /** Sprite hull, nose up in the art, so it turns to facing - 90°.
      *
-     *  <p>The hull is drawn {@code Ship.dip} px LOW while it is hit, shielding or bursting and
+     *  <p>The hull is drawn {@code Ship.dip} px LOW while it is hit or shielding and
      *  eases back up — the press-down that replaced the state ring. There is no halo. The hull
      *  also RIDES the clips: mark 1's forged sheet plays the hit flash (once, per hull hit —
      *  it overrides the blink cull, the flash is the feedback) and the strafe lean — A banks
      *  left, D banks right, and the wings relevel when the push goes. */
     public void draw(SpriteBatch batch, Ship s, float time) {
         if (blinking(s) && !art.hitClipLive(s)) return; // the fresh hit's clip carries the flash
-        boolean dash = s.dashTime > 0;
         float y = drawnY(s);
-        // the smear is a world-axis scale, so it rides a transform matrix: batch scale would
-        // apply before the hull's rotation and smear along the nose instead of the push
-        if (dash) batch.setTransformMatrix(dashDeform(s));
         drawPlume(batch, s, time);
         TextureRegion r = art.frame(s, time);
         if (r != null) {
             float deg = (float) Math.toDegrees(s.facing) - 90f;
-            batch.setColor(1, 1, 1, dash ? 0.5f : 1f);
+            batch.setColor(1, 1, 1, 1f);
             batch.draw(r, s.x - SIZE / 2, y - SIZE / 2, SIZE / 2, SIZE / 2, SIZE, SIZE, 1, 1, deg);
             batch.setColor(1, 1, 1, 1);
         } else {
@@ -90,27 +78,10 @@ public class ShipRenderer {
             batch.draw(fallbackWhite, s.x - SIZE / 2, y - SIZE / 2, SIZE / 2, SIZE / 2, SIZE, SIZE, 1, 1, deg);
             batch.setColor(1, 1, 1, 1);
         }
-        if (dash) batch.setTransformMatrix(IDENT);
-    }
-
-    /** Scale about the trailing edge, so the hull grows into the push direction. The smear rides
-     *  the same curve as the burst: full from the first frame, eased out over the back half. */
-    private Matrix4 dashDeform(Ship s) {
-        float e = Ship.dashEase(s.dashTime);
-        float stretch = 1 + (DASH_STRETCH - 1) * e;
-        float squash = 1 - (1 - DASH_SQUASH) * e;
-        float dx = s.dashDirX, dy = s.dashDirY;
-        boolean vertical = Math.abs(dy) >= Math.abs(dx);
-        float kx = vertical ? squash : stretch;
-        float ky = vertical ? stretch : squash;
-        float ax = s.x, ay = drawnY(s);
-        if (vertical) ay += dy >= 0 ? -SIZE / 2 : SIZE / 2; // W up / S down
-        else ax += dx >= 0 ? -SIZE / 2 : SIZE / 2;          // D right / A left
-        return deform.idt().translate(ax, ay, 0).scale(kx, ky, 1).translate(-ax, -ay, 0);
     }
 
     /** Where the hull is actually DRAWN, which is not its centre while it is dipped. Everything
- *  that has to stay glued to the hull — the plume, the dash smear — reads this. */
+ *  that has to stay glued to the hull — the plume — reads this. */
     public static float drawnY(Ship s) {
         return s.y - DIP_PX * s.dip;
     }
@@ -177,13 +148,13 @@ public class ShipRenderer {
         float px = -n * 11f, py = c * 11f; // perpendicular, one nose-half
         float cy = drawnY(s);
 
-        shapes.setColor(s.def.r, s.def.g, s.def.b, s.dashTime > 0 ? 0.5f : 1f);
+        shapes.setColor(s.def.r, s.def.g, s.def.b, 1f);
         shapes.rect(s.x - HALF, cy - HALF, HALF, HALF, Ship.W, Ship.H, 1, 1, deg);
         shapes.triangle(s.x + c * HALF, cy + n * HALF,
                 s.x + c * HALF + px, cy + n * HALF + py,
                 s.x + c * HALF - px, cy + n * HALF - py);
 
-        shapes.setColor(1, 1, 1, s.dashTime > 0 ? 0.4f : 0.85f);
+        shapes.setColor(1, 1, 1, 0.85f);
         shapes.rect(s.x - 5, cy - 5, 5, 5, 10, 10, 1, 1, deg);
     }
 

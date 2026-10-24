@@ -12,6 +12,13 @@ import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
 
 class WeaponTest {
+    // These tests are about the rock the world was built with; the default world has none (World.walls).
+    @org.junit.jupiter.api.BeforeAll
+    static void rockOn() { vajra.world.World.walls = true; }
+
+    @org.junit.jupiter.api.AfterAll
+    static void rockOff() { vajra.world.World.walls = true; }
+
     private static ShipControls of(final boolean fire) {
         return new ShipControls() {
             public float thrustX() { return 0; }
@@ -19,7 +26,6 @@ class WeaponTest {
             public float rotate() { return 0; }
             public boolean fire() { return fire; }
             public boolean boost() { return false; }
-            public boolean dash() { return false; }
             public boolean shield() { return false; }
             public boolean mouseAim() { return false; }
             public float aimX() { return 0; }

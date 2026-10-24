@@ -9,6 +9,13 @@ import org.junit.jupiter.api.Test;
  *  wakes the local squad inside the radius â€” site guards excluded â€” and clearing it pays 100 coins
  *  + a life. Also holds the tier-speed rule (kind cruise, rank on top). */
 class CacheTest {
+    // These tests are about the rock the world was built with; the default world has none (World.walls).
+    @org.junit.jupiter.api.BeforeAll
+    static void rockOn() { World.walls = true; }
+
+    @org.junit.jupiter.api.AfterAll
+    static void rockOff() { World.walls = true; }
+
     private static boolean solid(World w, float x, float y) {
         for (TileMap m : w.tileMaps()) if (m.solidPx(x, y)) return true;
         return false;
@@ -73,7 +80,7 @@ class CacheTest {
         w.touchCache(0);
         assertEquals(World.CACHE_DONE, w.cacheState[w.slot][0], "the guard holds its site: nobody answers");
         assertFalse(site.hunt, "and it never starts hunting");
-        assertEquals(coins + 100, w.hangar.coins, "nobody answers: the stash pays on the touch");
+        assertEquals(coins + Balance.cacheCoins(0), w.hangar.coins, "nobody answers: the stash pays on the touch");
         assertEquals(lives + 1, w.lives, "+1 life");
     }
 
@@ -95,11 +102,11 @@ class CacheTest {
         assertTrue(e.hurt(9999, w));
         w.resolveCaches();
         assertEquals(World.CACHE_DONE, w.cacheState[w.slot][0], "the last fall pays out on the spot");
-        assertEquals(coins + 100, w.hangar.coins, "100 coins");
+        assertEquals(coins + Balance.cacheCoins(0), w.hangar.coins, "the cache pays its budgeted coins");
         assertEquals(lives + 1, w.lives, "+1 life");
         assertFalse(w.effects.isEmpty(), "the payment ring still marks the stash");
         w.touchCache(0); // paid: touching again pays nothing
-        assertEquals(coins + 100, w.hangar.coins, "no double pay");
+        assertEquals(coins + Balance.cacheCoins(0), w.hangar.coins, "no double pay");
         assertEquals(lives + 1, w.lives, "no double life");
     }
 
@@ -110,10 +117,10 @@ class CacheTest {
         int coins = w.hangar.coins, lives = w.lives;
         w.touchCache(0);
         assertEquals(World.CACHE_DONE, w.cacheState[w.slot][0], "nobody home: paid on the spot");
-        assertEquals(coins + 100, w.hangar.coins, "no fumble on an invisible point");
+        assertEquals(coins + Balance.cacheCoins(0), w.hangar.coins, "no fumble on an invisible point");
         assertFalse(w.effects.isEmpty(), "the payout still rings for you");
         w.touchCache(0);
-        assertEquals(coins + 100, w.hangar.coins, "no double pay");
+        assertEquals(coins + Balance.cacheCoins(0), w.hangar.coins, "no double pay");
     }
 
     @Test

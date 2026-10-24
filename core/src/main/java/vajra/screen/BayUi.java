@@ -9,6 +9,7 @@ import com.badlogic.gdx.utils.Align;
 import vajra.ship.Hangar;
 import vajra.ship.ShipDef;
 import vajra.weapon.WeaponDef;
+import vajra.world.Astra;
 import vajra.world.LokaTable;
 import vajra.world.World;
 
@@ -46,8 +47,8 @@ public final class BayUi {
     static final float TIER_Y = 130;
     static final float WHEEL_CX = Ui.UI_W / 2f, WHEEL_CY = 378, WHEEL_R = 200, NODE = 48;
     static final float HUB_W = 256, HUB_H = 210;
-    static final float AST_W = 150, AST_H = 330, AST_GAP = 12;
-    static final float AST_X0 = (Ui.UI_W - (LokaTable.COUNT * AST_W + (LokaTable.COUNT - 1) * AST_GAP)) / 2f;
+    static final float AST_W = 170, AST_H = 330, AST_GAP = 12;
+    static final float AST_X0 = (Ui.UI_W - (Astra.KINDS * AST_W + (Astra.KINDS - 1) * AST_GAP)) / 2f;
     static final float AST_Y = 196;
     static final float SELL_X = 840;
     private static final float CUT = 6, SEL_LIFT = 8;
@@ -86,13 +87,13 @@ public final class BayUi {
     public void setHull(int i) { if (i >= 0 && i < ShipDef.ALL.length) hull = i; }
     public void setTierFocus(int t) { tierFocus = Math.max(-1, Math.min(2, t)); }
     public void setArm(int i) { arm = Math.floorMod(i, WeaponDef.ALL.length); }
-    public void setAstra(int i) { astra = Math.floorMod(i, LokaTable.COUNT); }
+    public void setAstra(int i) { astra = Math.floorMod(i, Astra.KINDS); }
 
     /** Open on what the run is actually flying and carrying. */
     public void syncTo(World w) {
         hull = w.hangar.shipIndex;
         arm = w.hangar.weaponIndex;
-        astra = w.astraLoka;
+        astra = w.astraSel;
         tierFocus = -1;
     }
 
@@ -156,7 +157,7 @@ public final class BayUi {
                 }
             }
         } else {
-            for (int i = 0; i < LokaTable.COUNT; i++)
+            for (int i = 0; i < Astra.KINDS; i++)
                 if (Template.box(m, astraX(i), AST_Y, astraX(i) + AST_W, AST_Y + AST_H)) {
                     hitRegion = ASTRA_CARD;
                     hitIdx = i;
@@ -194,7 +195,6 @@ public final class BayUi {
         StringBuilder s = new StringBuilder();
         if (u.damageMult != 1f) add(s, "DAMAGE x" + trim(u.damageMult));
         if (u.cooldownMult != 1f) add(s, "RELOAD x" + trim(u.cooldownMult));
-        if (u.dashCdMult != 1f) add(s, "DASH x" + trim(u.dashCdMult));
         if (u.hullBonus != 0) add(s, "HULL +" + (int) u.hullBonus);
         if (u.shieldBonus != 0) add(s, "SHIELD +" + (int) u.shieldBonus);
         if (u.speedBonus != 0) add(s, "SPEED +" + (int) u.speedBonus);
@@ -278,18 +278,23 @@ public final class BayUi {
         return t.length() == 0 ? "PLAIN BOLT" : t.toString();
     }
 
-    /** An Astra card's state: sealed beyond the deepest loka, banking toward the forge, forged,
-     *  or carrying charges. */
-    public static String astraState(Hangar h, int loka, int deepest) {
-        if (loka > deepest && !h.isForged(loka)) return "SEALED";
-        if (h.forgeCharges[loka] > 0)
-            return h.forgeCharges[loka] + (h.forgeCharges[loka] == 1 ? " CHARGE" : " CHARGES");
-        if (h.isForged(loka)) return "FORGED";
-        return h.forgeProgress[loka] + " / " + Hangar.FORGE_COST + " TO FORGE";
+    /** An astra card's state: how many releases the shard pile pays for, or how far it is from the first. */
+    public static String astraState(Hangar h, int kind) {
+        int n = Astra.releases(h, kind);
+        if (n > 0) return n + (n == 1 ? " RELEASE READY" : " RELEASES READY");
+        if (kind == Astra.BRAHMA) return "NEEDS " + Astra.COST + " OF EACH";
+        return h.shards[kind] + " / " + Astra.COST + " SHARDS";
     }
 
-    public static float astraFill(Hangar h, int loka) {
-        return Math.max(0f, Math.min(1f, h.forgeProgress[loka] / (float) Math.max(1, h.forgeNeed(loka))));
+    /** Fill of an astra card's bar: full once a release is paid for, else the shards held toward the first. */
+    public static float astraFill(Hangar h, int kind) {
+        if (Astra.releases(h, kind) > 0) return 1f;
+        if (kind == Astra.BRAHMA) {
+            int m = Integer.MAX_VALUE;
+            for (int t = 0; t < Astra.ELEMENTS; t++) m = Math.min(m, h.shards[t]);
+            return Math.max(0f, Math.min(1f, m / (float) Astra.COST));
+        }
+        return Math.max(0f, Math.min(1f, h.shards[kind] / (float) Astra.COST));
     }
 
     private static void add(StringBuilder s, String part) {
@@ -406,19 +411,19 @@ public final class BayUi {
     private void astraShapes(World w, float ar, float ag, float ab) {
         Hangar h = w.hangar;
         float gr = UiTheme.GOLD_R, gg = UiTheme.GOLD_G, gb = UiTheme.GOLD_B;
-        for (int i = 0; i < LokaTable.COUNT; i++) {
-            boolean sel = i == astra, sealed = i > w.lokaIndex && !h.isForged(i);
-            float[] c = World.TATVA_RGB[LokaTable.at(i).shards[0]];
+        for (int i = 0; i < Astra.KINDS; i++) {
+            boolean sel = i == astra, ready = Astra.canLoose(h, i);
+            float[] c = World.astraRgb(i);
             float x = astraX(i), y = AST_Y + (sel ? SEL_LIFT : 0);
-            boolean active = w.astraLoka == i && h.isForged(i);
+            boolean active = w.astraSel == i;
             if (active) Ornament.panel(ui, x, y, AST_W, AST_H, CUT, gr, gg, gb, 0.95f, sel);
-            else if (h.isForged(i)) Ornament.panel(ui, x, y, AST_W, AST_H, CUT, c[0], c[1], c[2], sel ? 0.9f : 0.5f, sel);
-            else Ornament.panel(ui, x, y, AST_W, AST_H, CUT, 1, 1, 1, sel ? 0.5f : sealed ? 0.1f : 0.2f, sel);
-            if (h.isForged(i)) {
-                ui.shapes.setColor(c[0], c[1], c[2], 0.16f); // a glow behind the element once the weapon is forged
+            else if (ready) Ornament.panel(ui, x, y, AST_W, AST_H, CUT, c[0], c[1], c[2], sel ? 0.9f : 0.5f, sel);
+            else Ornament.panel(ui, x, y, AST_W, AST_H, CUT, 1, 1, 1, sel ? 0.5f : 0.2f, sel);
+            if (ready) {
+                ui.shapes.setColor(c[0], c[1], c[2], 0.16f); // a glow behind the gem once a release is paid for
                 ui.shapes.circle(x + AST_W / 2f, y + AST_H - 112, 40);
             }
-            bar(x + 20, y + AST_H - 196, AST_W - 40, astraFill(h, i), c[0], c[1], c[2], sealed ? 0.3f : 1f);
+            bar(x + 20, y + AST_H - 196, AST_W - 40, astraFill(h, i), c[0], c[1], c[2], ready ? 1f : 0.6f);
         }
     }
 
@@ -567,27 +572,36 @@ public final class BayUi {
     private void astraText(SpriteBatch b, World w) {
         Hangar h = w.hangar;
         float gr = UiTheme.GOLD_R, gg = UiTheme.GOLD_G, gb = UiTheme.GOLD_B;
-        for (int i = 0; i < LokaTable.COUNT; i++) {
-            LokaTable.Loka l = LokaTable.at(i);
-            boolean sel = i == astra, forged = h.isForged(i), sealed = i > w.lokaIndex && !forged;
+        for (int i = 0; i < Astra.KINDS; i++) {
+            boolean sel = i == astra, ready = Astra.canLoose(h, i);
             float x = astraX(i), y = AST_Y + (sel ? SEL_LIFT : 0), cx = x + AST_W / 2f, top = y + AST_H;
-            float[] c = World.TATVA_RGB[l.shards[0]];
-            ui.hud.setColor(1, 1, 1, sealed ? 0.4f : 1f);
-            centered(b, ui.hud, l.name.toUpperCase(), cx, top - 26);
-            b.setColor(c[0], c[1], c[2], forged ? 1f : sealed ? 0.18f : 0.5f);
-            b.draw(ui.icons.shard(l.shards[0]), cx - 32, top - 144, 64, 64);
+            float[] c = World.astraRgb(i);
+            ui.hud.setColor(c[0], c[1], c[2], ready ? 1f : 0.7f);
+            centered(b, ui.hud, Astra.EPITHET[i], cx, top - 26);
+            // the logo is the element's own gem, the same art the shard pickups and the HUD wear; the Brahmastra wears all five
+            if (i < Astra.ELEMENTS) {
+                b.setColor(1, 1, 1, ready ? 1f : 0.55f);
+                b.draw(ui.icons.shard(i), cx - 32, top - 144, 64, 64);
+            } else {
+                for (int t = 0; t < Astra.ELEMENTS; t++) {
+                    float a = (float) Math.toRadians(90 - t * 72);
+                    b.setColor(1, 1, 1, ready ? 1f : 0.55f);
+                    b.draw(ui.icons.shard(t), cx + (float) Math.cos(a) * 26 - 14, top - 112 + (float) Math.sin(a) * 26 - 14, 28, 28);
+                }
+            }
             b.setColor(1, 1, 1, 1);
-            ui.caption.setColor(1, 1, 1, sealed ? 0.35f : 0.7f);
-            centered(b, ui.caption, World.astraName(i), cx, top - 164);
-            String st = astraState(h, i, w.lokaIndex);
-            boolean active = w.astraLoka == i && forged;
-            ui.hud.setColor(forged ? c[0] : 1, forged ? c[1] : 1, forged ? c[2] : 1, sealed ? 0.35f : 1f);
-            layout.setText(ui.hud, st, ui.hud.getColor(), AST_W - 20, Align.center, true);
-            ui.hud.draw(b, layout, x + 10, top - 218);
-            if (active) {
+            ui.caption.setColor(1, 1, 1, 0.8f);
+            centered(b, ui.caption, Astra.NAME[i], cx, top - 164);
+            ui.hud.setColor(ready ? c[0] : 1, ready ? c[1] : 1, ready ? c[2] : 1, ready ? 1f : 0.55f);
+            layout.setText(ui.hud, astraState(h, i), ui.hud.getColor(), AST_W - 20, Align.center, true);
+            ui.hud.draw(b, layout, x + 10, top - 214);
+            ui.caption.setColor(1, 1, 1, 0.6f);
+            layout.setText(ui.caption, Astra.EFFECT[i], ui.caption.getColor(), AST_W - 24, Align.center, true);
+            ui.caption.draw(b, layout, x + 12, top - 246);
+            if (w.astraSel == i) {
                 ui.caption.setColor(gr, gg, gb, 1f);
-                centered(b, ui.caption, "SELECTED  F SPENDS IT", cx, y + 26);
-            } else if (forged) {
+                centered(b, ui.caption, "SELECTED  HOLD F", cx, y + 26);
+            } else {
                 ui.caption.setColor(1, 1, 1, 0.6f);
                 centered(b, ui.caption, "ENTER TO SELECT", cx, y + 26);
             }
@@ -595,7 +609,8 @@ public final class BayUi {
             ui.hud.setColor(1, 1, 1, 1);
         }
         ui.hud.setColor(1, 1, 1, 0.6f);
-        centered(b, ui.hud, "EVERY ASTRA YOU FORGE COMES WITH YOU. F RELEASES THE SELECTED ONE.", Ui.UI_W / 2f, 150);
+        centered(b, ui.hud, "HOLD F TO INVOKE, LET GO TO LOOSE. FIVE SHARDS A RELEASE, PAID AT THE LOOSING.", Ui.UI_W / 2f, 150);
+        centered(b, ui.hud, "SELLING SHARDS SPENDS YOUR ASTRA. X CHOOSES IN FLIGHT.", Ui.UI_W / 2f, 128);
         ui.hud.setColor(1, 1, 1, 1);
     }
 }

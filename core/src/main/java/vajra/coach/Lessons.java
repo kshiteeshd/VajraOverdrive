@@ -4,12 +4,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** THE PRIMER: every first time the game asks of a pilot, in the order the world meets it.
- *  Ids are stable and index the profile's learned-book - append, never renumber.
+ *  Ids are stable and index the profile's learned-book - append, never renumber. Id 4 was the dash lesson;
+ *  the dash is gone from the game, so that slot is retired (null in {@link #ALL}) and never reused.
  *
  *  <p>THRUST and FIRE are taught in the run itself (see Coach); the rest are read here, and
  *  each carries `when` - the moment a contextual hint should fire for it. */
 public final class Lessons {
-    public static final int THRUST = 0, NOSE = 1, FIRE = 2, BOOST = 3, DASH = 4, SHIELD = 5,
+    public static final int THRUST = 0, NOSE = 1, FIRE = 2, BOOST = 3, RETIRED_DASH = 4, SHIELD = 5,
             WEAPONS = 6, ASTRA = 7, HULL = 8, CHECKPOINT = 9, PICKUPS = 10, HANGAR = 11,
             HULLS = 12, GATES = 13, VOICES = 14, WARDEN = 15, CODEX = 16, PAUSE = 17;
     public static final int COUNT = 18;
@@ -32,29 +33,25 @@ public final class Lessons {
                 lines("HOLD WHILE THRUSTING FOR SPEED. THE ENERGY METER PAYS FOR IT.",
                         "EMPTY, THE HULL FLIES AT ITS OWN PACE AGAIN."),
                 "THE FIRST OPEN STRETCH OF SKY");
-        add(DASH, "FLIGHT", "DASH", keys("C"),
-                lines("A SHORT LEAP IN THE DIRECTION YOU PUSH - ALONG THE NOSE IF YOU HOLD NONE.",
-                        "0.4 S OF GHOST: SHOTS PASS THROUGH THE HULL.",
-                        "THE COOLDOWN STARTS WHEN THE SMEAR ENDS."),
-                "THE FIRST ENEMY ROUND IN FLIGHT");
 
         add(FIRE, "COMBAT", "FIRE", keys("SPACE", "/", "LMB"),
                 lines("SPACE FIRES ALONG THE NOSE.",
                         "THE LEFT MOUSE BUTTON ALSO SWINGS THE NOSE ONTO THE CURSOR."),
                 "RIGHT AFTER THE FIRST THRUST");
         add(WEAPONS, "COMBAT", "WEAPONS", keys("V", "/", "B"),
-                lines("V CYCLES TO THE NEXT WEAPON YOU OWN, B TO THE PREVIOUS.",
+                lines("TAP V FOR THE NEXT WEAPON YOU OWN, B FOR THE PREVIOUS.",
+                        "HOLD V TO OPEN THE WEAPON WHEEL, POINT AT A WEAPON WITH THE MOUSE, LET GO TO FIT IT.",
                         "NEW PATTERNS ARE BOUGHT IN THE HANGAR."),
                 "THE FIRST PATTERN BOUGHT");
         add(SHIELD, "COMBAT", "SHIELD", keys("G", "/", "RMB"),
                 lines("DRAINS WHILE HELD. WHAT ACTUALLY LANDS ON IT SETS THE COST.",
                         "A SLOW RING IS CHEAP TO EAT. A SHELL IS NOT."),
                 "THE FIRST HEAVY SHELL");
-        add(ASTRA, "COMBAT", "THE AKASHA ASTRA", keys("F"),
-                lines("FIVE SHARDS FORGE IT. F CHARGES FOR 1.75 S, THEN RELEASES.",
-                        "TWENTY CUBES LEAVE THE HULL, EACH HUNTING ITS OWN ENEMY THROUGH ROCK.",
-                        "EVERY LOKA FORGES ITS OWN, AND YOU CARRY THEM ALL. X CHOOSES WHICH ONE F SPENDS."),
-                "THE FIRST FORGED CHARGE");
+        add(ASTRA, "COMBAT", "THE ASTRAS", keys("F", "/", "X"),
+                lines("FIVE SHARDS OF AN ELEMENT PAY FOR ONE RELEASE OF ITS ASTRA. THE SHARD PILE IS THE FUEL.",
+                        "HOLD F TO INVOKE: CUBES GATHER AND THE FOES IN FRONT OF THE NOSE ARE LOCKED. HOLD LONGER FOR MORE AND HARDER.",
+                        "LET GO TO LOOSE IT. LET GO TOO SOON AND THE MANTRA FALTERS, FREE. X CHOOSES WHICH ASTRA."),
+                "THE FIRST FIVE SHARDS OF ONE ELEMENT");
 
         add(HULL, "SURVIVAL", "HULL AND LIVES", keys(),
                 lines("THE HULL BAR IS THE SHIP. WHEN IT EMPTIES, A LIFE GOES.",
@@ -66,7 +63,7 @@ public final class Lessons {
                 "THE FIRST ONE IN SIGHT");
         add(PICKUPS, "SURVIVAL", "COINS, SHARDS, REPAIR", keys(),
                 lines("EVERYTHING THAT FALLS FROM A KILL IS YOURS IF YOU FLY INTO IT.",
-                        "COINS BUY. SHARDS FORGE THE ASTRA. A HEALTH DROP MENDS THE HULL."),
+                        "COINS BUY. SHARDS FUEL THE ASTRAS. A HEALTH DROP MENDS THE HULL."),
                 "THE FIRST KILL");
 
         add(HANGAR, "WORLD", "THE HANGAR", keys("TAB", "/", "ENTER"),
@@ -108,7 +105,7 @@ public final class Lessons {
     /** The lessons of one group, in teaching order. */
     public static List<Lesson> inGroup(String group) {
         List<Lesson> out = new ArrayList<>();
-        for (Lesson l : ALL) if (l.group.equals(group)) out.add(l);
+        for (Lesson l : ALL) if (l != null && l.group.equals(group)) out.add(l);
         return out;
     }
 

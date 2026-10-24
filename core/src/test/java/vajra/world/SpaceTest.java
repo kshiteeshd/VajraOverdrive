@@ -9,6 +9,13 @@ import vajra.ship.ShipControls;
 /** Bodies have room: nobody starts the run on top of anyone, nobody lives inside rock, two units
  *  that end up stacked part, and a unit that finds itself in rock is lifted out. */
 class SpaceTest {
+    // These tests are about the rock the world was built with; the default world has none (World.walls).
+    @org.junit.jupiter.api.BeforeAll
+    static void rockOn() { World.walls = true; }
+
+    @org.junit.jupiter.api.AfterAll
+    static void rockOff() { World.walls = true; }
+
     @Test
     void theRosterStartsWithoutOverlaps() {
         World w = new World();

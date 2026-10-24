@@ -70,7 +70,6 @@ class HudScreenshotTest {
                     w.score.breakCombo(); // chain gone: the combo line must clear
                     w.ship.hp = w.ship.maxHp() * 0.5f; // hull half gone
                     w.ship.shieldEnergy = 0;           // shield flat
-                    w.ship.dashCd = w.ship.dashCd();   // dash fully on cooldown
                     int[] b = shot(w);
                     writePng(b, "build/hud-scene-low.png");
                     checkLow(b, failures);
@@ -82,8 +81,7 @@ class HudScreenshotTest {
 
                     w.ship.y = 4100; // back into Atala, then dock: the hangar over the run
                     w.hangar.coins = 400; // enough to see an affordable card and a short one
-                    w.hangar.forged[0] = true;
-                    w.hangar.forgeCharges[0] = 2;
+                    w.hangar.shards[0] = 7;
                     int[] d = shotShop(w, BayUi.HULLS);
                     writePng(d, "build/hud-scene-shop.png");
                     checkShop(d, failures);
@@ -146,7 +144,7 @@ class HudScreenshotTest {
                 + String.join("\n  ", failures));
     }
 
-    /** The scene: full hull, shield at 40%, boost at 70%, dash ready, three lives, a running
+    /** The scene: full hull, shield at 40%, boost at 70%, three lives, a running
      *  score with a live combo chain (7 kills = x2) under it, and the ship inside Atala (the
      *  indicator and its tape only exist past the grand gate). */
     private static World scene() {
@@ -155,7 +153,6 @@ class HudScreenshotTest {
         w.ship.hp = w.ship.maxHp();
         w.ship.shieldEnergy = w.ship.shieldCap() * 0.4f;
         w.ship.boostEnergy = 70;
-        w.ship.dashCd = 0;
         w.lives = 3;
         w.score.points = 123456;
         w.score.combo = 7;
@@ -199,16 +196,12 @@ class HudScreenshotTest {
         check(stray == 0, "top-right corner must stay clear (" + stray + " stray px)", f);
         int centre = countClear(px, 560, 720, 320, 400);
         check(centre == 0, "screen centre must stay clear (" + centre + " stray px)", f);
-        // golden life pips under the bars, and a full gold dash pip (ready)
+        // golden life pips under the bars
         int pips = countGold(px, (int) HudBars.X,
                 (int) (HudBars.X + 2 * HudBars.LIVES_PITCH + 2 * HudBars.LIVES_R),
                 (int) (HudBars.LIVES_Y - HudBars.LIVES_R),
                 (int) (HudBars.LIVES_Y + HudBars.LIVES_R + 1));
         check(pips > 40, "three golden life pips below the bars (" + pips + " px)", f);
-        expectNear(px, (int) (HudBars.DASH_X + HudBars.DASH_W / 2), 695,
-                255, 215, 0, 25, "dash pip gold when ready", f);
-        expectNear(px, (int) (HudBars.DASH_X + HudBars.DASH_W / 2), (int) (HudBars.TOP - 2),
-                255, 215, 0, 25, "dash pip full to the top", f);
         // score + combo, top-centre in gold: ten digits on the top line, 7 x2 under it
         int score = countGold(px, SCORE_X0, SCORE_X1, SCORE_Y0, SCORE_Y1);
         check(score > 100, "gold score digits top-centre (" + score + " px)", f);
@@ -257,10 +250,6 @@ class HudScreenshotTest {
         expectNear(px, FILL_X, HULL_Y, 34, 214, 0, 18, "hull green at 50%", f);
         expectNear(px, H_TRACK_X, HULL_Y, 6, 6, 12, 12, "hull track past 50%", f);
         expectNear(px, FILL_X, SHIELD_Y, 6, 6, 12, 12, "shield track when empty", f);
-        // dash on cooldown: the pip drains, only the track remains
-        expectNear(px, (int) (HudBars.DASH_X + HudBars.DASH_W / 2),
-                (int) (HudBars.DASH_BOT + HudBars.DASH_H - 3),
-                6, 6, 12, 12, "dash pip empty while recharging", f);
         // score survives the chain breaking; the combo line is gone with it
         int score = countGold(px, SCORE_X0, SCORE_X1, SCORE_Y0, SCORE_Y1);
         check(score > 100, "gold score digits still there (" + score + " px)", f);

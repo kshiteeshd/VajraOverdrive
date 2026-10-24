@@ -67,8 +67,10 @@ class TransitionScreenshotTest {
 
                     // 1b. the PROFILE row opens the pilot's page; ESC hands back home
                     flow.keyDown(com.badlogic.gdx.Input.Keys.DOWN); // PLAY -> MULTIPLAYER
-                    flow.keyDown(com.badlogic.gdx.Input.Keys.DOWN); // MULTIPLAYER -> CONTROLS
-                    flow.keyDown(com.badlogic.gdx.Input.Keys.DOWN); // CONTROLS -> PROFILE
+                    flow.keyDown(com.badlogic.gdx.Input.Keys.DOWN); // MULTIPLAYER -> TEST AREA
+                    flow.keyDown(com.badlogic.gdx.Input.Keys.DOWN); // TEST AREA -> VITALA
+                    flow.keyDown(com.badlogic.gdx.Input.Keys.DOWN); // VITALA -> TUTORIALS
+                    flow.keyDown(com.badlogic.gdx.Input.Keys.DOWN); // TUTORIALS -> PROFILE
                     flow.keyDown(com.badlogic.gdx.Input.Keys.ENTER);
                     check(flow.top() instanceof vajra.screen.ProfileScreen,
                             "PROFILE opens the pilot page", failures);
@@ -86,6 +88,8 @@ class TransitionScreenshotTest {
                     check(flow.top() instanceof HomeScreen, "ESC leaves the pilot page", failures);
                     flow.keyDown(com.badlogic.gdx.Input.Keys.UP); // the cursor stayed on PROFILE:
                     flow.keyDown(com.badlogic.gdx.Input.Keys.UP); // walk it back to PLAY for the handover
+                    flow.keyDown(com.badlogic.gdx.Input.Keys.UP);
+                    flow.keyDown(com.badlogic.gdx.Input.Keys.UP);
                     flow.keyDown(com.badlogic.gdx.Input.Keys.UP);
 
                     // 2. PLAY starts the run at once

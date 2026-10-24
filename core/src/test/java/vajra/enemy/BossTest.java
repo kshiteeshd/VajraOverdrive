@@ -8,6 +8,13 @@ import org.junit.jupiter.api.Test;
 /** Bala: the silent seal (no boss in his arena and no numbers on screen until the quota fills),
  *  wake rule, retinue ring, phase beats, blinks, stand-down and victory. */
 class BossTest {
+    // These tests are about the rock the world was built with; the default world has none (World.walls).
+    @org.junit.jupiter.api.BeforeAll
+    static void rockOn() { vajra.world.World.walls = true; }
+
+    @org.junit.jupiter.api.AfterAll
+    static void rockOff() { vajra.world.World.walls = true; }
+
     /** Full world, ship parked in the arena past the wake line. */
     private World arena() {
         World w = new World();
@@ -162,7 +169,7 @@ class BossTest {
     }
 
     @Test
-    void killCrownsVictoryAndPurses150() {
+    void killCrownsVictoryAndPaysThePurse() {
         World w = arena();
         Enemy b = bossIn(w);
         Enemy f = null;
@@ -173,7 +180,7 @@ class BossTest {
         assertTrue(b.hurt(99999, w), "the kill lands");
         assertTrue(b.dead && w.bossDead, "Bala falls");
         assertEquals(0f, w.victoryT, "the victory clock starts");
-        assertEquals(coins + 150, w.hangar.coins, "the kill purse");
+        assertEquals(coins + vajra.world.Balance.purse(0), w.hangar.coins, "the kill purse");
         assertTrue(f.dismissed && f.commander == null, "the retinue stands down for good");
     }
 

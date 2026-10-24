@@ -44,6 +44,7 @@ public final class BayController {
             ui.setRail(BayUi.HULLS);
             ui.setHull(k - Input.Keys.NUM_1);
             ui.setTierFocus(-1);
+            if (world.hangar.ownsShip(ui.hull())) world.selectShip(ui.hull()); // a hull you own is fitted at once; one you do not is only focused
             return true;
         }
         int dx = (k == Input.Keys.D || k == Input.Keys.RIGHT ? 1 : 0) - (k == Input.Keys.A || k == Input.Keys.LEFT ? 1 : 0);
@@ -95,6 +96,7 @@ public final class BayController {
                 if (ui.hull() == i && ui.tierFocus() < 0) return actHull(); // a second click acts
                 ui.setHull(i);
                 ui.setTierFocus(-1);
+                if (world.hangar.ownsShip(i)) world.selectShip(i);          // a hull you own is fitted by the first click; a purchase waits for the second
                 return true;
             case BayUi.TIER:
                 ui.setTierFocus(i);
@@ -123,11 +125,22 @@ public final class BayController {
             if (world.hangar.buyShip(i, world.lokaIndex) <= 0) return true; // short, or the loka has not opened it
         }
         world.selectShip(i);
+        if (ui.tierFocus() == 0) world.hangar.look[i] = 0;   // the x.1 card wears the first colourway
         return true;
     }
 
+    /** A tier card: an unowned tier is bought (the chain rules apply); an OWNED one is WORN - the hull takes that colourway (the stats follow
+     *  the tiers owned, the look follows the card). */
     private boolean actTier(int t) {
-        world.hangar.buy(ShipDef.ALL[ui.hull()], t);
+        ShipDef d = ShipDef.ALL[ui.hull()];
+        if (world.hangar.owned[d.id][t]) {
+            if (world.hangar.ownsShip(d.id)) {
+                world.hangar.look[d.id] = t;
+                world.selectShip(d.id);
+            }
+            return true;
+        }
+        world.hangar.buy(d, t);
         return true;
     }
 
@@ -146,9 +159,9 @@ public final class BayController {
         return true;
     }
 
-    /** An Astra card: a forged weapon becomes the one F spends. */
-    private boolean actAstra(int loka) {
-        if (loka >= 0 && loka < LokaTable.COUNT && world.hangar.isForged(loka)) world.astraLoka = loka;
+    /** An astra card: it becomes the one F invokes. */
+    private boolean actAstra(int kind) {
+        if (kind >= 0 && kind < vajra.world.Astra.KINDS) world.astraSel = kind;
         return true;
     }
 }

@@ -64,26 +64,21 @@ class ShardGaugeScreenshotTest {
 
                     // held: three whole segments and 60% of the fourth - the charge track mid-fill
                     World held = scene();
-                    for (int i = 0; i < 3; i++) held.hangar.addShard(Hangar.AKASHA, 0);
+                    for (int i = 0; i < 3; i++) held.hangar.addShard(Hangar.AKASHA);
                     int[] b = shot(held);
                     writePng(b, "build/shard-1-held.png");
                     checkBlock(b, "held block", failures);
-                    // unforged: the four spare segments are open frames, so their centres are
-                    // still the background
-                    check(spareCentre(b) < SPARE_SAMPLES / 4,
-                            "before forging the spare segments are HOLLOW sockets ("
-                                    + spareCentre(b) + " lit px in their centres)", failures);
 
                     // forged with a release in hand: the gold hairline goes up around the gem
                     World forged = scene();
-                    for (int i = 0; i < Hangar.FORGE_COST; i++)
-                        forged.hangar.addShard(Hangar.AKASHA, 0);
+                    for (int i = 0; i < vajra.world.Astra.COST; i++)
+                        forged.hangar.addShard(Hangar.AKASHA);
                     int[] c = shot(forged);
                     writePng(c, "build/shard-2-forged.png");
                     checkBlock(c, "forged block", failures);
-                    // forged: the same segments are filled cells, so the centres are lit
+                    // five shards: every segment is a filled cell, so the centres are lit
                     check(spareCentre(c) > SPARE_SAMPLES * 3 / 5,
-                            "once forged the same segments are SOLID cells ("
+                            "with five shards every segment is a SOLID cell ("
                                     + spareCentre(c) + " lit px in their centres)", failures);
 
                     fbo.dispose();

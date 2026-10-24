@@ -20,7 +20,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import javax.imageio.ImageIO;
 import org.junit.jupiter.api.Test;
 import vajra.flow.Flow;
+import vajra.profile.Profiles;
 import vajra.screen.ComicScreen;
+import vajra.screen.GameScreen;
 import vajra.screen.HomeScreen;
 import vajra.screen.StoryScript;
 import vajra.screen.Ui;
@@ -43,7 +45,6 @@ class StoryShotTest {
             Ui ui;
             SpriteBatch batch;
             Flow flow;
-            boolean wasSeen;
 
             @Override
             public void create() {
@@ -52,13 +53,15 @@ class StoryShotTest {
                     batch = new SpriteBatch();
                     flow = new Flow();
                     assertTrue(ComicScreen.available(), "the story art is on disk");
-                    // finishing the story saves "seen" to the real profiles.json: put the flag back after
-                    wasSeen = vajra.profile.Profiles.active().storySeen;
-                    vajra.profile.Profiles.active().storySeen = false;
-                    // the boot path: the splash hands an unread pilot to the story, not the menu
-                    if (!(ComicScreen.firstOrHome(flow, ui, batch) instanceof ComicScreen))
-                        failures.add("an unread pilot is not sent to the story");
-                    flow.set(new ComicScreen(flow, ui, batch));
+                    System.clearProperty("vajra.nostory"); // the test config turns the story off; this test wants it
+                    Profiles.clearRun();
+
+                    // the menu is NOT the story: the splash hands over to the title
+                    flow.set(new HomeScreen(flow, ui, batch));
+                    if (!(flow.top() instanceof HomeScreen)) failures.add("the title is not the first screen");
+                    // NEW GAME is the story's moment
+                    flow.keyDown(Input.Keys.ENTER);
+                    if (!(flow.top() instanceof ComicScreen)) failures.add("NEW GAME did not open the story");
                     int n = StoryScript.PANELS.length;
                     for (int i = 0; i < n; i++) {
                         for (int k = 0; k < 60; k++) frame(); // 1 s: the panel is up, the line is typing
@@ -71,12 +74,25 @@ class StoryShotTest {
                         if (lit(done, 200, W - 200, 20, 110) < 150) failures.add("panel " + i + " drew no narration");
                         flow.keyDown(Input.Keys.SPACE);        // turns
                     }
-                    if (!(flow.top() instanceof HomeScreen)) failures.add("the last turn did not land on the menu");
+                    if (!(flow.top() instanceof GameScreen)) failures.add("the last turn did not start the run");
+
+                    // ESC skips the whole story straight into the run
+                    flow.set(new HomeScreen(flow, ui, batch));
+                    flow.keyDown(Input.Keys.ENTER);
+                    if (!(flow.top() instanceof ComicScreen)) failures.add("a second NEW GAME did not open the story");
+                    flow.keyDown(Input.Keys.ESCAPE);
+                    if (!(flow.top() instanceof GameScreen)) failures.add("ESC did not skip the story into the run");
+
+                    // CONTINUE never replays it
+                    Profiles.saveRun(((GameScreen) flow.top()).world());
+                    flow.set(new HomeScreen(flow, ui, batch));
+                    flow.keyDown(Input.Keys.ENTER); // CONTINUE
+                    if (!(flow.top() instanceof GameScreen)) failures.add("CONTINUE showed the story");
                 } catch (Throwable t) {
                     boom.set(t);
                 } finally {
-                    vajra.profile.Profiles.active().storySeen = wasSeen; // the test never reads the story for the pilot
-                    vajra.profile.Profiles.save();
+                    System.setProperty("vajra.nostory", "true");
+                    Profiles.clearRun();
                     Gdx.app.exit();
                 }
             }

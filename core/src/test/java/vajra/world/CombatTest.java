@@ -16,7 +16,6 @@ class CombatTest {
             public float rotate() { return 0; }
             public boolean fire() { return false; }
             public boolean boost() { return false; }
-            public boolean dash() { return false; }
             public boolean shield() { return shield; }
             public boolean mouseAim() { return false; }
             public float aimX() { return 0; }
@@ -61,7 +60,8 @@ class CombatTest {
         assertTrue(e.hp < hp0, "a hit lands");
         assertTrue(e.active, "getting shot wakes you up");
         while (!e.dead) {
-            shoot(w, WeaponDef.SINGLE);
+            // (a wounded skirmisher weaves off the line: aim each round at where it is now)
+            w.spawnBullet(w.ship.x + 22, w.ship.y, (float) Math.atan2(e.y - w.ship.y, e.x - w.ship.x), WeaponDef.SINGLE, 1f, 1f);
             // stop the frame it dies: enemy fire lingers in flight, and a post-kill loop can
             // outlive the 1.3 s popup the kill pushes
             for (int i = 0; i < 120 && !e.dead && !w.bullets.isEmpty(); i++) w.update(0.016f, IDLE);
@@ -390,12 +390,12 @@ class CombatTest {
         assertEquals(offTheLine.maxHp, offTheLine.hp, 0.001f, "and misses what is not");
     }
 
-    /** Dash ghosts the ship: the shot keeps flying and the hull never feels it. */
+    /** I-frames ghost the ship (a respawn grace): the shot keeps flying and the hull never feels it. */
     @Test
-    void dashLetsBulletsPassThrough() {
+    void iFramesLetBulletsPassThrough() {
         World w = arena(2600, 800);
         float hp0 = w.ship.hp;
-        w.ship.iFrames = 0.4f; // what a dash grants
+        w.ship.iFrames = 0.4f; // what a respawn grants
         w.spawnEnemyBullet(2600, 800, 0);
         w.update(0.016f, IDLE);
         assertEquals(1, w.bullets.size(), "the shot flies on through");
@@ -405,7 +405,7 @@ class CombatTest {
         float hp1 = plain.ship.hp;
         plain.spawnEnemyBullet(2600, 800, 0);
         plain.update(0.016f, IDLE);
-        assertTrue(plain.bullets.isEmpty(), "without the dash the shot is absorbed");
+        assertTrue(plain.bullets.isEmpty(), "without i-frames the shot is absorbed");
         assertTrue(plain.ship.hp < hp1, "and it hurts");
     }
 
@@ -437,7 +437,6 @@ class CombatTest {
             public float rotate() { return 0; }
             public boolean fire() { return true; }
             public boolean boost() { return true; }
-            public boolean dash() { return false; }
             public boolean shield() { return false; }
             public boolean mouseAim() { return false; }
             public float aimX() { return 0; }
@@ -457,7 +456,9 @@ class CombatTest {
             assertTrue(w.ship.y >= 0 && w.ship.y <= w.height, "ship stayed in the world");
             assertTrue(w.bullets.size() <= 400, "bullet cap held");
         }
-        assertTrue(w.enemies.size() < start, "the descent kills something: " + start + " -> " + w.enemies.size());
+        int killed = 0;
+        for (int k : w.kills) killed += k;
+        assertTrue(killed > 0, "the descent kills something (reserves rise from the floor, so the roster alone can grow): " + start + " -> " + w.enemies.size() + ", kills " + killed);
         for (Enemy e : w.enemies) assertFalse(e.dead, "no corpses left in the roster");
     }
 }

@@ -23,7 +23,6 @@ class DeterminismTest {
         @Override public float rotate() { return (step / 90) % 2 == 0 ? 1 : -1; }
         @Override public boolean fire() { return step % 7 != 0; } // near-constant fire
         @Override public boolean boost() { return (step / 120) % 2 == 0; } // boost in bursts
-        @Override public boolean dash() { return step % 180 < 6; } // dash pulses
         @Override public boolean shield() { return false; }
         @Override public boolean mouseAim() { return false; }
         @Override public float aimX() { return 0; }

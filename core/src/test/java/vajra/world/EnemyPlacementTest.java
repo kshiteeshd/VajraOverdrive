@@ -14,7 +14,6 @@ class EnemyPlacementTest {
         public float rotate() { return 0; }
         public boolean fire() { return false; }
         public boolean boost() { return false; }
-        public boolean dash() { return false; }
         public boolean shield() { return false; }
         public boolean mouseAim() { return false; }
         public float aimX() { return 0; }
@@ -28,7 +27,7 @@ class EnemyPlacementTest {
         assertEquals(1f, LokaTable.at(0).hpScale, 0.001f, "Atala is the baseline");
         for (Enemy e : w.enemies) {
             assertEquals(e.maxHp, e.hp, 0.01f, e.kind + " is at full hull when placed");
-            assertEquals(1f, e.dmgScale, 0.001f, "Atala fire is ungraded");
+            assertEquals(1f, e.dmgScale, 0.07f, "Atala fire is the baseline, graded only by its band");
         }
         // the curve is monotonic: every deeper loka is at least as mean as the one above it
         for (int l = 1; l < LokaTable.COUNT; l++) {
