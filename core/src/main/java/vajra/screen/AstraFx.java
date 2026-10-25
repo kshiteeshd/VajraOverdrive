@@ -23,11 +23,15 @@ final class AstraFx {
 
     /** All of it, inside an open Filled shape pass in world space. */
     static void draw(ShapeRenderer s, World w, float l, float b, float viewW, float viewH) {
-        if (w.astra.isEmpty() && !w.winding() && w.gazeT <= 0f && !w.flow.active()) return;
+        if (w.astra.isEmpty() && !w.winding() && w.gazeT <= 0f && !w.flow.active() && !w.maya.active) return;
         s.flush();
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE);          // additive: light, not paint
         float t = w.clock;
         if (w.winding()) yantra(s, w, t);
+        if (w.maya.active && w.maya.crack() < 1f) { s.flush(); Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);                  // paint, not light: blood reads on any ground, so it is drawn over a darkening
+                s.setColor(0.03f, 0f, 0.02f, 0.45f * w.maya.form()); s.circle(w.maya.x, w.maya.y, Mandala.balaRadius(w.maya.form()) * 1.22f, 56);
+                Mandala.drawBala(s, w.maya.x, w.maya.y, w.maya.form(), t, w.maya.form() >= 1f);
+                s.flush(); Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE); }   // Bala's mandala, whose heart the glass cracks from
         float scale = 1f + 0.1f * vajra.world.Astra.TIER[MathUtils.clamp(w.astraKind, 0, vajra.world.Astra.KINDS - 1)];   // the deeper the astra, the greater its shards
         if (w.gazeT > 0f) gaze(s, w, t);
         if (w.flow.kind == vajra.world.AstraFlow.VAYU) funnel(s, w, t);

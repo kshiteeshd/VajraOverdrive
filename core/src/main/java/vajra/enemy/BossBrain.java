@@ -186,6 +186,7 @@ public class BossBrain {
         e.bossTelegraph = false;
         e.bossStream = 0;
         w.addEffect(Effect.ring(e.x, e.y, 320, 1f, 0.84f, 0.3f));
+        w.maya.start(e.x, e.y, (long) (w.clock * 1000f) + phase * 17L);   // Bala's Maya-astra: the screen is a mirror, and it breaks
         w.ship.trauma = Math.min(1f, w.ship.trauma + 0.35f);
         if (phase == 2) { // the honorable duel: whoever still follows him is stood down
             w.popups.push(new Popups.Spec().text("STAND DOWN. THIS ONE IS MINE.").img("bala")

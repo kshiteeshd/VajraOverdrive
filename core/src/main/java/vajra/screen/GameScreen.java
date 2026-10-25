@@ -47,6 +47,7 @@ public class GameScreen implements FlowState, ShipControls {
     private int wheelKey, wheelHover = -1;
     private final OrthographicCamera camera;
     private final FitViewport viewport;
+    private ShatterFx shatter;
     private final Vector3 mouseV = new Vector3();
     private World world;
     private final Director director;
@@ -435,6 +436,7 @@ public class GameScreen implements FlowState, ShipControls {
             if (coach.lesson() >= 0 && !shop.isOpen() && !runEnded())
                 CoachPrompt.render(ui, batch, coach.lesson(), world.clock);
         }
+        if (world.maya.active) { if (shatter == null) shatter = new ShatterFx(); shatter.render(world, camera, viewport); }   // Bala's broken mirror: the whole frame, in pieces
         if (Probe.showFrame) perfReadout();
         if (bootFade > 0) { // the white the title's launch left behind, fading off the run
             ui.shapes.setProjectionMatrix(ui.camera.combined);
@@ -539,6 +541,7 @@ public class GameScreen implements FlowState, ShipControls {
 
     @Override
     public void dispose() {
+        if (shatter != null) shatter.dispose();
         if (vajra.net.Net.session == null) vajra.profile.Profiles.saveRun(world); // closed mid-flight: parked
         if (vajra.net.Net.active()) vajra.net.Net.session.listen(null); // no planes to a dead world
         wheel.dispose();

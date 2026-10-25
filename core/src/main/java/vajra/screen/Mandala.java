@@ -743,4 +743,133 @@ final class Mandala {
         ring(s, cx, cy, 6.4f * s4, R, 1f, 0f, 18, 0.7f, 0f, t, 0);
         ring(s, cx, cy, 10f * s4, R, 1f, t, 24, 0.6f, 0f, t, 3);
     }
+
+    // ---- BALA's mandala: the Maya-astra --------------------------------------------------------------------------------------------------
+
+    private static final float[] BLOOD = {0.90f, 0.06f, 0.09f}, BONE = {0.96f, 0.90f, 0.78f}, SICK = {0.55f, 0.12f, 0.72f};
+
+    /** The radius of Bala's mandala at charge k: great, and closing in as it is completed. */
+    static float balaRadius(float k) { return 270f - 80f * MathUtils.clamp(k, 0f, 1f); }
+
+    /** BALA'S MANDALA, the scary one (drawn while the mirror is made to crack): a toothed ring of blood, a ring of runes, an INVERTED pentagram in a double circle, a ring of thirteen
+     *  claws closing on the middle, and in the middle one great EYE that opens, with a slit for a pupil, that is never quite still; drips run down from the rim. */
+    static void drawBala(ShapeRenderer s, float cx, float cy, float k, float t, boolean full) {
+        THIN = false;
+        LIGHT = light(k);
+        float R = balaRadius(k);
+        float flick = 0.78f + 0.22f * MathUtils.sin(t * 23f) * MathUtils.sin(t * 7.3f + 1f), base = (0.45f + 0.55f * k) * flick;
+        for (int i = 0; i < 4; i++) {                                        // a dull red under it all, deepening
+            s.setColor(0.5f, 0f, 0.04f, (0.020f + 0.006f * i) * LIGHT);
+            s.circle(cx, cy, R * (1.3f - 0.1f * i), 48);
+        }
+        // the toothed ring: a zigzag of 56 teeth, drawn on
+        float tp = st(k, 0f, 0.22f);
+        int teeth = 56, shown = Math.round(teeth * 2 * tp);
+        float px = cx + R, py = cy;
+        for (int i = 1; i <= shown; i++) {
+            float a = i * TAU / (teeth * 2f), rr = (i % 2 == 0) ? R : R * 0.88f, x = cx + rr * MathUtils.cos(a), y = cy + rr * MathUtils.sin(a);
+            col(s, BLOOD, base * 1.5f);
+            s.rectLine(px, py, x, y, 1.8f);
+            px = x;
+            py = y;
+        }
+        col(s, BLOOD, base);
+        ring(s, cx, cy, R * 0.80f, R, st(k, 0.08f, 0.26f), 0f, 96, 1.3f, 0.5f, t, 0);
+        col(s, SICK, base * 1.2f);
+        ring(s, cx, cy, R * 0.74f, R, st(k, 0.12f, 0.3f), t * 0.3f, 96, 0.9f, 0.5f, t, 3);
+        // runes between the rings: sixteen jagged marks, each a different scratch
+        float rp = st(k, 0.2f, 0.45f);
+        for (int i = 0; i < 16; i++) {
+            if (i / 16f > rp) break;
+            float a = i * TAU / 16f + t * 0.06f, r0 = R * 0.765f, ca = MathUtils.cos(a), sa = MathUtils.sin(a), nx = -sa, ny = ca;
+            float h1 = ((i * 7919) % 13) / 13f, h2 = ((i * 104729) % 11) / 11f;
+            col(s, BONE, base * 0.9f);
+            float x0 = cx + ca * r0 - ny * 0f, y0 = cy + sa * r0;
+            float x1 = x0 + ca * R * 0.035f + nx * R * 0.03f * (h1 - 0.5f) * 2f, y1 = y0 + sa * R * 0.035f + ny * R * 0.03f * (h1 - 0.5f) * 2f;
+            float x2 = x1 - ca * R * 0.018f + nx * R * 0.035f * (h2 - 0.5f) * 2f, y2 = y1 - sa * R * 0.018f + ny * R * 0.035f * (h2 - 0.5f) * 2f;
+            s.rectLine(x0, y0, x1, y1, 1.1f);
+            s.rectLine(x1, y1, x2, y2, 1.1f);
+            s.rectLine(x0 - ca * R * 0.02f, y0 - sa * R * 0.02f, x0 + ca * R * 0.02f, y0 + sa * R * 0.02f, 1.1f);
+        }
+        // the inverted pentagram (one point DOWN) in a double circle
+        float pr = R * 0.70f, rot = -MathUtils.PI / 2f + 0.04f * MathUtils.sin(t * 0.9f);
+        col(s, BLOOD, base * 1.4f);
+        ring(s, cx, cy, pr, R, st(k, 0.3f, 0.45f), rot, 80, 1.5f, 0.6f, t, 0);
+        col(s, BLOOD, base);
+        ring(s, cx, cy, pr * 0.96f, R, st(k, 0.32f, 0.47f), rot, 80, 0.8f, 0.6f, t, 0);
+        for (int i = 0; i < 5; i++) {
+            PX[i] = cx + pr * MathUtils.cos(rot + (i * 2 % 5) * TAU / 5f);
+            PY[i] = cy + pr * MathUtils.sin(rot + (i * 2 % 5) * TAU / 5f);
+        }
+        col(s, BLOOD, base * 1.9f);
+        poly(s, 5, st(k, 0.4f, 0.62f), 2.0f, 0.8f, t, R, cx, cy);
+        for (int i = 0; i < 5; i++) {                                         // a small skull-ring mark at every point of the star
+            float f = st(k, 0.5f + 0.02f * i, 0.62f + 0.02f * i);
+            if (f <= 0f) continue;
+            float x = PX[i], y = PY[i];
+            col(s, BONE, base * 1.4f * f);
+            ring(s, x, y, 7f * f, R, 1f, 0f, 16, 1.2f, 0f, t, 0);
+            s.rectLine(x - 3f * f, y - 1f * f, x - 3f * f, y - 4f * f, 1f);
+            s.rectLine(x + 3f * f, y - 1f * f, x + 3f * f, y - 4f * f, 1f);
+        }
+        // thirteen claws closing on the middle
+        float cp = st(k, 0.55f, 0.8f);
+        for (int i = 0; i < 13; i++) {
+            float f = MathUtils.clamp(cp * 13f - i, 0f, 1f);
+            if (f <= 0f) break;
+            float a = i * TAU / 13f + t * 0.15f;
+            col(s, BONE, base * 1.3f);
+            petal(s, cx, cy, a, R * 0.46f, R * 0.25f, 0.07f, f, 1.1f, 0.6f, t, R);
+            col(s, SICK, base);
+            petal(s, cx, cy, a + TAU / 26f, R * 0.46f, R * 0.33f, 0.05f, f, 0.8f, 0.6f, t, R);
+        }
+        // the eye: an almond that opens, a ring for the iris, a slit for the pupil that looks about
+        float ep = st(k, 0.7f, 0.92f);
+        if (ep > 0f) {
+            float ew = R * 0.25f * ep, eh = R * 0.115f * ep * (0.85f + 0.15f * MathUtils.sin(t * 2.1f)), lx = 0f, ly = 0f;
+            col(s, BLOOD, base * 2f);
+            for (int side = -1; side <= 1; side += 2) {
+                lx = cx - ew;
+                ly = cy;
+                for (int i = 1; i <= 16; i++) {
+                    float u = -1f + i / 8f, x = cx + u * ew, y = cy + side * eh * (1f - u * u);
+                    s.rectLine(lx, ly, x, y, 2f);
+                    lx = x;
+                    ly = y;
+                }
+            }
+            for (int i = 0; i < 9; i++) {                                    // lashes
+                float u = -0.8f + i * 0.2f;
+                s.rectLine(cx + u * ew, cy + eh * (1f - u * u), cx + u * ew * 1.08f, cy + eh * (1f - u * u) + R * 0.035f * ep, 1f);
+                s.rectLine(cx + u * ew, cy - eh * (1f - u * u), cx + u * ew * 1.08f, cy - eh * (1f - u * u) - R * 0.035f * ep, 1f);
+            }
+            float gx = cx + MathUtils.sin(t * 0.9f) * ew * 0.22f, gy = cy + MathUtils.sin(t * 1.3f + 2f) * eh * 0.2f;
+            col(s, BONE, base * 1.6f * ep);
+            ring(s, gx, gy, eh * 0.78f, R, 1f, 0f, 32, 1.4f, 0f, t, 0);
+            col(s, BLOOD, base * 2f * ep);
+            float sl = eh * 0.9f;
+            s.rectLine(gx, gy - sl, gx - eh * 0.2f, gy, 2.2f);
+            s.rectLine(gx - eh * 0.2f, gy, gx, gy + sl, 2.2f);
+            s.rectLine(gx, gy + sl, gx + eh * 0.2f, gy, 2.2f);
+            s.rectLine(gx + eh * 0.2f, gy, gx, gy - sl, 2.2f);
+            s.setColor(0.9f, 0.05f, 0.08f, 0.55f * ep * LIGHT);              // the slit burns
+            s.rect(gx - eh * 0.07f, gy - sl, eh * 0.14f, sl * 2f);
+        }
+        // drips from the lower rim
+        float dp = st(k, 0.6f, 1f);
+        for (int i = 0; i < 18; i++) {
+            float a = MathUtils.PI + (i + 0.5f) * MathUtils.PI / 18f, x = cx + R * 0.94f * MathUtils.cos(a), y = cy + R * 0.94f * MathUtils.sin(a);
+            float len = R * (0.10f + 0.34f * (((i * 7919) % 9) / 9f)) * dp * (0.85f + 0.15f * MathUtils.sin(t * 1.5f + i));
+            col(s, BLOOD, base * 1.4f);
+            s.rectLine(x, y, x, y - len, 1.3f);
+            s.circle(x, y - len, 2.2f * dp, 8);
+        }
+        if (full) {                                                          // the whole is complete: rings of red spill out
+            for (int i = 0; i < 2; i++) {
+                float ph = (t * 1.2f + i * 0.5f) % 1f;
+                col(s, BLOOD, 0.6f * (1f - ph));
+                ring(s, cx, cy, R * 1.05f + ph * 70f, R, 1f, 0f, 96, 2f, 0f, t, 0);
+            }
+        }
+    }
 }

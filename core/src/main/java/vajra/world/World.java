@@ -1741,7 +1741,10 @@ public class World {
     }
 
     /** The invocation builds, cubes in flight fly and retire. Rock is never consulted - that is the whole point of them. */
+    public final Maya maya = new Maya();
+
     public void updateAstra(float dt) {
+        maya.step(dt);
         if (astraCd > 0) astraCd -= dt;
         if (astraInvoking) {
             if (ship.hp <= 0 || runEnded()) {
