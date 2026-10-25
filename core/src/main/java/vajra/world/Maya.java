@@ -16,6 +16,13 @@ public final class Maya {
     public boolean active;
     public float t, x, y;
     public long seed;
+    /** The one whose astra it is: the mandala and the cracks' heart stay on him, and he holds still until it ends. */
+    public vajra.enemy.Enemy boss;
+
+    public void start(vajra.enemy.Enemy by, long seed) {
+        boss = by;
+        start(by.x, by.y, seed);
+    }
 
     public void start(float x, float y, long seed) {
         this.x = x;
@@ -28,7 +35,8 @@ public final class Maya {
     public void step(float dt) {
         if (!active) return;
         t += dt;
-        if (t > END) active = false;
+        if (boss != null && !boss.dead) { x = boss.x; y = boss.y; }
+        if (t > END) { active = false; boss = null; }
     }
 
     /** The mandala's charge, 0..1 (it is drawn only while the glass is cracking). */

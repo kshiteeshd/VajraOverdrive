@@ -41,8 +41,8 @@ final class ShatterFx {
     private void focus(World w, OrthographicCamera camera, Viewport vp, int bw, int bh) {
         tmp.set(w.maya.x, w.maya.y, 0f);
         camera.project(tmp, vp.getScreenX(), vp.getScreenY(), vp.getScreenWidth(), vp.getScreenHeight());
-        fx = MathUtils.clamp(tmp.x, bw * 0.12f, bw * 0.88f);
-        fy = MathUtils.clamp(tmp.y, bh * 0.15f, bh * 0.85f);
+        fx = tmp.x;                                                           // exactly where the boss stands on the glass, on screen or not
+        fy = tmp.y;
     }
 
     private void build(Maya m, int bw, int bh) {
@@ -121,7 +121,9 @@ final class ShatterFx {
         int bw = Gdx.graphics.getBackBufferWidth(), bh = Gdx.graphics.getBackBufferHeight();
         if (bw < 16 || bh < 16) return;
         if (m.crack() <= 0f) return;                                          // before the first crack the glass is whole: nothing to draw
-        if (!built || builtSeed != m.seed || diag <= 0f) { focus(w, camera, vp, bw, bh); build(m, bw, bh); }
+        float ofx = fx, ofy = fy;
+        focus(w, camera, vp, bw, bh);
+        if (!built || builtSeed != m.seed || diag <= 0f || Math.abs(ofx - fx) > 0.25f || Math.abs(ofy - fy) > 0.25f) build(m, bw, bh);   // the cracks follow the boss as the view moves
         if (tex == null || tw != bw || th != bh) {
             if (tex != null) tex.dispose();
             Pixmap pm = new Pixmap(bw, bh, Pixmap.Format.RGBA8888);

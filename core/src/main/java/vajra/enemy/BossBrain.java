@@ -46,6 +46,7 @@ public class BossBrain {
             return;
         }
 
+        boolean hold = w.maya.active && w.maya.boss == e;   // his Maya-astra: he stands where he is, makes no move and no shot, until the glass has mended
         vajra.ship.Ship hull = w.nearestHull(e.x, e.y);
         e.facing = (float) Math.atan2(hull.y - e.y, hull.x - e.x);
         if (e.bossInvuln) {
@@ -56,7 +57,7 @@ public class BossBrain {
                 e.bossTimer = 0.8f; // grace before his first attack of the phase
                 e.bossTelegraph = false;
             }
-        } else {
+        } else if (!hold) {
             e.bossTimer -= dt;
             if (e.bossTimer <= 0) step(e, w);
             if (e.bossPhase == 3) {
@@ -64,7 +65,7 @@ public class BossBrain {
                 if (e.bossBlink <= 0) vanish(e, w);
             }
         }
-        move(e, w, dt);
+        if (hold) { e.vx = 0; e.vy = 0; } else move(e, w, dt);
     }
 
     /** Attack state machine: pick -> telegraph -> release, spiral streams in between. */
@@ -186,7 +187,7 @@ public class BossBrain {
         e.bossTelegraph = false;
         e.bossStream = 0;
         w.addEffect(Effect.ring(e.x, e.y, 320, 1f, 0.84f, 0.3f));
-        w.maya.start(e.x, e.y, (long) (w.clock * 1000f) + phase * 17L);   // Bala's Maya-astra: the screen is a mirror, and it breaks
+        w.maya.start(e, (long) (w.clock * 1000f) + phase * 17L);   // Bala's Maya-astra: the screen is a mirror, and it breaks
         w.ship.trauma = Math.min(1f, w.ship.trauma + 0.35f);
         if (phase == 2) { // the honorable duel: whoever still follows him is stood down
             w.popups.push(new Popups.Spec().text("STAND DOWN. THIS ONE IS MINE.").img("bala")

@@ -131,6 +131,32 @@ class BossTest {
     }
 
     @Test
+    void balaStandsStillAndSilentWhileHisMirrorBreaksAndTheCracksStayOnHim() {
+        World w = arena();
+        Enemy b = bossIn(w);
+        b.update(1 / 60f, w, 0f);
+        b.hp = b.maxHp * 0.5f;
+        b.update(1 / 60f, w, 0f);
+        assertTrue(w.maya.active, "the second phase opens his Maya-astra");
+        assertSame(b, w.maya.boss, "and it is his");
+        float x = b.x, y = b.y;
+        int shots = w.bullets.size();
+        for (int i = 0; i < 60 * 8; i++) {
+            w.ship.x += 1.5f;                            // the pilot is free: nothing holds the hull while the glass breaks
+            b.update(1 / 60f, w, 0f);
+            w.updateAstra(1 / 60f);
+            b.x += 0f;
+        }
+        assertEquals(x, b.x, 0.001f, "he does not move");
+        assertEquals(y, b.y, 0.001f);
+        assertEquals(shots, w.bullets.size(), "and does not shoot");
+        assertEquals(b.x, w.maya.x, 0.001f, "the heart of the cracks is where he stands");
+        assertEquals(b.y, w.maya.y, 0.001f);
+        for (int i = 0; i < 60 * 8; i++) w.updateAstra(1 / 60f);
+        assertFalse(w.maya.active, "the glass mends");
+    }
+
+    @Test
     void blinkDropsElitePairAndReappearsNearby() {
         World w = arena();
         Enemy b = bossIn(w);
