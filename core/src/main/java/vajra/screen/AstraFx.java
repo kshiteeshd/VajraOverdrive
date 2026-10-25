@@ -28,7 +28,7 @@ final class AstraFx {
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE);          // additive: light, not paint
         float t = w.clock;
         if (w.winding()) yantra(s, w, t);
-        if (w.maya.active && w.maya.crack() < 1f) { s.flush(); Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);                  // paint, not light: blood reads on any ground, so it is drawn over a darkening
+        if (w.maya.active && w.maya.tiltTime() < 0.3f) { s.flush(); Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);                  // paint, not light: blood reads on any ground, so it is drawn over a darkening
                 s.setColor(0.03f, 0f, 0.02f, 0.45f * w.maya.form()); s.circle(w.maya.x, w.maya.y, Mandala.balaRadius(w.maya.form()) * 1.22f, 56);
                 Mandala.drawBala(s, w.maya.x, w.maya.y, w.maya.form(), t, w.maya.form() >= 1f);
                 s.flush(); Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE); }   // Bala's mandala, whose heart the glass cracks from

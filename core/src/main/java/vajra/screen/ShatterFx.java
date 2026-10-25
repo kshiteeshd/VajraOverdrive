@@ -24,7 +24,7 @@ final class ShatterFx {
     private static final int RAYS = 11, K = 8, RING = 3;
     private static final float[] RADII = {0.06f, 0.12f, 0.20f, 0.30f, 0.42f, 0.58f, 0.80f, 1.25f};   // of the screen's diagonal
 
-    private static final class Piece { float[] px, py; float cx, cy, theta, ox, oy, tint, delay, bx, by, bw, bh, phase; boolean flipU, flipV, swap; }
+    private static final class Piece { float[] px, py; float cx, cy, theta, ox, oy, tint, delay, bx, by, bw, bh, phase; boolean flipU, flipV, swap, inner; }
 
     private Texture tex, glass, shine;
     private int tw, th;
@@ -69,15 +69,25 @@ final class ShatterFx {
             for (int k = RING; k >= 1; k--) inner.add(new float[] {chx[j][k], chy[j][k]});
             for (int k = RING; k <= K; k++) outer.add(new float[] {chx[i][k], chy[i][k]});
             for (int k = K; k >= RING; k--) outer.add(new float[] {chx[j][k], chy[j][k]});
-            addPiece(inner, bw, bh, r);
-            addPiece(outer, bw, bh, r);
+            addPiece(inner, bw, bh, r, true);
+            addPiece(outer, bw, bh, r, false);
         }
+        ArrayList<Piece> order = new ArrayList<>();                         // the pieces turn ONE AT A TIME: the inner ones first, then the outer, each group in a random order
+        for (int g = 0; g < 2; g++) {
+            ArrayList<Piece> grp = new ArrayList<>();
+            for (Piece pc : pieces) if (pc.inner == (g == 0)) grp.add(pc);
+            java.util.Collections.shuffle(grp, r);
+            order.addAll(grp);
+        }
+        float gap = 6.4f / Math.max(1, order.size());
+        for (int i = 0; i < order.size(); i++) order.get(i).delay = i * gap;
     }
 
-    private void addPiece(ArrayList<float[]> poly, int bw, int bh, Random r) {
+    private void addPiece(ArrayList<float[]> poly, int bw, int bh, Random r, boolean inner) {
         ArrayList<float[]> p = clip(clip(clip(clip(poly, 0, 0f, true), 0, bw, false), 1, 0f, true), 1, bh, false);
         if (p.size() < 3) return;
         Piece pc = new Piece();
+        pc.inner = inner;
         pc.px = new float[p.size()];
         pc.py = new float[p.size()];
         float sx = 0f, sy = 0f;
@@ -96,7 +106,6 @@ final class ShatterFx {
         float x0 = 1e9f, x1 = -1e9f, y0 = 1e9f, y1 = -1e9f;
         for (int i = 0; i < pc.px.length; i++) { x0 = Math.min(x0, pc.px[i]); x1 = Math.max(x1, pc.px[i]); y0 = Math.min(y0, pc.py[i]); y1 = Math.max(y1, pc.py[i]); }
         pc.bx = x0; pc.by = y0; pc.bw = Math.max(1f, x1 - x0); pc.bh = Math.max(1f, y1 - y0);
-        pc.delay = (float) Math.hypot(pc.cx - fx, pc.cy - fy) / diag * 2.2f;
         pieces.add(pc);
     }
 
@@ -172,9 +181,16 @@ final class ShatterFx {
     private final float[] vbuf = new float[5 * 40];
     private final short[] tbuf = new short[3 * 40];
 
+    /** How far a piece has turned to its angle: nothing until its own moment, then a quick snap (0.3 s) that overshoots a little and settles. */
+    private static float turn(Piece pc, Maya m) {
+        float x = MathUtils.clamp((m.tiltTime() - pc.delay) / 0.3f, 0f, 1f);
+        if (x <= 0f) return 0f;
+        float c1 = 1.70158f, c3 = c1 + 1f, d = x - 1f;
+        return 1f + c3 * d * d * d + c1 * d * d;
+    }
+
     private void drawPiece(Piece pc, Maya m, float fade) {
-        float u = MathUtils.clamp((m.tiltTime() - pc.delay) / 1.6f, 0f, 1f);
-        u = u * u * (3f - 2f * u) * fade;
+        float u = turn(pc, m) * fade;
         float ang = pc.theta * u, ca = MathUtils.cos(-ang), sa = MathUtils.sin(-ang), sc = 1f + 0.14f * u, inv = 1f / sc;
         float shade = Math.min(1f, 1f + (pc.tint - 1f) * u);
         float col = Color.toFloatBits(shade, shade, shade, 1f);
@@ -218,8 +234,7 @@ final class ShatterFx {
     /** THE LIGHT ON THE GLASS: every piece, in its own time, has a bright band of light run across it (a hot white line with a soft glow behind and a thin ghost after), then rests; the
      *  pieces nearer the heart catch it first. The band is a function of the position along the piece's own diagonal, so it is exact across the whole fan. */
     private void drawShine(Piece pc, Maya m, float fade) {
-        float u = MathUtils.clamp((m.tiltTime() - pc.delay) / 1.6f, 0f, 1f);
-        u = u * u * (3f - 2f * u);
+        float u = Math.min(1f, turn(pc, m));
         float cycle = (m.t * 0.30f + pc.phase + pc.delay * 0.15f) % 1f, run = 0.55f;
         if (cycle > run || u <= 0f) return;
         float sweep = -0.25f + 1.5f * (cycle / run);                       // where the band is, along the diagonal 0..1 (it starts and ends off the piece)

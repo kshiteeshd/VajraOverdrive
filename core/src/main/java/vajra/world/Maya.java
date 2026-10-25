@@ -7,11 +7,11 @@ package vajra.world;
  *  <pre>
  *  0 ........ FORM .. 2.6   the mandala forms round Bala
  *  2.8 ..... CRACK .. 6.2   cracks run out from its heart, ray by ray, to the edges of the screen
- *  4.8 ..... TILT ... 8.3   piece by piece, from the heart outward, each piece turns to its own angle
- *  12.5 .... HEAL ... 13.9  the pieces turn back and the cracks close
+ *  4.8 ..... TILT ... 11.8  the pieces turn ONE AT A TIME, a snap each (inner ones first), every few tenths of a second
+ *  13.0 .... HEAL ... 14.4  the pieces turn back and the glass mends
  *  </pre> */
 public final class Maya {
-    public static final float FORM = 2.6f, CRACK_AT = 2.8f, CRACK_LEN = 3.4f, TILT_AT = 4.8f, TILT_LEN = 3.5f, HEAL_AT = 12.5f, HEAL_LEN = 1.4f, END = 14.0f;
+    public static final float FORM = 2.6f, CRACK_AT = 2.8f, CRACK_LEN = 3.4f, TILT_AT = 4.8f, TILT_LEN = 7.0f, HEAL_AT = 13.0f, HEAL_LEN = 1.4f, END = 14.6f;
 
     public boolean active;
     public float t, x, y;

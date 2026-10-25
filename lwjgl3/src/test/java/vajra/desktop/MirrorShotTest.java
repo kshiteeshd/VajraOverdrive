@@ -57,9 +57,9 @@ class MirrorShotTest {
                         w.enemies.add(e);
                     }
                     w.maya.start(w.ship.x + 120f, w.ship.y + 200f, 5L);
-                    float[] at = {2.7f, 4.2f, 7.0f, 9.5f};
+                    float[] at = {2.7f, 6.0f, 8.5f, 11.5f};
                     int shot = 0;
-                    for (int i = 0; i < 60 * 15; i++) {
+                    for (int i = 0; i < 60 * 16; i++) {
                         flow.render(1 / 60f);
                         if (shot < at.length && w.maya.t >= at[shot]) shot("build/mirror-" + (++shot) + ".png");
                     }
