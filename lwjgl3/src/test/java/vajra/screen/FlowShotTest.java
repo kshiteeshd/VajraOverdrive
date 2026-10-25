@@ -62,6 +62,7 @@ class FlowShotTest {
             public void create() {
                 try {
                     FlowFx fx = new FlowFx();
+                    FxImages fxi = new FxImages();
                     SpriteBatch batch = new SpriteBatch();
                     ShapeRenderer sr = new ShapeRenderer(30000);
                     FrameBuffer fbo = new FrameBuffer(Pixmap.Format.RGBA8888, W, H, false);
@@ -72,7 +73,15 @@ class FlowShotTest {
                         Pixmap sheet = new Pixmap(W * 2, H * 2, Pixmap.Format.RGBA8888);
                         float t = 0;
                         for (int m = 0; m < 4; m++) {
-                            while (t < at[m]) { w.updateAstra(1 / 60f); w.clock += 1 / 60f; t += 1 / 60f; }
+                            while (t < at[m]) {
+                                w.updateAstra(1 / 60f);
+                                w.clock += 1 / 60f;
+                                t += 1 / 60f;
+                                for (int q = w.effects.size() - 1; q >= 0; q--) {      // the world's own effects age as they do in play
+                                    w.effects.get(q).update(1 / 60f);
+                                    if (w.effects.get(q).done()) w.effects.remove(q);
+                                }
+                            }
                             OrthographicCamera cam = new OrthographicCamera(W, H);
                             cam.position.set(w.ship.x, w.ship.y, 0);
                             cam.update();
@@ -90,6 +99,8 @@ class FlowShotTest {
                             batch.setProjectionMatrix(cam.combined);
                             batch.begin();
                             fx.draw(batch, w, w.ship.x - W / 2f, w.ship.y - H / 2f, W, H);
+                            for (vajra.world.Effect ef : w.effects) if (ef.type == vajra.world.Effect.SMOKE) fxi.draw(batch, ef);   // a burning foe's smoke
+                            batch.setColor(1f, 1f, 1f, 1f);
                             batch.end();
                             Pixmap pm = Pixmap.createFromFrameBuffer(0, 0, W, H);
                             fbo.end();

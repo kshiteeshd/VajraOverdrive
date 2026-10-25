@@ -20,8 +20,8 @@ final class Mandala {
     private static final float TAU = MathUtils.PI2;
 
     // palettes: primary, accent
-    private static final float[][] PRIMARY = {{0.74f, 0.55f, 1f}, {0.45f, 0.95f, 0.88f}, {1f, 0.34f, 0.12f}, {0.30f, 0.65f, 1f}, {0.88f, 0.64f, 0.22f}, {1f, 0.84f, 0.3f}, {0.86f, 0.88f, 1f}};
-    private static final float[][] ACCENT = {{1f, 0.86f, 0.5f}, {0.9f, 1f, 1f}, {1f, 0.86f, 0.5f}, {0.7f, 0.95f, 1f}, {1f, 0.9f, 0.55f}, {1f, 1f, 1f}, {1f, 0.8f, 0.3f}};
+    private static final float[][] PRIMARY = {{0.74f, 0.55f, 1f}, {0.62f, 0.72f, 0.86f}, {1f, 0.34f, 0.12f}, {0.30f, 0.65f, 1f}, {0.88f, 0.64f, 0.22f}, {1f, 0.84f, 0.3f}, {0.86f, 0.88f, 1f}};
+    private static final float[][] ACCENT = {{1f, 0.86f, 0.5f}, {0.88f, 0.92f, 0.98f}, {1f, 0.86f, 0.5f}, {0.7f, 0.95f, 1f}, {1f, 0.9f, 0.55f}, {1f, 1f, 1f}, {1f, 0.8f, 0.3f}};
     private static final float[] EMBER = {1f, 0.58f, 0.18f}, WHITE = {1f, 1f, 1f}, RED = {1f, 0.2f, 0.2f};
 
     /** THE LIGHT OF THE CHARGE, 0..1 (set at the top of every {@link #draw}): the first half of the invocation is plain lines and shapes, building anticipation;

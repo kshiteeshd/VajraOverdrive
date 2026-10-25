@@ -4,7 +4,6 @@ import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import vajra.enemy.Enemy;
 import vajra.world.AstraFlow;
 import vajra.world.World;
 
@@ -36,11 +35,7 @@ final class FlowFx {
 
     void draw(SpriteBatch b, World w, float l, float bt, float vw, float vh) {
         AstraFlow f = w.flow;
-        boolean any = f.active() || !f.scorch.isEmpty();
-        if (!any) {
-            for (int i = 0; i < w.enemies.size(); i++) if (w.enemies.get(i).burnT > 0f) { any = true; break; }
-            if (!any) return;
-        }
+        if (!f.active() && f.scorch.isEmpty()) return;                       // (a burning foe smokes through the ordinary effects: AstraFlow.tickBurn)
         float time = w.time();
         b.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE);
         for (float[] s : f.scorch) {                                       // the ground the fire has crossed
@@ -70,11 +65,6 @@ final class FlowFx {
         }
         for (AstraFlow.Blade bl : f.blades)                                 // a crescent of cutting wind where a foe was cut
             sprite(b, WIND, 5, Math.min(7, (int) (bl.t / 0.3f * 8f)), bl.x, bl.y, 120f, (float) Math.toDegrees(bl.ang), 1f);
-        for (int i = 0; i < w.enemies.size(); i++) {                        // the flame riding every burning foe
-            Enemy e = w.enemies.get(i);
-            if (e.burnT <= 0f || e.dead || e.x < l - 60 || e.x > l + vw + 60 || e.y < bt - 60 || e.y > bt + vh + 60) continue;
-            sprite(b, AGNI, 3, (int) (time * 12f) + i * 3, e.x, e.y + e.h * 0.35f + 16f, 62f, 0f, Math.min(1f, e.burnT * 2f));
-        }
         b.setColor(1f, 1f, 1f, 1f);
         b.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
     }

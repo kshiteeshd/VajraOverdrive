@@ -254,6 +254,7 @@ public class Enemy {
      *  (and whose fire it is) after Agni's flames touched it. */
     public float caught, flowVx, flowVy, burnT;
     public int burnOwner;
+    public float burnPuffT;
 
     /** Down at the floor, in the rock, or in smoke: no body in the fight. */
     public boolean submerged() { return depth > 0.4f || inRock || smoked; }

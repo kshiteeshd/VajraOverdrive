@@ -188,22 +188,22 @@ final class AstraFx {
                 float u = i / 40f, r = R * (0.95f - 0.83f * u), th = -f.t * 2.4f + arm * MathUtils.PI2 / 3f + u * 3.4f;
                 float x = cx + r * MathUtils.cos(th), y = cy + r * MathUtils.sin(th), wd = (3f + 9f * (float) Math.sin(Math.PI * u)) * sc;
                 if (i > 0) {
-                    s.setColor(0.35f, 0.9f, 0.85f, 0.10f * a);
+                    s.setColor(0.58f, 0.66f, 0.78f, 0.10f * a);
                     s.rectLine(px, py, x, y, wd * 2.4f);
-                    s.setColor(0.8f, 1f, 1f, 0.30f * a * (0.5f + 0.5f * u));
+                    s.setColor(0.86f, 0.90f, 0.97f, 0.30f * a * (0.5f + 0.5f * u));
                     s.rectLine(px, py, x, y, Math.max(1f, wd * 0.45f));
                 }
                 px = x;
                 py = y;
             }
         }
-        s.setColor(0.6f, 1f, 0.95f, 0.18f * a);
+        s.setColor(0.70f, 0.78f, 0.88f, 0.18f * a);
         ring(s, cx, cy, R * 0.97f, 72, 2f);
         ring(s, cx, cy, R * 0.12f, 28, 2f);
         if (f.t >= vajra.world.AstraFlow.T_EYE)                            // the throw: rings of wind running outward
             for (int i = 0; i < 3; i++) {
                 float ph = ((f.t - vajra.world.AstraFlow.T_EYE) * 1.4f + i / 3f) % 1f;
-                s.setColor(0.8f, 1f, 1f, 0.5f * (1f - ph) * a);
+                s.setColor(0.84f, 0.89f, 0.96f, 0.5f * (1f - ph) * a);
                 ring(s, cx, cy, R * (0.15f + 0.9f * ph), 72, 3f);
             }
     }

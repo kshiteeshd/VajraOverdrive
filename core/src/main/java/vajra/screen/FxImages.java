@@ -136,8 +136,10 @@ public class FxImages {
             if (smoke == null) return;
             int f = Math.min(smoke.length - 1, (int) (e.age / e.life * smoke.length));
             float s = e.radius * (1 - 0.6f * e.age / e.life); // shrinks as it drifts away
-            batch.setColor(e.r, e.g, e.b, e.alpha());
+            batch.setColor(e.r, e.g, e.b, e.alpha() * (e.fire ? 1.3f : 1f));
+            if (e.fire) batch.setBlendFunction(com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA, com.badlogic.gdx.graphics.GL20.GL_ONE);
             batch.draw(smoke[f], e.x - s / 2, e.y - s / 2, s, s);
+            if (e.fire) batch.setBlendFunction(com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA, com.badlogic.gdx.graphics.GL20.GL_ONE_MINUS_SRC_ALPHA);
         } else if (e.type == Effect.RING) {
             float d = 2 * e.radius * (e.age / e.life);
             batch.setColor(e.r, e.g, e.b, e.alpha());

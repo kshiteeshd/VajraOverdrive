@@ -7,6 +7,8 @@ package vajra.world;
 public class Effect {
     public static final int SPARK = 0, RING = 1, FLASH = 2, SMOKE = 3, SURGE = 4, DEATH = 5;
     public int type;
+    /** A smoke puff that burns: drawn as light, in its own orange, so it reads as fire and not as grey smoke (a burning foe's smoke). */
+    public boolean fire;
     public float x, y, x2, y2;
     public float vx, vy, drag; // SPARK motion: px/s and per-second exponential decay
     public float phase, wobble; // SPARK: sideways sine, amplitude px/s, dies off with age

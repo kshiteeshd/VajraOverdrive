@@ -264,6 +264,15 @@ public final class AstraFlow {
             if (e.burnT <= 0f || e.dead) { e.burnT = 0f; continue; }
             any = true;
             e.burnT -= dt;
+            if ((e.burnPuffT -= dt) <= 0f) {                               // it smokes as the hull does when it is low: the same puffs, but fire orange, not grey
+                e.burnPuffT = 0.09f;
+                float jitter = (w.fxRng.nextFloat() - 0.5f) * e.w * 0.5f;
+                Effect puff = Effect.smoke(e.x + jitter, e.y + e.h * 0.15f, (w.fxRng.nextFloat() - 0.5f) * 30f, 26f + 22f * w.fxRng.nextFloat(),
+                        1f, 0.50f + 0.22f * w.fxRng.nextFloat(), 0.10f);
+                puff.fire = true;
+                puff.radius = 50f;
+                w.addEffect(puff);
+            }
             boolean killed = e.hurtPiercing(BURN_DPS * burnDm * dt, w, e.burnOwner);
             if (killed || e.dead) {
                 e.burnT = 0f;

@@ -25,8 +25,8 @@ BAY = F.BAY
 FIRE = F.BANDS
 THRESH = F.THRESH
 
-# the wind's own six bands, brightest first (a cold, pale ramp): white, mint, aqua, teal, deep teal, shadow
-WIND = np.array([(244, 255, 255), (196, 247, 236), (124, 228, 218), (72, 188, 204), (42, 132, 164), (26, 82, 112)], dtype=np.uint8)
+# the wind's own six bands, brightest first: a grey with a hint of blue (white-grey, pale slate, slate, blue-grey, deep blue-grey, shadow)
+WIND = np.array([(240, 244, 250), (206, 216, 230), (170, 184, 204), (132, 150, 176), (94, 112, 140), (60, 74, 96)], dtype=np.uint8)
 
 
 def band(v, palette, alpha_floor=0.04, dither=0.07):
