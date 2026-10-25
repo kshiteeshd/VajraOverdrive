@@ -103,11 +103,8 @@ class AstraScreenshotTest {
                     for (int i = 0; i < 14; i++) frame();
                     int[] volley = frame();
                     writePng(volley, "build/astra-2-released.png");
-                    int armed = 0;
-                    for (AstraCube c : w.astra) if (c.armed && c.target != null) armed++;
-                    check(armed > 0, "cubes are away and aimed (" + armed + ")", failures);
-                    check(violet(volley) > 60, "the volley is drawn (" + violet(volley) + " px)",
-                            failures);
+                    check(w.flow.kind == vajra.world.AstraFlow.LIGHTNING || w.flow.bolts.size() > 0, "the lightning is loosed (Akasha's release)", failures);
+                    check(violet(volley) > 60, "the lightning is drawn (" + violet(volley) + " px)", failures);
 
                     flow.dispose();
                     ui.dispose();

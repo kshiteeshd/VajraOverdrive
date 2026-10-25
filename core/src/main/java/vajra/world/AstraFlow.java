@@ -17,7 +17,7 @@ import vajra.weapon.Bullet;
  *  same particles for the picture. Rendering is {@code screen/FlowFx} and {@code screen/AstraFx}. */
 public final class AstraFlow {
     public static final int CAP = 700;
-    public static final int NONE = 0, AGNI = 1, VAYU = 2;
+    public static final int NONE = 0, AGNI = 1, VAYU = 2, LIGHTNING = 3, BOULDER = 4, LOTUS = 5;
 
     // ---- Agni ----------------------------------------------------------------------------------------------------------------------------
     public static final int STREAMS = 18;
@@ -37,7 +37,8 @@ public final class AstraFlow {
     public final int[] row = new int[CAP], fr = new int[CAP], stream = new int[CAP];
     /** 0 = fire sheet, 1 = wind sheet. */
     public final byte[] sheet = new byte[CAP];
-    public final byte[] mode = new byte[CAP];                 // 0 fire, 1 wind drawn in, 2 wind thrown out
+    public final byte[] mode = new byte[CAP];                 // 0 fire, 1 wind drawn in, 2 wind thrown out, 4 boulder forming, 5 boulder, 6 chunk, 7 pebble (Prithvi)
+    public final byte[] variant = new byte[CAP];              // a boulder's kind (1 round, 2 slab, 3 veined, 4 jagged) / a chunk's kind
     public int n;
 
     /** A crescent of cutting wind, drawn for a moment where a foe was cut. */
@@ -45,6 +46,36 @@ public final class AstraFlow {
     public final ArrayList<Blade> blades = new ArrayList<>();
     /** The ground the fire has crossed: x, y, seconds left. */
     public final ArrayList<float[]> scorch = new ArrayList<>();
+
+    // ---- Akasha: the circular lightning ----
+    public static final float ZAP_DAMAGE = 85f, ZAP_STUN = 0.8f, ARC_REACH = 160f, ARC_SHARE = 0.5f;
+    /** One bolt of lightning to draw: a jagged line from (x0, y0) to (x1, y1) that re-forks every 50 ms while it lives (the renderer builds the jag from `seed`). */
+    public static final class Bolt { public float x0, y0, x1, y1, age, life; public int seed; public boolean big; }
+    public final ArrayList<Bolt> bolts = new ArrayList<>();
+    /** The foes the lightning has stunned and until when (the renderer crawls small arcs round them). */
+    public final ArrayList<Object[]> zapped = new ArrayList<>();
+    private static final class Strike { Enemy e; float at; boolean done; float mult; }
+    private final ArrayList<Strike> strikes = new ArrayList<>();
+    private boolean built, echoed;
+
+    // ---- Prithvi: the boulders ----
+    public static final float T_ROCK = 3.0f, ROCK_DAMAGE = 70f, CHUNK_DAMAGE = 28f, PEBBLE_DAMAGE = 7f;
+    /** A one-shot picture where something broke or dust rose: row 5 BREAK, 9 DUST, 10 BREAK SMALL of the earth sheet. */
+    public static final class Burst { public float x, y, t, life, size; public int row; }
+    public final ArrayList<Burst> bursts = new ArrayList<>();
+    private float rockAcc;
+
+    // ---- Brahma: the lotus ----
+    public static final int PETALS = 5;
+    /** A ruler loses at most this much of its health to the petals: they hurt it, they do not end it. */
+    public static final float BOSS_FLOOR = 0.75f;
+    public static final float PETAL_RANGE = 2200f, T_BLOOM = 0.9f, PETAL_SPEED = 900f, ORBIT_TIME = 0.48f, LOTUS_MAX = 10f;
+    /** The five petals, one per element (Akasha, Vayu, Agni, Jala, Prithvi): position, heading, state (0 bloom, 1 seek, 2 circle, 3 return, 4 done), the foe it is on, and its own clocks. */
+    public final float[] lx = new float[PETALS], ly = new float[PETALS], lh = new float[PETALS], lt = new float[PETALS], la = new float[PETALS], lr = new float[PETALS], lfade = new float[PETALS];
+    public final int[] lstate = new int[PETALS], lhits = new int[PETALS];
+    public final Enemy[] ltarget = new Enemy[PETALS];
+    private final float[] lmote = new float[PETALS];
+    private final int[] lstrike = new int[PETALS];
 
     public int kind;
     public float t, radius, power, dm = 1f;
@@ -90,6 +121,12 @@ public final class AstraFlow {
         spawnAcc = scorchAcc = 0f;
         cuts = 0;
         thrown = false;
+        built = echoed = false;
+        strikes.clear();
+        bolts.clear();
+        zapped.clear();
+        bursts.clear();
+        rockAcc = 0f;
         blades.clear();
         caught.clear();
         struck.clear();
@@ -109,9 +146,121 @@ public final class AstraFlow {
         radius = 450f + 200f * Math.max(0f, Math.min(1f, pow));
     }
 
+    /** AKASHA: a burst of circular lightning that strikes every foe near the hull (docs/ASTRA_NEXT_PLAN.md section 2). */
+    public void startLightning(Ship from, int seatId, float damageMult, float pow, long seed) {
+        reset(from, seatId, damageMult, pow, seed);
+        kind = LIGHTNING;
+        radius = 360f + 160f * Math.max(0f, Math.min(1f, pow));
+        for (int i = 0; i < 14; i++) {                                     // the first ring: spokes of lightning out to the reach
+            float a = i * 6.2831853f / 14f + rng.nextFloat() * 0.2f;
+            addBolt(from.x, from.y, from.x + (float) Math.cos(a) * radius, from.y + (float) Math.sin(a) * radius, 0.30f, true);
+        }
+    }
+
+    private void addBolt(float x0, float y0, float x1, float y1, float life, boolean big) {
+        if (bolts.size() > 160) return;
+        Bolt b = new Bolt();
+        b.x0 = x0; b.y0 = y0; b.x1 = x1; b.y1 = y1;
+        b.life = life;
+        b.big = big;
+        b.seed = rng.nextInt();
+        bolts.add(b);
+    }
+
+    private void stepLightning(World w, float dt) {
+        for (int i = bolts.size() - 1; i >= 0; i--) if ((bolts.get(i).age += dt) > bolts.get(i).life) bolts.remove(i);
+        if (!built) {                                                      // the foes inside the reach, nearest first, struck one every 12 ms
+            built = true;
+            ArrayList<Enemy> in = new ArrayList<>();
+            for (Enemy e : w.enemies) {
+                if (!eligible(e)) continue;
+                float dx = e.x - ship.x, dy = e.y - ship.y;
+                if (dx * dx + dy * dy <= radius * radius) in.add(e);
+            }
+            final float sx = ship.x, sy = ship.y;
+            in.sort((a, b) -> Float.compare((a.x - sx) * (a.x - sx) + (a.y - sy) * (a.y - sy), (b.x - sx) * (b.x - sx) + (b.y - sy) * (b.y - sy)));
+            for (int i = 0; i < in.size(); i++) {
+                Strike s = new Strike();
+                s.e = in.get(i);
+                s.at = 0.05f + 0.012f * Math.min(i, 40);
+                s.mult = 1f;
+                strikes.add(s);
+            }
+        }
+        if (!echoed && t >= 0.5f) {                                        // the echo: a second, weaker ring strikes the same foes for half
+            echoed = true;
+            for (int i = 0; i < 8; i++) {
+                float a = i * 6.2831853f / 8f + rng.nextFloat() * 0.3f;
+                addBolt(ship.x, ship.y, ship.x + (float) Math.cos(a) * radius * 0.8f, ship.y + (float) Math.sin(a) * radius * 0.8f, 0.2f, true);
+            }
+            ArrayList<Strike> echo = new ArrayList<>();
+            for (Strike s : strikes) {
+                Strike e2 = new Strike();
+                e2.e = s.e;
+                e2.at = t + 0.03f + 0.008f * echo.size();
+                e2.mult = 0.5f;
+                echo.add(e2);
+            }
+            strikes.addAll(echo);
+        }
+        for (Strike s : strikes) {
+            if (s.done || t < s.at) continue;
+            s.done = true;
+            Enemy e = s.e;
+            if (e.dead) continue;
+            addBolt(ship.x, ship.y, e.x, e.y, 0.22f, false);
+            if (!w.clientSeat) {
+                e.hurt(ZAP_DAMAGE * dm * s.mult, w, seat);
+                if (!e.boss && !e.dead) { e.caught = Math.max(e.caught, ZAP_STUN * (s.mult < 1f ? 0.5f : 1f)); e.active = true; zapped.add(new Object[] {e, t + ZAP_STUN}); }
+                int arcs = 0;                                              // the lightning jumps from it to the two nearest foes within reach
+                for (Enemy o : w.enemies) {
+                    if (o == e || !eligible(o) || arcs >= 2) continue;
+                    float dx = o.x - e.x, dy = o.y - e.y;
+                    if (dx * dx + dy * dy > ARC_REACH * ARC_REACH) continue;
+                    arcs++;
+                    addBolt(e.x, e.y, o.x, o.y, 0.16f, false);
+                    o.hurt(ZAP_DAMAGE * dm * s.mult * ARC_SHARE, w, seat);
+                }
+            }
+        }
+        for (int i = zapped.size() - 1; i >= 0; i--) if ((Float) zapped.get(i)[1] < t || ((Enemy) zapped.get(i)[0]).dead) zapped.remove(i);
+        boolean pending = false;
+        for (Strike s : strikes) if (!s.done) { pending = true; break; }
+        if (t > 0.9f && !pending && bolts.isEmpty() && zapped.isEmpty()) cancel();
+    }
+
+    /** PRITHVI: boulders form out of the mandala and are hurled (docs/ASTRA_NEXT_PLAN.md section 3). The mandala stays while it lasts. */
+    public void startBoulders(Ship from, int seatId, float damageMult, float pow, long seed) {
+        reset(from, seatId, damageMult, pow, seed);
+        kind = BOULDER;
+        radius = Astra.mandalaRadius(Astra.PRITHVI, 1f);
+    }
+
+    /** BRAHMA: five lotus petals open round the hull and spread through the world, circling every foe in turn (docs/ASTRA_NEXT_PLAN.md section 4). */
+    public void startLotus(Ship from, int seatId, float damageMult, float pow, long seed) {
+        reset(from, seatId, damageMult, pow, seed);
+        kind = LOTUS;
+        radius = PETAL_RANGE;
+        for (int i = 0; i < PETALS; i++) {
+            lstate[i] = 0;
+            lt[i] = 0f;
+            lhits[i] = 0;
+            ltarget[i] = null;
+            lfade[i] = 0f;
+            lmote[i] = 0f;
+            lstrike[i] = 0;
+            lx[i] = from.x;
+            ly[i] = from.y;
+            lh[i] = -1.5707964f + i * 6.2831853f / PETALS;
+            la[i] = lh[i];
+        }
+    }
+
     public void cancel() {
         kind = NONE;
         n = 0;
+        strikes.clear();
+        bolts.clear();
         for (Enemy e : caught) e.caught = 0f;
         caught.clear();
     }
@@ -125,9 +274,11 @@ public final class AstraFlow {
         if (kind == NONE) return;
         if (ship == null) { cancel(); return; }
         t += dt;
-        if (kind == AGNI) stepAgni(w, dt); else stepVayu(w, dt);
+        for (int i = bursts.size() - 1; i >= 0; i--) if ((bursts.get(i).t += dt) > bursts.get(i).life) bursts.remove(i);
+        if (kind == AGNI) stepAgni(w, dt); else if (kind == VAYU) stepVayu(w, dt); else if (kind == LIGHTNING) stepLightning(w, dt);
+        else if (kind == BOULDER) stepBoulders(w, dt); else if (kind == LOTUS) { stepLotus(w, dt); return; }
         for (int i = n - 1; i >= 0; i--) if (age[i] >= life[i]) remove(i);
-        float end = kind == AGNI ? 3.1f : T_END;
+        float end = kind == AGNI ? 3.1f : kind == BOULDER ? T_ROCK + 0.3f : T_END;
         if (t > end && n == 0 && (kind != AGNI || t > 3.5f)) cancel();
     }
 
@@ -147,6 +298,7 @@ public final class AstraFlow {
         stream[i] = strm;
         fr[i] = rng.nextInt(8);
         aux[i] = a;
+        variant[i] = 0;
         return i;
     }
 
@@ -154,7 +306,7 @@ public final class AstraFlow {
         n--;
         if (i == n) return;
         px[i] = px[n]; py[i] = py[n]; ph[i] = ph[n]; age[i] = age[n]; life[i] = life[n]; size[i] = size[n]; spd[i] = spd[n]; aux[i] = aux[n];
-        row[i] = row[n]; fr[i] = fr[n]; stream[i] = stream[n]; sheet[i] = sheet[n]; mode[i] = mode[n];
+        row[i] = row[n]; fr[i] = fr[n]; stream[i] = stream[n]; sheet[i] = sheet[n]; mode[i] = mode[n]; variant[i] = variant[n];
     }
 
     // ---- AGNI: the Pyre Bloom --------------------------------------------------------------------------------------------------------------
@@ -297,6 +449,228 @@ public final class AstraFlow {
                 if (!eligible(e) || e.burnT > 1f) continue;
                 float dx = e.x - s[0], dy = e.y - s[1];
                 if (dx * dx + dy * dy < 36f * 36f) { e.burnT = Math.max(e.burnT, 1f); e.burnOwner = seat; }
+            }
+        }
+    }
+
+    // ---- PRITHVI: the Boulders -----------------------------------------------------------------------------------------------------------
+
+    private int boulderCount() {
+        int c = 0;
+        for (int i = 0; i < n; i++) if (mode[i] == 4 || mode[i] == 5) c++;
+        return c;
+    }
+
+    private void addBurst(float x, float y, int rw, float life, float sz) {
+        if (bursts.size() > 90) return;
+        Burst b = new Burst();
+        b.x = x; b.y = y; b.row = rw; b.life = life; b.size = sz;
+        bursts.add(b);
+    }
+
+    /** A boulder breaks into three to five chunks flying on in a cone about `base` (back off a wall, onward through a foe); a chunk into six to nine pebbles. */
+    private void breakRock(int i, float base, int gen) {
+        float x = px[i], y = py[i], sz = size[i];
+        if (gen == 5) {
+            addBurst(x, y, 5, 0.5f, sz);
+            addBurst(x, y, 9, 0.6f, sz * 0.9f);
+            int c = 3 + rng.nextInt(3);
+            for (int k = 0; k < c && n < CAP - 8; k++) {
+                int p = spawn(x, y, base + (rng.nextFloat() - 0.5f) * 2.4f, 280f + 190f * rng.nextFloat(), 0.9f, sz * (0.7f + 0.3f * rng.nextFloat()), 0, 3, 6, rng.nextBoolean() ? 1 : -1, rng.nextFloat() * 6.28f);
+                if (p >= 0) { variant[p] = (byte) (rng.nextBoolean() ? 6 : 7); row[p] = variant[p]; }
+            }
+        } else {
+            addBurst(x, y, 10, 0.45f, sz);
+            int c = 6 + rng.nextInt(4);
+            for (int k = 0; k < c && n < CAP - 4; k++) {
+                int p = spawn(x, y, base + (rng.nextFloat() - 0.5f) * 3.2f, 200f + 190f * rng.nextFloat(), 0.5f, 1f, 8, 3, 7, 0, rng.nextFloat() * 6.28f);
+                if (p >= 0) variant[p] = 8;
+            }
+        }
+        age[i] = life[i];
+    }
+
+    private void stepBoulders(World w, float dt) {
+        float cx = ship.x, cy = ship.y;
+        float R = radius;
+        cand.clear();
+        for (Enemy e : w.enemies) {
+            if (!eligible(e)) continue;
+            float dx = e.x - cx, dy = e.y - cy;
+            if (dx * dx + dy * dy < 1400f * 1400f) cand.add(e);
+        }
+        if (t < T_ROCK) {                                                  // a boulder forms every 60 ms at a point of the mandala, and is thrown
+            rockAcc += dt * 26f;
+            while (rockAcc >= 1f) {
+                rockAcc -= 1f;
+                if (boulderCount() >= 28 || n > CAP - 60) continue;
+                float a = rng.nextFloat() * 6.2831853f, rr = R * (0.35f + 0.6f * rng.nextFloat());
+                float x = cx + (float) Math.cos(a) * rr, y = cy + (float) Math.sin(a) * rr, h;
+                if (!cand.isEmpty() && rng.nextFloat() < 0.45f) {          // about half are thrown at a foe, with a little error
+                    Enemy e = cand.get(rng.nextInt(cand.size()));
+                    h = (float) Math.atan2(e.y - y, e.x - x) + (rng.nextFloat() - 0.5f) * 0.25f;
+                } else h = a + (rng.nextFloat() - 0.5f) * 1.6f;            // the rest fly out of the mandala in any direction: into walls, and whatever is between
+                int p = spawn(x, y, h, 520f + 240f * rng.nextFloat(), 99f, 0.7f + 0.8f * rng.nextFloat(), 0, 3, 4, rng.nextBoolean() ? 1 : -1, rng.nextFloat() * 6.28f);
+                if (p >= 0) variant[p] = (byte) (1 + rng.nextInt(4));
+            }
+        }
+        for (int i = 0; i < n; i++) {
+            if (mode[i] < 4) continue;
+            float dtl = dt;
+            age[i] += dtl;
+            aux[i] += stream[i] * (mode[i] == 7 ? 9f : mode[i] == 6 ? 7f : 3.2f) * dtl;       // tumbling
+            if (mode[i] == 4) {                                            // forming: pebbles and dust draw together, then it goes
+                if (age[i] >= 0.25f) { mode[i] = 5; age[i] = 0f; life[i] = 1.8f; row[i] = variant[i]; }
+                continue;
+            }
+            float sp = spd[i] * dtl;
+            float nx = px[i] + (float) Math.cos(ph[i]) * sp, ny = py[i] + (float) Math.sin(ph[i]) * sp;
+            boolean hitWall = w.blockedPx(nx, ny);
+            float hitR = mode[i] == 5 ? 20f * size[i] : mode[i] == 6 ? 12f * size[i] : 6f;
+            Enemy hit = null;
+            for (int k = 0; k < cand.size() && !hitWall; k++) {
+                Enemy e = cand.get(k);
+                float rr = hitR + Math.max(e.w, e.h) * 0.4f, dx = e.x - nx, dy = e.y - ny;
+                if (dx * dx + dy * dy < rr * rr) { hit = e; break; }
+            }
+            if (!w.clientSeat) {                                           // an enemy round that touches a rock is destroyed
+                for (Bullet b : w.bullets) {
+                    if (!b.hostile || b.dead) continue;
+                    float dx = b.x - nx, dy = b.y - ny, rr = hitR + 4f;
+                    if (dx * dx + dy * dy < rr * rr) b.dead = true;
+                }
+            }
+            if (hit != null) {                                             // the first foe it touches takes it, once
+                float dmg = (mode[i] == 5 ? ROCK_DAMAGE * size[i] : mode[i] == 6 ? CHUNK_DAMAGE * size[i] : PEBBLE_DAMAGE) * dm;
+                if (!w.clientSeat) hit.hurt(dmg, w, seat);
+                if (mode[i] == 7) { age[i] = life[i]; addBurst(nx, ny, 9, 0.3f, 0.5f); continue; }
+                px[i] = nx; py[i] = ny;
+                breakRock(i, ph[i], mode[i]);
+                continue;
+            }
+            if (hitWall) {
+                if (mode[i] == 7) { age[i] = life[i]; continue; }
+                breakRock(i, ph[i] + 3.1415927f, mode[i]);                 // it bursts back off the wall
+                continue;
+            }
+            px[i] = nx;
+            py[i] = ny;
+            if (age[i] >= life[i] && mode[i] != 7) breakRock(i, ph[i], mode[i]);
+            else if (mode[i] == 7) spd[i] *= 1f - 1.2f * dt;
+        }
+    }
+
+    // ---- BRAHMA: the Lotus ---------------------------------------------------------------------------------------------------------------
+
+    private void stepLotus(World w, float dt) {
+        float cx = ship.x, cy = ship.y;
+        boolean any = false;
+        for (int i = 0; i < PETALS; i++) {                                 // fade and motes first (the petal's own picture lives in the renderer)
+            if (lstate[i] == 4) continue;
+            any = true;
+            lt[i] += dt;
+            lmote[i] -= dt;
+            if (lmote[i] <= 0f && n < CAP - 4) {                            // petal flecks left behind
+                lmote[i] = 0.03f;
+                int p = spawn(lx[i], ly[i], lh[i] + 3.1415927f + (rng.nextFloat() - 0.5f), 40f, 0.5f, 0.8f, 5, 4, 0, i, 0f);
+                if (p >= 0) variant[p] = (byte) i;
+            }
+            switch (lstate[i]) {
+                case 0: {                                                   // BLOOM: the five unfold round the hull in a turning ring
+                    float u = Math.min(1f, lt[i] / T_BLOOM), r = 70f * (1f - (1f - u) * (1f - u)), a = lh[i] + lt[i] * 0.8f;
+                    lx[i] = cx + (float) Math.cos(a) * r;
+                    ly[i] = cy + (float) Math.sin(a) * r;
+                    la[i] = a;
+                    if (lt[i] >= T_BLOOM) { lstate[i] = 1; lt[i] = 0f; lh[i] = a; }
+                    break;
+                }
+                case 1: {                                                   // SEEK: straight at its foe, no arc, no gravity
+                    if (ltarget[i] == null || ltarget[i].dead) ltarget[i] = pickTarget(w, i);
+                    Enemy e = ltarget[i];
+                    if (e == null) { lstate[i] = 3; lt[i] = 0f; break; }
+                    float want = (float) Math.atan2(e.y - ly[i], e.x - lx[i]);
+                    lh[i] += Math.max(-9f * dt, Math.min(9f * dt, World.wrapAngle(want - lh[i])));
+                    float sp = PETAL_SPEED * Math.min(1f, 0.35f + lt[i] * 2f) * dt;
+                    lx[i] += (float) Math.cos(lh[i]) * sp;
+                    ly[i] += (float) Math.sin(lh[i]) * sp;
+                    if ((e.x - lx[i]) * (e.x - lx[i]) + (e.y - ly[i]) * (e.y - ly[i]) < 95f * 95f) {
+                        lstate[i] = 2;
+                        lt[i] = 0f;
+                        lstrike[i] = 0;
+                        la[i] = (float) Math.atan2(ly[i] - e.y, lx[i] - e.x);
+                        lfade[i] = (float) Math.hypot(lx[i] - e.x, ly[i] - e.y);                  // it circles from where it arrived, closing in
+                    }
+                    break;
+                }
+                case 2: {                                                   // CIRCLE: round the foe, closing in, striking three times
+                    Enemy e = ltarget[i];
+                    if (e == null || e.dead) { lstate[i] = 1; lt[i] = 0f; ltarget[i] = null; break; }
+                    float u = Math.min(1f, lt[i] / ORBIT_TIME);
+                    la[i] += 14f * dt;
+                    lr[i] = lfade[i] + (38f - lfade[i]) * u;
+                    lx[i] = e.x + (float) Math.cos(la[i]) * lr[i];
+                    ly[i] = e.y + (float) Math.sin(la[i]) * lr[i];
+                    lh[i] = la[i] + 1.5707964f;
+                    if (lstrike[i] < 3 && lt[i] >= 0.12f + 0.16f * lstrike[i]) { lstrike[i]++; strikePetal(w, i, e); }
+                    if (lt[i] >= ORBIT_TIME) { lhits[i]++; ltarget[i] = null; lstate[i] = 1; lt[i] = 0f; lh[i] = la[i] + 1.5707964f; }
+                    break;
+                }
+                case 3: {                                                   // RETURN: nothing left: back to the hull, and fade
+                    float want = (float) Math.atan2(cy - ly[i], cx - lx[i]);
+                    lh[i] += Math.max(-9f * dt, Math.min(9f * dt, World.wrapAngle(want - lh[i])));
+                    lx[i] += (float) Math.cos(lh[i]) * PETAL_SPEED * dt;
+                    ly[i] += (float) Math.sin(lh[i]) * PETAL_SPEED * dt;
+                    if ((cx - lx[i]) * (cx - lx[i]) + (cy - ly[i]) * (cy - ly[i]) < 50f * 50f) { lstate[i] = 4; lfade[i] = 0f; }
+                    if (lt[i] > 4f) lstate[i] = 4;
+                    break;
+                }
+                default:
+            }
+        }
+        for (int i = n - 1; i >= 0; i--) {                                  // the flecks
+            age[i] += dt;
+            px[i] += (float) Math.cos(ph[i]) * spd[i] * dt;
+            py[i] += (float) Math.sin(ph[i]) * spd[i] * dt;
+            if (age[i] >= life[i]) remove(i);
+        }
+        if (!any || t > LOTUS_MAX) cancel();
+    }
+
+    /** The nearest living foe within range that no other petal is on (or, if every one is taken, the nearest). */
+    private Enemy pickTarget(World w, int petal) {
+        Enemy best = null, bestAny = null;
+        float bd = Float.MAX_VALUE, bdAny = Float.MAX_VALUE;
+        for (Enemy e : w.enemies) {
+            if (!eligible(e)) continue;
+            float dx = e.x - ship.x, dy = e.y - ship.y;
+            if (dx * dx + dy * dy > PETAL_RANGE * PETAL_RANGE) continue;
+            if (e.boss && e.hp <= e.maxHp * BOSS_FLOOR) continue;           // a ruler the petals have already hurt enough is left
+            float ex = e.x - lx[petal], ey = e.y - ly[petal], d = ex * ex + ey * ey;
+            if (d < bdAny) { bdAny = d; bestAny = e; }
+            boolean taken = false;
+            for (int k = 0; k < PETALS; k++) if (k != petal && ltarget[k] == e && lstate[k] != 4) { taken = true; break; }
+            if (!taken && d < bd) { bd = d; best = e; }
+        }
+        return best != null ? best : bestAny;
+    }
+
+    /** One of a petal's three strikes in its circling: a third of the damage, and the petal's own element on the first. */
+    private void strikePetal(World w, int petal, Enemy e) {
+        float[] c = World.TATVA_RGB[petal];
+        w.addEffect(Effect.ring(e.x, e.y, 30f, c[0], c[1], c[2]));
+        w.addEffect(Effect.spark(e.x, e.y, (float) Math.cos(la[petal]) * 160f, (float) Math.sin(la[petal]) * 160f, 4f, 0.3f, 3f, c[0], c[1], c[2]));
+        if (w.clientSeat) return;
+        if (e.boss && e.hp <= e.maxHp * BOSS_FLOOR) return;
+        float total = e.boss ? 0.04f * e.maxHp : Math.max(0.6f * e.maxHp, 220f);
+        float mult = petal == 4 ? 1.4f : petal == 1 ? 1.25f : 1f;          // stone strikes heavily, the gale cuts deep
+        e.hurt(total / 3f * mult * Math.min(1.5f, dm), w, seat);
+        if (lstrike[petal] == 1 && !e.dead) {
+            switch (petal) {
+                case 0: if (!e.boss) { e.caught = Math.max(e.caught, 0.6f); e.active = true; } break;                       // Akasha: shock
+                case 2: ignite(e); break;                                                                                  // Agni: it burns
+                case 3: if (seat == 0) w.ship.hp = Math.min(w.ship.maxHp(), w.ship.hp + 0.015f * w.ship.maxHp()); break;   // Jala: the pilot is mended
+                case 4: if (!e.boss) { e.caught = Math.max(e.caught, 0.35f); e.active = true; } break;                     // Prithvi: staggered
+                default:
             }
         }
     }

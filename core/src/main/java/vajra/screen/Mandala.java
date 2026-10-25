@@ -41,7 +41,7 @@ final class Mandala {
     static void draw(ShapeRenderer s, float cx, float cy, float k, float t, boolean full, int style) {
         int tier = vajra.world.Astra.TIER[MathUtils.clamp(style, 0, vajra.world.Astra.KINDS - 1)];   // how deep its loka lies: 0 Atala .. 6 Patala
         LIGHT = light(k);
-        float R = (128f - 62f * k) * (1f + 0.12f * tier);                                          // the deeper, the greater
+        float R = vajra.world.Astra.mandalaRadius(style, k);                                       // the deeper, the greater: the same circle that shields the pilot
         float pulse = full ? 0.82f + 0.18f * MathUtils.sin(t * 14f) : 1f;
         float base = (0.34f + 0.5f * k) * pulse;
         float[] P = PRIMARY[style], A = ACCENT[style];

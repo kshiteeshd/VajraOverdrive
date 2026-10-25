@@ -230,11 +230,11 @@ class AstraTest {
     @Test
     void withNothingLockedTheReleaseStillFliesAlongTheNose() {
         World w = arena(0);
-        fuel(w, Astra.AKASHA, 5);
+        fuel(w, Astra.JALA, 5);
         w.astraBegin();
         hold(w, 1.2f);
         assertTrue(w.astraLoose(), "letting go looses the astra whether or not a foe is in front");
-        assertEquals(0, w.hangar.shards[Astra.AKASHA], "and it is paid for");
+        assertEquals(0, w.hangar.shards[Astra.JALA], "and it is paid for");
         assertTrue(w.astra.stream().anyMatch(c -> c.armed), "the cubes are in flight");
         float y0 = w.astra.get(0).y;
         for (int i = 0; i < 20; i++) w.updateAstra(1 / 60f);
@@ -244,7 +244,7 @@ class AstraTest {
     @Test
     void aCubeLoosedAtNothingFindsAFoeItMeetsAhead() {
         World w = arena(0);
-        fuel(w, Astra.AKASHA, 5);
+        fuel(w, Astra.JALA, 5);
         w.astraBegin();
         hold(w, 1.2f);
         w.astraLoose();                                                  // nothing was locked
@@ -258,8 +258,8 @@ class AstraTest {
     @Test
     void longerHoldsLooseMoreCubesAndHarderHits() {
         World quick = arena(12), full = arena(12);
-        fuel(quick, Astra.AKASHA, 5);
-        fuel(full, Astra.AKASHA, 5);
+        fuel(quick, Astra.JALA, 5);
+        fuel(full, Astra.JALA, 5);
         quick.astraBegin();
         hold(quick, 0.6f);
         quick.astraLoose();
@@ -410,12 +410,9 @@ class AstraTest {
     }
 
     @Test
-    void theBrahmastraLoosesAllFiveElementsAtOnce() {
+    void theBrahmastraBloomsAsALotusAndPaysFiveOfEveryElement() {
         World w = invoke(Astra.BRAHMA, 6, Astra.WIND_FULL);
-        boolean[] seen = new boolean[Astra.ELEMENTS];
-        for (AstraCube c : w.astra) seen[c.element] = true;
-        for (int t = 0; t < Astra.ELEMENTS; t++) assertTrue(seen[t], "element " + t + " is in the volley");
-        assertEquals(Astra.fullCubes(Astra.BRAHMA), w.astra.size());
+        assertEquals(vajra.world.AstraFlow.LOTUS, w.flow.kind, "the last arrow is a lotus: five petals");
         for (int t = 0; t < Astra.ELEMENTS; t++) assertEquals(0, w.hangar.shards[t], "five of each were paid");
     }
 
@@ -453,12 +450,12 @@ class AstraTest {
         Enemy a = hub.enemies.get(0), b = hub.enemies.get(1);
         a.netId = 11;
         b.netId = 12;
-        hub.astraFor(1, Astra.AKASHA, 1f, new int[] {11, 12});
+        hub.astraFor(1, Astra.JALA, 1f, new int[] {11, 12});
         assertEquals(2, hub.astra.size());
         for (AstraCube c : hub.astra) {
             assertEquals(1, c.owner, "the kill is the guest's");
-            assertEquals(Astra.AKASHA, c.element);
-            assertEquals(Astra.DAMAGE[Astra.AKASHA] * Astra.damageMult(1f), c.damage, 1e-3f);
+            assertEquals(Astra.JALA, c.element);
+            assertEquals(Astra.DAMAGE[Astra.JALA] * Astra.damageMult(1f), c.damage, 1e-3f);
         }
         hub.astra.clear();
         hub.astraFor(1, 99, 1f, new int[] {11}); // a nonsense kind is dropped, never a crash

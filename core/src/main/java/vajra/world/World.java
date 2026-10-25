@@ -1355,6 +1355,9 @@ public class World {
         float v = 1f;
         if (astraInvoking) v = Math.max(v, 1f + 0.3f * Astra.k(astraCharge));
         if (flow.kind == AstraFlow.AGNI && flow.t < 2.9f) v = Math.max(v, 1.9f);
+        if (flow.kind == AstraFlow.LIGHTNING) v = Math.max(v, 1.6f);
+        if (flow.kind == AstraFlow.BOULDER) v = Math.max(v, 1.7f);
+        if (flow.kind == AstraFlow.LOTUS) v = Math.max(v, 2.0f);
         if (flow.kind == AstraFlow.VAYU && flow.t < AstraFlow.T_END) v = Math.max(v, Math.max(1.5f, Math.min(2.0f, flow.radius / 330f)));
         if (gazeT > 0f) v = Math.max(v, 1.9f);
         for (AstraCube c : astra) if (c.armed) { v = Math.max(v, 1.35f); break; }
@@ -1460,6 +1463,34 @@ public class World {
         ship.dipT = 0.35f;
         ship.trauma = Math.max(ship.trauma, 0.4f + 0.4f * power);
         float grand = 1f + 0.15f * Astra.TIER[kind];                                   // the deeper the astra, the greater its opening
+        if (kind == Astra.PRITHVI) {                                                   // boulders out of the mandala (which stays)
+            dropHeldCubes();
+            flow.startBoulders(ship, 0, dm, power, (long) (clock * 1000f) * 31L + 5L);
+            boons(kind);
+            if (astraWire != null) astraWire.astra(kind, power, new int[0], 0);
+            astraLockCount = 0;
+            return true;
+        }
+        if (kind == Astra.BRAHMA) {                                                    // the lotus: five petals spread through the world
+            dropHeldCubes();
+            flow.startLotus(ship, 0, dm, power, (long) (clock * 1000f) * 31L + 6L);
+            boons(kind);
+            if (astraWire != null) astraWire.astra(kind, power, new int[0], 0);
+            float[] lo = astraRgb();
+            addEffect(Effect.ring(ship.x, ship.y, (180f + 90f * power) * grand, lo[0], lo[1], lo[2]));
+            astraLockCount = 0;
+            return true;
+        }
+        if (kind == Astra.AKASHA) {                                                    // the circular lightning
+            dropHeldCubes();
+            flow.startLightning(ship, 0, dm, power, (long) (clock * 1000f) * 31L + 3L);
+            boons(kind);
+            if (astraWire != null) astraWire.astra(kind, power, new int[0], 0);
+            float[] lt = astraRgb();
+            addEffect(Effect.ring(ship.x, ship.y, (160f + 80f * power) * grand, lt[0], lt[1], lt[2]));
+            astraLockCount = 0;
+            return true;
+        }
         if (kind == Astra.AGNI || kind == Astra.VAYU) {                                // a flow, not cubes: fire pours out of the hull / the wind turns into a tornado
             long seed = (long) (clock * 1000f) * 31L + 7L;
             if (kind == Astra.AGNI) {
@@ -1530,6 +1561,21 @@ public class World {
         }
     }
 
+    /** THE MANDALA IS A SHIELD: while an astra is being formed every enemy round that touches its circle is destroyed where it touches, so nothing reaches the hull. */
+    private void mandalaGuard(float k) {
+        float R = Astra.mandalaRadius(astraKind, k), r2 = R * R;
+        for (int i = 0; i < bullets.size(); i++) {
+            Bullet b = bullets.get(i);
+            if (!b.hostile || b.dead) continue;
+            float dx = b.x - ship.x, dy = b.y - ship.y;
+            if (dx * dx + dy * dy > r2) continue;
+            b.dead = true;
+            float[] e = astraRgb();
+            addEffect(Effect.ring(b.x, b.y, 16f, crestR(), crestG(), crestB()));
+            addEffect(Effect.spark(b.x, b.y, -dx * 0.5f, -dy * 0.5f, 3f, 0.3f, 3f, e[0], e[1], e[2]));
+        }
+    }
+
     /** Grow the cage to the cubes the invocation has earned so far, spaced evenly round the hull. */
     private void syncCage() {
         int want = Astra.cubesAt(astraKind, astraCharge);
@@ -1592,6 +1638,9 @@ public class World {
             if (kind == Astra.AGNI) flow.startAgni(from, seat, dm, power, seed); else flow.startVayu(from, seat, dm, power, seed);
             return;
         }
+        if (kind == Astra.AKASHA) { flow.startLightning(from, seat, dm, power, (long) (clock * 1000f) * 31L + seat); return; }
+        if (kind == Astra.PRITHVI) { flow.startBoulders(from, seat, dm, power, (long) (clock * 1000f) * 31L + seat); return; }
+        if (kind == Astra.BRAHMA) { flow.startLotus(from, seat, dm, power, (long) (clock * 1000f) * 31L + seat); return; }
         if (ids.length == 0) { // the guest loosed it with nothing locked: the same straight fan, from that hull
             int count = Astra.cubesAt(kind, Astra.WIND_MIN + Math.max(0f, Math.min(1f, power)) * (Astra.WIND_FULL - Astra.WIND_MIN));
             for (int i = 0; i < count; i++) {
@@ -1696,6 +1745,7 @@ public class World {
                 float k = windK();
                 syncCage();
                 for (AstraCube c : astra) if (!c.armed) c.hold(ship, dt, k, WIND_R_OUT, WIND_R_IN);
+                mandalaGuard(k);
                 refreshLocks();
                 ship.trauma = Math.max(ship.trauma, 0.1f + 0.2f * k);
                 if (k > 0.5f && fxRng.nextFloat() < 0.6f * k && !astra.isEmpty()) { // sparks off the cage come with the light, in the second half of the charge
@@ -1706,6 +1756,7 @@ public class World {
         }
         astraPunch *= (float) Math.exp(-4.5f * dt);
         if (!astraInvoking && flow.holdsShards()) for (AstraCube c : astra) if (!c.armed) c.hold(ship, dt, 1f, WIND_R_OUT, WIND_R_IN);   // the storm's shards keep circling
+        if (!astraInvoking && flow.kind == AstraFlow.BOULDER && flow.t < AstraFlow.T_ROCK + 0.3f) { astraKind = Astra.PRITHVI; mandalaGuard(1f); }   // and the mandala that throws the rocks is still a shield
         flow.step(this, dt);
         if (gazeT > 0f) {
             gazeT = Math.max(0f, gazeT - dt);

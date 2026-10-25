@@ -139,6 +139,12 @@ public final class Astra {
     /** Foes locked after `charge` seconds: one for every cube gathered, at most. */
     public static int locksAt(int kind, float charge) { return cubesAt(kind, charge); }
 
+    /** The radius of an astra's mandala at charge k (0..1): it tightens as the charge builds and is bigger the deeper the astra's loka. The mandala is drawn at exactly this size
+     *  and the same circle is the pilot's shield while it forms (every enemy round that touches it is destroyed). */
+    public static float mandalaRadius(int kind, float k) {
+        return (128f - 62f * Math.max(0f, Math.min(1f, k))) * (1f + 0.12f * TIER[Math.max(0, Math.min(KINDS - 1, kind))]);
+    }
+
     public static String key(int kind) { return kind >= 0 && kind < KINDS ? NAME[kind] : NAME[BRAHMA]; }
 
     /** The Pashupatastra's beam: seconds it burns, damage a second (it ignores armour and rock), half-width and length in px. */

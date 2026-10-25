@@ -56,7 +56,7 @@ class FlowShotTest {
         cfg.setWindowedMode(64, 64);
         cfg.setInitialVisible(false);
         cfg.disableAudio(true);
-        int[] lit = new int[2];
+        int[] lit = new int[5];
         new Lwjgl3Application(new ApplicationAdapter() {
             @Override
             public void create() {
@@ -66,10 +66,17 @@ class FlowShotTest {
                     SpriteBatch batch = new SpriteBatch();
                     ShapeRenderer sr = new ShapeRenderer(30000);
                     FrameBuffer fbo = new FrameBuffer(Pixmap.Format.RGBA8888, W, H, false);
-                    for (int which = 0; which < 2; which++) {
+                    for (int which = 0; which < 5; which++) {
                         World w = world(which + 3);
-                        if (which == 0) w.flow.startAgni(w.ship, 0, 1f, 1f, 5L); else w.flow.startVayu(w.ship, 0, 1f, 1f, 5L);
-                        float[] at = which == 0 ? new float[] {0.5f, 1.0f, 1.7f, 2.6f} : new float[] {0.7f, 1.3f, 1.9f, 2.5f};
+                        switch (which) {
+                            case 0: w.flow.startAgni(w.ship, 0, 1f, 1f, 5L); break;
+                            case 1: w.flow.startVayu(w.ship, 0, 1f, 1f, 5L); break;
+                            case 2: w.flow.startLightning(w.ship, 0, 1f, 1f, 5L); break;
+                            case 3: w.flow.startBoulders(w.ship, 0, 1f, 1f, 5L); break;
+                            default: w.flow.startLotus(w.ship, 0, 1f, 1f, 5L); break;
+                        }
+                        float[][] moments = {{0.5f, 1.0f, 1.7f, 2.6f}, {0.7f, 1.3f, 1.9f, 2.5f}, {0.08f, 0.2f, 0.4f, 0.6f}, {0.5f, 1.2f, 2.0f, 3.0f}, {0.5f, 1.2f, 2.0f, 3.2f}};
+                        float[] at = moments[which];
                         Pixmap sheet = new Pixmap(W * 2, H * 2, Pixmap.Format.RGBA8888);
                         float t = 0;
                         for (int m = 0; m < 4; m++) {
@@ -114,7 +121,7 @@ class FlowShotTest {
                             sheet.drawPixmap(pm, 0, 0, W, H, (m % 2) * W, (m / 2) * H, W, H);
                             pm.dispose();
                         }
-                        com.badlogic.gdx.graphics.PixmapIO.writePNG(Gdx.files.local(which == 0 ? "build/flow-agni.png" : "build/flow-vayu.png"), sheet);
+                        com.badlogic.gdx.graphics.PixmapIO.writePNG(Gdx.files.local("build/flow-" + new String[] {"agni", "vayu", "akasha", "prithvi", "brahma"}[which] + ".png"), sheet);
                         sheet.dispose();
                     }
                     fx.dispose();
@@ -131,5 +138,8 @@ class FlowShotTest {
         if (boom.get() != null) throw new AssertionError("the flows failed to draw", boom.get());
         assertTrue(lit[0] > 1500, "Agni's bloom lights the frame (" + lit[0] + ")");
         assertTrue(lit[1] > 1500, "Vayu's tornado lights the frame (" + lit[1] + ")");
+        assertTrue(lit[2] > 600, "Akasha's lightning lights the frame (" + lit[2] + ")");
+        assertTrue(lit[3] > 600, "Prithvi's boulders and mandala show (" + lit[3] + ")");
+        assertTrue(lit[4] > 600, "Brahma's petals show (" + lit[4] + ")");
     }
 }
