@@ -24,12 +24,23 @@ final class Mandala {
     private static final float[][] ACCENT = {{1f, 0.86f, 0.5f}, {0.9f, 1f, 1f}, {1f, 0.86f, 0.5f}, {0.7f, 0.95f, 1f}, {1f, 0.9f, 0.55f}, {1f, 1f, 1f}, {1f, 0.8f, 0.3f}};
     private static final float[] EMBER = {1f, 0.58f, 0.18f}, WHITE = {1f, 1f, 1f}, RED = {1f, 0.2f, 0.2f};
 
+    /** THE LIGHT OF THE CHARGE, 0..1 (set at the top of every {@link #draw}): the first half of the invocation is plain lines and shapes, building anticipation;
+     *  only then do the glow, the heads of what is forming, the pulsing energy, the circling lights and the sparks come in, and they are full at the end. */
+    private static float LIGHT;
+
+    /** The light at charge k: nothing until half the invocation has passed, full by 95%. */
+    static float light(float k) {
+        float u = MathUtils.clamp((k - 0.5f) / 0.45f, 0f, 1f);
+        return u * u * (3f - 2f * u);
+    }
+
     // scratch for one frame (the renderer is single-threaded)
     private static final float[] PX = new float[16], PY = new float[16];
 
     /** The whole mandala. `k` is the charge 0..1, `t` the world clock, `full` a charge at its peak. */
     static void draw(ShapeRenderer s, float cx, float cy, float k, float t, boolean full, int style) {
         int tier = vajra.world.Astra.TIER[MathUtils.clamp(style, 0, vajra.world.Astra.KINDS - 1)];   // how deep its loka lies: 0 Atala .. 6 Patala
+        LIGHT = light(k);
         float R = (128f - 62f * k) * (1f + 0.12f * tier);                                          // the deeper, the greater
         float pulse = full ? 0.82f + 0.18f * MathUtils.sin(t * 14f) : 1f;
         float base = (0.34f + 0.5f * k) * pulse;
@@ -44,7 +55,7 @@ final class Mandala {
             default: brahma(s, cx, cy, R, k, t, base, P, A); break;
         }
         majesty(s, cx, cy, R, k, t, tier, base, P, A);
-        if (full) { // the full mantra: the whole flares and rings of light spill out
+        if (full) { // the full mantra: the whole flares and rings of light spill out (the light is at its height)
             for (int i = 0; i < 2; i++) {
                 float ph = (t * 1.8f + i * 0.5f) % 1f;
                 col(s, i == 0 ? P : A, (i == 0 ? 0.6f : 0.35f) * (1f - ph));
@@ -59,7 +70,10 @@ final class Mandala {
     private static float st(float k, float a, float b) { return MathUtils.clamp((k - a) / (b - a), 0f, 1f); }
 
     /** The pulse of energy through a stood element: a wave running outward (rN: 0 at the heart to 1 at the rim) and round (angle a). 0.45 .. 1.4. */
-    static float flow(float t, float rN, float a) { return 0.45f + 0.95f * (0.5f + 0.5f * MathUtils.sin(t * 6.5f - rN * 7f + a * 1.5f)); }
+    static float flow(float t, float rN, float a) {
+        float raw = 0.45f + 0.95f * (0.5f + 0.5f * MathUtils.sin(t * 6.5f - rN * 7f + a * 1.5f));
+        return 1f + LIGHT * (raw - 1f);                                  // plain and steady until the light comes, then it pulses
+    }
 
     private static void col(ShapeRenderer s, float[] c, float a) { s.setColor(c[0], c[1], c[2], MathUtils.clamp(a, 0f, 1f)); }
 
@@ -86,15 +100,18 @@ final class Mandala {
 
     /** The bright tip of something still forming. */
     private static void head(ShapeRenderer s, float x, float y, float w) {
+        if (LIGHT < 0.04f) return;                                       // early on the line simply grows: no glow at its tip
         float r = s.getColor().r, g = s.getColor().g, b = s.getColor().b;
-        s.setColor(1f, 1f, 1f, 0.9f);
+        s.setColor(1f, 1f, 1f, 0.9f * LIGHT);
         s.circle(x, y, w * 1.4f + 1.2f, 8);
-        s.setColor(r, g, b, 0.45f);
+        s.setColor(r, g, b, 0.45f * LIGHT);
         s.circle(x, y, w * 3f + 3f, 10);
     }
 
     /** A circling light on a ring: `n` runners, each a small bloom. */
     private static void runners(ShapeRenderer s, float cx, float cy, float r, float t, int n, float speed, float[] c, float a) {
+        a *= LIGHT;
+        if (a < 0.02f) return;
         for (int i = 0; i < n; i++) {
             float ang = t * speed + i * TAU / n, x = cx + r * MathUtils.cos(ang), y = cy + r * MathUtils.sin(ang);
             s.setColor(c[0], c[1], c[2], 0.35f * a);
@@ -172,14 +189,16 @@ final class Mandala {
     }
 
     private static void bindu(ShapeRenderer s, float x, float y, float r, float[] c, float a, float t) {
-        s.setColor(c[0], c[1], c[2], 0.3f * a);
+        s.setColor(c[0], c[1], c[2], 0.3f * a * LIGHT);
         s.circle(x, y, r * 2.6f, 14);
         s.setColor(1f, 1f, 1f, a);
-        s.circle(x, y, r * (1f + 0.25f * MathUtils.sin(t * 10f)), 10);
+        s.circle(x, y, r * (1f + 0.25f * LIGHT * MathUtils.sin(t * 10f)), 10);
     }
 
     /** Embers (or whatever the style sheds) rising off the circle once the charge is high: `n` small lights drifting outward and up. */
     private static void sparks(ShapeRenderer s, float cx, float cy, float R, float t, int n, float[] c, float a) {
+        a *= LIGHT;
+        if (a < 0.02f) return;
         for (int j = 0; j < n; j++) {
             float ph = (t * 0.55f + j * 0.0713f) % 1f, ang = j * 2.399963f;
             float rr = R * (0.55f + 0.45f * ph);
@@ -193,7 +212,7 @@ final class Mandala {
      *  arcs; 4 satellites circling the whole; 5 a crown of spikes; 6 a pillar of light and the five elements wheeling round it. */
     private static void majesty(ShapeRenderer s, float cx, float cy, float R, float k, float t, int tier, float base, float[] P, float[] A) {
         for (int i = 0; i < 4; i++) {                                     // a soft halo under it all
-            s.setColor(P[0], P[1], P[2], (0.012f + 0.004f * tier) * k);
+            s.setColor(P[0], P[1], P[2], (0.012f + 0.004f * tier) * LIGHT);   // the soft halo is light: it comes with the light
             s.circle(cx, cy, R * (1.32f - 0.1f * i), 44);
         }
         int rays = 8 + 4 * tier;                                          // radiant rays, drawn on one after another round the rim
@@ -250,7 +269,7 @@ final class Mandala {
             float sp = st(k, 0.65f, 0.95f);
             for (int i = 0; i < sat; i++) {
                 float a = t * 0.5f + i * TAU / sat, x = cx + R * 1.56f * MathUtils.cos(a), y = cy + R * 1.56f * MathUtils.sin(a);
-                s.setColor(P[0], P[1], P[2], MathUtils.clamp(base * sp, 0f, 1f));
+                s.setColor(P[0], P[1], P[2], MathUtils.clamp(base * sp * LIGHT, 0f, 1f));
                 s.circle(x, y, 9f * sp, 14);
                 col(s, A, base * 1.6f * sp);
                 ring(s, x, y, 12f * sp, R, 1f, t * 2f, 20, 1.1f, 0f, t, 0);
@@ -277,14 +296,14 @@ final class Mandala {
             for (int seg = 0; seg < 8; seg++) {                           // the pillar, fading as it climbs
                 float y0 = cy + seg * R * 0.33f * lp, fade = 1f - seg / 8f;
                 for (int i = 0; i < 4; i++) {
-                    s.setColor(1f, 0.9f, 0.55f, (0.030f + 0.012f * (3 - i)) * lp * fade);
+                    s.setColor(1f, 0.9f, 0.55f, (0.030f + 0.012f * (3 - i)) * lp * fade * LIGHT);
                     s.rect(cx - R * (0.34f - 0.07f * i), y0, R * (0.68f - 0.14f * i), R * 0.33f * lp);
                 }
             }
             for (int i = 0; i < 5; i++) {
                 float a = -t * 0.35f + i * TAU / 5f, x = cx + R * 1.78f * MathUtils.cos(a), y = cy + R * 1.78f * MathUtils.sin(a);
                 float[] e = World.TATVA_RGB[i];
-                s.setColor(e[0], e[1], e[2], 0.5f * lp);
+                s.setColor(e[0], e[1], e[2], 0.5f * lp * LIGHT);
                 s.circle(x, y, 14f * lp, 16);
                 s.setColor(1f, 1f, 1f, 0.9f * lp);
                 s.circle(x, y, 3.4f * lp, 8);

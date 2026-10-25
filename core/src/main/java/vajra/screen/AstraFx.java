@@ -71,14 +71,15 @@ final class AstraFx {
         float dx = c.x - w.ship.x, dy = c.y - w.ship.y;
         float k = MathUtils.clamp(w.windK(), 0f, 1f);
         float lift = 0.7f + 0.3f * MathUtils.sin(t * 8f + c.slot * 3f);
-        for (int i = 6; i >= 1; i--) {                                    // the arc behind it: the same radius, earlier angles
+        float light = Mandala.light(k);                                    // glow and trails are the light of the charge: they come late
+        for (int i = 6; i >= 1 && light > 0.02f; i--) {                   // the arc behind it: the same radius, earlier angles
             float back = -i * (0.05f + 0.07f * k), ca = MathUtils.cos(back), sa = MathUtils.sin(back);
             float x = w.ship.x + dx * ca - dy * sa, y = w.ship.y + dx * sa + dy * ca;
-            s.setColor(el[0], el[1], el[2], 0.5f * (1f - i / 7f));
+            s.setColor(el[0], el[1], el[2], 0.5f * (1f - i / 7f) * light);
             s.circle(x, y, 3.4f * (1f - i / 8f), 8);
         }
         float tang = MathUtils.atan2(dy, dx) + MathUtils.HALF_PI;                                      // heading round the circle
-        shapedHead(s, c.x, c.y, tang, c.element, headSize(c.element) * scale * (0.75f + 0.45f * k), t, c.slot, el);   // the held shard wears its true shape
+        shapedHead(s, c.x, c.y, tang, c.element, headSize(c.element) * scale * (0.75f + 0.45f * k), t, c.slot, el, light);   // the held shard wears its true shape
     }
 
     // ---- the loosed bolt -------------------------------------------------------------------------
@@ -112,14 +113,14 @@ final class AstraFx {
                 s.circle(x + nx * MathUtils.sin(i * 5f) * 4f, y + ny * MathUtils.sin(i * 5f) * 4f, 2f * k + 0.6f, 6);
             }
         }
-        shapedHead(s, c.x, c.y, ang, c.element, hw, t, c.slot, el);
+        shapedHead(s, c.x, c.y, ang, c.element, hw, t, c.slot, el, 1f);
     }
 
     /** The head of a shard, shaped for its element - in flight and while it is held on the mandala alike: a spinning star-diamond (Akasha), a slim arrowhead
      *  with wheeling wisps (Vayu), a guttering fireball (Agni), a teardrop (Jala), a tumbling stone (Prithvi). `ang` is its heading, `hw` its size. */
-    private static void shapedHead(ShapeRenderer s, float x, float y, float ang, int element, float hw, float t, float slot, float[] el) {
+    private static void shapedHead(ShapeRenderer s, float x, float y, float ang, int element, float hw, float t, float slot, float[] el, float light) {
         float ca = MathUtils.cos(ang), sa = MathUtils.sin(ang), nx = -sa, ny = ca;
-        glow(s, x, y, hw * 2.2f, el, 0.8f);
+        if (light > 0.02f) glow(s, x, y, hw * 2.2f, el, 0.8f * light);   // the bloom round a shard is light: only once the charge is high
         switch (element) {
             case 0: { // Akasha: a spinning star-diamond that twinkles
                 float spin = t * 6f + slot;

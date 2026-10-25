@@ -74,6 +74,8 @@ plus its yantra drawn as shapes. A preview contact sheet comes first, you choose
 - **The release always fires.** Letting go of F looses the astra even with nothing locked: the cubes fly along the nose, a cube with nothing to chase looks
   ahead (650 px) for a foe, and the shards are spent. (It used to falter, and cost nothing, unless a foe was in view.)
 - **Slower invocation**: `WIND_FULL` 1.5 s -> 3.4 s (`WIND_MIN` 0.9 s): the mandala has time to form, element by element.
+- **Lines first, light later**: the first half of the invocation is plain lines and shapes growing (no glow, no bright tips, no pulsing, no sparks, no halo); the light of the
+  charge (`Mandala.light`) comes in from 50% to 95%: the glow round the shards and their trails, the bright heads, the pulse through each element, circling lights, sparks and the halo.
 - **Held shards wear their shape** (star-diamond, arrowhead with wisps, fireball, teardrop, tumbling stone), the same heads the loosed bolts have, not plain circles.
 - **The Pashupatastra** (kind 6, `Astra.PASHUPATA`): paid in five shards of Agni + Prithvi in any mix; HOLD F, let go, and the third eye opens: a beam steered by the
   nose for 2.2 s, 420 damage a second to everything on the line, **ignoring armour, rock and smoke** (`Enemy.hurtPiercing`). Seven cards in the hangar, an eye on the dial.

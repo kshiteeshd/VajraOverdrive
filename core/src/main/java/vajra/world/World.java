@@ -1401,7 +1401,6 @@ public class World {
         ship.winding = true;
         ship.trauma = Math.max(ship.trauma, 0.25f); // the hull shudders as it loads
         float[] el = astraRgb();
-        addEffect(Effect.ring(ship.x, ship.y, WIND_R_OUT, el[0], el[1], el[2]));
         syncCage();
         popups.push(new Popups.Spec().text("THE " + Astra.EPITHET[astraKind]).img("taptam")
                 .at(ship.x, ship.y + 70).color(crestR(), crestG(), crestB()).scale(1.4f).life(Astra.WIND_FULL + 0.4f));
@@ -1665,7 +1664,7 @@ public class World {
                 for (AstraCube c : astra) if (!c.armed) c.hold(ship, dt, k, WIND_R_OUT, WIND_R_IN);
                 refreshLocks();
                 ship.trauma = Math.max(ship.trauma, 0.1f + 0.2f * k);
-                if (fxRng.nextFloat() < 0.6f && !astra.isEmpty()) { // a spark off the cage, so the charge is never a static picture
+                if (k > 0.5f && fxRng.nextFloat() < 0.6f * k && !astra.isEmpty()) { // sparks off the cage come with the light, in the second half of the charge
                     AstraCube c = astra.get(fxRng.nextInt(astra.size()));
                     debris(c.x, c.y, 120, crestR(), crestG(), crestB());
                 }
