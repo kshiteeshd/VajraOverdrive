@@ -435,6 +435,7 @@ public class GameScreen implements FlowState, ShipControls {
             if (coach.lesson() >= 0 && !shop.isOpen() && !runEnded())
                 CoachPrompt.render(ui, batch, coach.lesson(), world.clock);
         }
+        if (Probe.showFrame) perfReadout();
         if (bootFade > 0) { // the white the title's launch left behind, fading off the run
             ui.shapes.setProjectionMatrix(ui.camera.combined);
             ui.beginShapes(com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType.Filled);
@@ -442,6 +443,30 @@ public class GameScreen implements FlowState, ShipControls {
             ui.shapes.rect(0, 0, Ui.UI_W, Ui.UI_H);
             ui.shapes.end();
         }
+    }
+
+    private final float[] frameMs = new float[60];
+    private int frameAt;
+    private long lastFrame;
+    private String perfText = "";
+
+    /** F3: the average and the worst frame of the last second, the zoom and the particle count, so lag can be named on any machine. */
+    private void perfReadout() {
+        long now = System.nanoTime();
+        if (lastFrame != 0) frameMs[frameAt++ % frameMs.length] = (now - lastFrame) / 1e6f;
+        lastFrame = now;
+        if (frameAt % 20 == 0) {
+            float sum = 0, worst = 0;
+            int n = Math.min(frameAt, frameMs.length);
+            for (int i = 0; i < n; i++) { sum += frameMs[i]; worst = Math.max(worst, frameMs[i]); }
+            perfText = String.format("%.1f ms avg   %.0f ms worst   %d fps   zoom %.2f   flow %d", sum / Math.max(1, n), worst, Gdx.graphics.getFramesPerSecond(), zoom, world.flow.n);
+        }
+        batch.setProjectionMatrix(ui.camera.combined);
+        batch.begin();
+        ui.caption.setColor(1f, 1f, 0.4f, 1f);
+        ui.caption.draw(batch, perfText, 330f, 20f);
+        ui.caption.setColor(1f, 1f, 1f, 1f);
+        batch.end();
     }
 
     private boolean pressed(int key) {

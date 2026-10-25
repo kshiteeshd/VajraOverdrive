@@ -142,7 +142,13 @@ public class EnemyImages {
                 s *= 1f - 0.5f * e.depth;
                 batch.setColor(k, k, k * 1.05f, 1f - 0.3f * e.depth);
             }
-            batch.draw(sh[c[0]][c[1]], e.x - s / 2, e.y - s / 2, s, s);
+            float ox = 0f, oy = 0f;
+            if (e.shockT > 0f) {                                                              // electric shock: it shakes and flashes blue-white
+                ox = (float) Math.sin(time * 173f + e.x) * 3.5f;
+                oy = (float) Math.cos(time * 151f + e.y) * 3.5f;
+                if (((int) (time * 28f) & 1) == 0) batch.setColor(0.62f, 0.78f, 1f, 1f); else batch.setColor(1f, 1f, 1f, 1f);
+            }
+            batch.draw(sh[c[0]][c[1]], e.x - s / 2 + ox, e.y - s / 2 + oy, s, s);
             batch.setColor(1, 1, 1, 1);
             return;
         }
@@ -151,7 +157,9 @@ public class EnemyImages {
         if (e.hitFlash > 0) batch.setColor(1f, 1f, 1f, 1);          // hit blink
         else if (e.elite) batch.setColor(1f, 0.84f, 0f, 1);
         else if (!e.active) batch.setColor(0.55f, 0.55f, 0.55f, 1);
-        batch.draw(r, e.x - e.w / 2, e.y - e.h / 2, e.w, e.h);
+        if (e.shockT > 0f) batch.setColor(((int) (time * 28f) & 1) == 0 ? 0.62f : 1f, ((int) (time * 28f) & 1) == 0 ? 0.78f : 1f, 1f, 1f);
+        float ox = e.shockT > 0f ? (float) Math.sin(time * 173f + e.x) * 3.5f : 0f, oy = e.shockT > 0f ? (float) Math.cos(time * 151f + e.y) * 3.5f : 0f;
+        batch.draw(r, e.x - e.w / 2 + ox, e.y - e.h / 2 + oy, e.w, e.h);
         batch.setColor(1, 1, 1, 1);
     }
 

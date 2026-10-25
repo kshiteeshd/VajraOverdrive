@@ -97,9 +97,17 @@ public final class WorldRenderer {
         chunksOk = false;
         if (world.walled) {                                    // the walls are baked in 512 px chunks: make sure the view (and the deepest layer's wider view) is covered
             float reach = 1f / LayerStack.scale(10, STACK_SHRINK) + 0.08f;
+            // a pulled-back camera (an astra at work) shows far more world: bake a few a frame, not eight, so the frame never stalls...
             chunksOk = chunks.ensure(world, camera.position.x - viewW * reach / 2 - 120, camera.position.y - viewH * reach / 2 - 120,
-                    camera.position.x + viewW * reach / 2 + 120, camera.position.y + viewH * reach / 2 + 120, 8);
+                    camera.position.x + viewW * reach / 2 + 120, camera.position.y + viewH * reach / 2 + 120, camera.zoom > 1.3f ? 3 : 8);
             if (chunks.baked > 0) viewport.apply();            // baking set the viewport to a chunk's; put the window's back
+            float warm = world.astraWarm();                    // ...and while an astra is being formed, bake the view it is about to pull back to, two chunks a frame, ahead of time
+            if (warm > camera.zoom + 0.05f) {
+                float wvw = camera.viewportWidth * warm, wvh = camera.viewportHeight * warm;
+                chunks.ensure(world, camera.position.x - wvw * reach / 2 - 120, camera.position.y - wvh * reach / 2 - 120,
+                        camera.position.x + wvw * reach / 2 + 120, camera.position.y + wvh * reach / 2 + 120, 2);
+                if (chunks.baked > 0) viewport.apply();
+            }
         }
         float wood = vajra.world.Biome.bandWeight(world.ship.y, world.regionStart, 2);   // how much the Mirage Wood holds here (0..1)
         scatter += ((world.ship.boosting ? 1f : 0f) - scatter) * Math.min(1f, Math.min(0.05f, com.badlogic.gdx.Gdx.graphics.getDeltaTime()) * 3.5f);

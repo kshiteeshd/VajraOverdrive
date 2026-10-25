@@ -8,6 +8,8 @@ public final class Probe {
     private Probe() {}
 
     public static boolean enabled;
+    /** F3: show the frame-time readout (see GameScreen). */
+    public static boolean showFrame;
     public static final String[] NAMES = {"floor (raycast)", "stack (walls x layers)", "mist+backdrop+shadows", "play layer sprites", "sparks+bars",
             "lights", "ship+effects", "foreground+bullets", "above-hull pass", "motes"};
     public static final long[] NS = new long[NAMES.length];

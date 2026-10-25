@@ -254,6 +254,8 @@ public class Enemy {
      *  (and whose fire it is) after Agni's flames touched it. */
     public float caught, flowVx, flowVy, burnT;
     public int burnOwner;
+    /** Seconds of electric shock left on it (Akasha's lightning): it jitters and crackles while this runs. Set by the flow, drawn by EnemyImages. */
+    public float shockT;
     public float burnPuffT;
 
     /** Down at the floor, in the rock, or in smoke: no body in the fight. */

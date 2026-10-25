@@ -1351,6 +1351,9 @@ public class World {
 
     /** How far the camera should pull back for what the astras are doing (>= 1; GameScreen eases toward it, quickly out and slowly back): a little while the mantra builds,
      *  a screen's worth for Agni's bloom (650 px reach), the tornado's whole radius for Vayu, the Pashupatastra's long beam, a volley in flight. 1 when nothing is going on. */
+    /** The pull-back an astra being formed is heading for (for the renderer to bake the walls of that wider view ahead of time): 1 when none is. */
+    public float astraWarm() { return astraInvoking ? 2.0f : 1f; }
+
     public float astraView() {
         float v = 1f;
         if (astraInvoking) v = Math.max(v, 1f + 0.3f * Astra.k(astraCharge));

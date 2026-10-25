@@ -84,16 +84,39 @@ class AstraNextTest {
     }
 
     @Test
-    void aStruckFoeIsStunnedAndTheRingEchoesForHalf() {
+    void aStruckFoeIsStunnedAndShockedAndTheNextWaveStrikesAgainForLess() {
         World w = arena();
         Enemy e = foe(w, 2600 + 200, 2700, 5000);
         w.flow.startLightning(w.ship, 0, 1f, 1f, 7L);
-        run(w, 0.2f);
+        run(w, 0.12f);
         assertTrue(e.caught > 0.3f, "it is stunned: its brain waits");
+        assertTrue(e.shockT > 0f, "and shocked: it jitters and crackles");
+        assertEquals(5000f - AstraFlow.ZAP_DAMAGE, e.hp, 1f, "the first strike is the full damage");
         float afterFirst = e.hp;
-        assertEquals(5000f - AstraFlow.ZAP_DAMAGE, afterFirst, 1f, "the first strike is the full damage");
-        run(w, 0.5f);
-        assertEquals(afterFirst - AstraFlow.ZAP_DAMAGE * 0.5f, e.hp, 2f, "the echo at half a second strikes for half");
+        run(w, 0.45f);
+        assertTrue(e.hp <= afterFirst - AstraFlow.ZAP_DAMAGE * 0.4f, "the second wave strikes again, lighter (" + (afterFirst - e.hp) + ")");
+    }
+
+    @Test
+    void theLightningLastsTwoSecondsInWavesOfBoltsInEveryDirectionWithSmallBoltsThrownAtFoes() {
+        World w = arena();
+        Enemy e = foe(w, 2600 + 250, 2700, 100000);
+        w.flow.startLightning(w.ship, 0, 1f, 1f, 7L);
+        run(w, 1.5f);
+        assertTrue(w.flow.active(), "still crackling after a second and a half");
+        assertEquals(AstraFlow.WAVES, w.flow.waveCount() >= AstraFlow.WAVES - 1 ? AstraFlow.WAVES : w.flow.waveCount(), "waves keep coming");
+        float lo = 99f, hi = -99f;
+        w.flow.startLightning(w.ship, 0, 1f, 1f, 9L);                       // a fresh one, to read the spokes of its first wave
+        run(w, 0.02f);
+        for (AstraFlow.Bolt b : w.flow.bolts) { float a = (float) Math.atan2(b.y1 - b.y0, b.x1 - b.x0); lo = Math.min(lo, a); hi = Math.max(hi, a); }
+        assertTrue(hi - lo > 4f, "bolts leave in every direction (" + (hi - lo) + " rad)");
+        w.flow.startLightning(w.ship, 0, 1f, 1f, 7L);
+        e.hp = 100000f;
+        run(w, 0.3f);
+        assertTrue(!w.flow.zaps.isEmpty() || !w.flow.sparks.isEmpty() || e.hp < 100000f - AstraFlow.ZAP_DAMAGE, "small bolts are thrown at the foe");
+        run(w, 4f);
+        assertTrue(!w.flow.active(), "it ends");
+        assertEquals(0f, e.shockT, 0.0001f, "and the shock ends with it");
     }
 
     @Test

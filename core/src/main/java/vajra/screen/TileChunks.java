@@ -15,10 +15,10 @@ import vajra.world.World;
 /** THE WALLS, BAKED. A layer of the stack used to draw every wall tile of the view three times (a shadow, a side face, the tile itself):
  *  thousands of sprites a layer, ten layers over. Walls do not change, so each 512 px square of the world is painted ONCE into a texture
  *  (its soft shadow, its thin side face and the tiles, ghosts left out) and a layer is then a handful of textured quads, tinted and faded
- *  by the batch's colour. The cache is an LRU of 56 chunks (about 56 MB), baked on demand a few a frame; a frame that is missing a
+ *  by the batch's colour. The cache is an LRU of 96 chunks (about 96 MB; the pulled-back camera of an astra shows about fifty at once), baked on demand a few a frame; a frame that is missing a
  *  chunk falls back to the per-tile path, so nothing ever pops. Chunks are stored premultiplied, so a baked shadow keeps its edge. */
 final class TileChunks {
-    static final int CS = 512, KEEP = 56;
+    static final int CS = 512, KEEP = 96;
 
     private static final class Chunk {
         FrameBuffer fb;

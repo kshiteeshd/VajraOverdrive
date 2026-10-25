@@ -247,41 +247,18 @@ final class AstraFx {
         }
     }
 
-    /** The burst: a jagged ring of lightning that races out to the reach, the bolts to every struck foe, and small arcs crawling round the stunned. */
+    /** The light of the lightning: a violet flash at the hull and a faint ring of glow with each wave (the bolts themselves are sprites: FlowFx). */
     private static void lightning(ShapeRenderer s, World w, float t) {
         vajra.world.AstraFlow f = w.flow;
         if (f.ship == null) return;
-        int frame = (int) (f.t * 20f);
-        float rr = f.radius * Math.min(1f, f.t / 0.3f), fade = 1f - MathUtils.clamp((f.t - 0.3f) / 0.45f, 0f, 1f);
-        if (fade > 0.01f) {
-            for (int pass = 0; pass < 2; pass++) {
-                float px = 0f, py = 0f;
-                int n = 72;
-                for (int i = 0; i <= n; i++) {
-                    float a = i * MathUtils.PI2 / n, r = rr + (hash(i + pass * 100, frame) - 0.5f) * 22f * (pass == 0 ? 1f : 0.5f);
-                    float x = f.ship.x + r * MathUtils.cos(a), y = f.ship.y + r * MathUtils.sin(a);
-                    if (i > 0) {
-                        if (pass == 0) { s.setColor(0.70f, 0.50f, 1f, 0.22f * fade); s.rectLine(px, py, x, y, 7f); }
-                        else { s.setColor(1f, 1f, 1f, 0.9f * fade); s.rectLine(px, py, x, y, 1.6f); }
-                    }
-                    px = x;
-                    py = y;
-                }
-            }
-            s.setColor(0.85f, 0.75f, 1f, 0.10f * fade);                      // the flash at the hull
-            s.circle(f.ship.x, f.ship.y, f.radius * 0.35f * Math.max(0f, 1f - f.t / 0.2f), 32);
-        }
-        for (vajra.world.AstraFlow.Bolt b : f.bolts) {
-            float a = 1f - b.age / b.life;
-            boltLine(s, b.x0, b.y0, b.x1, b.y1, b.seed + frame * 7, b.big, a, 0);
-        }
-        for (Object[] z : f.zapped) {                                        // arcs crawling round a stunned foe
-            vajra.enemy.Enemy e = (vajra.enemy.Enemy) z[0];
-            for (int k = 0; k < 3; k++) {
-                float a = hash(k, frame) * MathUtils.PI2, r0 = Math.max(e.w, e.h) * 0.6f;
-                float x0 = e.x + r0 * MathUtils.cos(a), y0 = e.y + r0 * MathUtils.sin(a), a2 = a + 0.9f + hash(k + 5, frame);
-                boltLine(s, x0, y0, e.x + r0 * 1.4f * MathUtils.cos(a2), e.y + r0 * 1.4f * MathUtils.sin(a2), frame * 13 + k, false, 0.8f, 1);
-            }
+        for (int k = 0; k < f.waveCount(); k++) {
+            float age = f.t - k * vajra.world.AstraFlow.WAVE_GAP;
+            if (age < 0f || age > 0.6f) continue;
+            float rr = f.radius * Math.min(1f, age / 0.3f), fade = 1f - MathUtils.clamp((age - 0.3f) / 0.3f, 0f, 1f);
+            s.setColor(0.70f, 0.50f, 1f, 0.16f * fade);
+            ring(s, f.ship.x, f.ship.y, rr, 72, 9f);
+            s.setColor(0.85f, 0.75f, 1f, 0.10f * fade * Math.max(0f, 1f - age / 0.2f));
+            s.circle(f.ship.x, f.ship.y, f.radius * 0.35f, 32);
         }
     }
 

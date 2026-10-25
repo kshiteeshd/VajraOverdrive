@@ -25,6 +25,7 @@ public class VajraGame extends Game {
         ui = new Ui();
         flow = new Flow();
         flow.ui(ui); // so it can keep the UI viewport current for states with none of their own
+        flow.bind(Input.Keys.F3, () -> vajra.screen.Probe.showFrame = !vajra.screen.Probe.showFrame);   // a frame-time readout (average and worst of the last second) in the corner
         flow.bind(Input.Keys.F11, this::toggleFullscreen);
         flow.bind(Input.Keys.F12, this::cycleWindowed);
         Gdx.input.setInputProcessor(flow); // every key, mouse and wheel event lands on the stack

@@ -12,14 +12,14 @@ import vajra.world.World;
  *  effects/astra_wind.png (GUST, SWIRL, WISP, DEBRIS, FUNNEL, BLADE) and effects/astra_agni.png (HELD, BALL, BURST, BURN: the flame that rides a burning foe).
  *  A missing sheet draws nothing, never crashes. */
 final class FlowFx {
-    private static final int FIRE = 0, WIND = 1, AGNI = 2, EARTH = 3, LOTUS = 4;
+    private static final int FIRE = 0, WIND = 1, AGNI = 2, EARTH = 3, LOTUS = 4, BOLT = 5;
     private final Texture[] tex = {ImageKit.texture("effects/astra_fireflow.png", true), ImageKit.texture("effects/astra_wind.png", true), ImageKit.texture("effects/astra_agni.png", true),
-            ImageKit.texture("effects/astra_earth.png", true), ImageKit.texture("effects/astra_lotus.png", true)};
-    private final TextureRegion[][][] reg = new TextureRegion[5][][];
+            ImageKit.texture("effects/astra_earth.png", true), ImageKit.texture("effects/astra_lotus.png", true), ImageKit.texture("effects/astra_lightning.png", true)};
+    private final TextureRegion[][][] reg = new TextureRegion[6][][];
 
     FlowFx() {
-        int[] rows = {5, 6, 4, 11, 6};
-        for (int s = 0; s < 5; s++) {
+        int[] rows = {5, 6, 4, 11, 6, 8};
+        for (int s = 0; s < 6; s++) {
             reg[s] = new TextureRegion[rows[s]][8];
             if (tex[s] == null) continue;
             for (int r = 0; r < rows[s]; r++)
@@ -111,10 +111,50 @@ final class FlowFx {
                 b.draw(r, f.lx[i] - size * 0.3f, f.ly[i] - size * 0.3f, size * 0.3f, size * 0.3f, size * 0.6f, size * 0.6f, 1f, 1f, deg);
             }
         }
+        if (f.kind == AstraFlow.LIGHTNING && f.ship != null) lightning(b, f, time);
         for (AstraFlow.Blade bl : f.blades)                                 // a crescent of cutting wind where a foe was cut
             sprite(b, WIND, 5, Math.min(7, (int) (bl.t / 0.3f * 8f)), bl.x, bl.y, 120f, (float) Math.toDegrees(bl.ang), 1f);
         b.setColor(1f, 1f, 1f, 1f);
         b.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+    }
+
+    /** AKASHA: bolts tiled end to end from the sheet (each forms, crackles and fades over its life), arcs round the ring of each wave, small bolts in flight, sparks where they land,
+     *  and a web of sparks over every shocked foe. */
+    private void lightning(SpriteBatch b, AstraFlow f, float time) {
+        for (int k = 0; k < f.waveCount(); k++) {                           // each wave's ring: curls of crackle racing out round the hull
+            float age = f.t - k * AstraFlow.WAVE_GAP;
+            if (age < 0f || age > 0.5f) continue;
+            float rr = f.radius * Math.min(1f, age / 0.3f), al = 1f - Math.max(0f, age - 0.3f) / 0.2f;
+            int arcs = 18;
+            for (int i = 0; i < arcs; i++) {
+                float a = i * 6.2831853f / arcs + k * 0.37f;
+                sprite(b, BOLT, 5, (int) (time * 20f) + i, f.ship.x + rr * (float) Math.cos(a), f.ship.y + rr * (float) Math.sin(a), 110f, (float) Math.toDegrees(a) + 90f, al);
+            }
+        }
+        for (AstraFlow.Bolt bo : f.bolts) {
+            float dx = bo.x1 - bo.x0, dy = bo.y1 - bo.y0, len = (float) Math.sqrt(dx * dx + dy * dy);
+            if (len < 8f) continue;
+            float u = bo.age / bo.life, deg = (float) Math.toDegrees(Math.atan2(dy, dx)), h = bo.big ? 74f : 46f, ux = dx / len, uy = dy / len;
+            int fr = Math.min(7, (int) (u * 8f)), n = Math.max(1, (int) Math.ceil(len / 60f));
+            float seg = len / n;
+            for (int i = 0; i < n; i++) {
+                TextureRegion r = reg[BOLT][((bo.seed >>> 4) + i) & 3][fr];
+                if (r == null) continue;
+                float cx = bo.x0 + ux * seg * (i + 0.5f), cy = bo.y0 + uy * seg * (i + 0.5f);
+                b.setColor(1f, 1f, 1f, 1f);
+                b.draw(r, cx - seg / 2f, cy - h / 2f, seg / 2f, h / 2f, seg, h, 1f, 1f, deg);
+            }
+        }
+        for (AstraFlow.Zap z : f.zaps) sprite(b, BOLT, 4, (int) (z.age * 30f), z.x - (float) Math.cos(z.ang) * 18f, z.y - (float) Math.sin(z.ang) * 18f, 88f, (float) Math.toDegrees(z.ang), 1f);
+        for (float[] sp : f.sparks) sprite(b, BOLT, 7, Math.min(7, (int) (sp[2] / 0.28f * 8f)), sp[0], sp[1], 90f, 0f, 1f);
+        int idx = 0;
+        for (Object[] zz : f.zapped) {                                      // a web of sparks and a curl of crackle over every shocked foe
+            vajra.enemy.Enemy e = (vajra.enemy.Enemy) zz[0];
+            float sz = Math.max(e.w, e.h) * 1.7f;
+            sprite(b, BOLT, 6, (int) (time * 24f) + idx, e.x, e.y, sz, 0f, Math.min(1f, e.shockT * 4f));
+            sprite(b, BOLT, 5, (int) (time * 18f) + idx * 3, e.x, e.y, sz * 1.15f, (time * 240f + idx * 70f) % 360f, 0.9f * Math.min(1f, e.shockT * 4f));
+            idx++;
+        }
     }
 
     void dispose() {
