@@ -38,7 +38,7 @@ class BalanceTest {
             double caches = Balance.CACHES * Balance.cacheCoins(l);
             double purse = Balance.purse(l);
             double total = kills + chests + caches + purse;
-            sb.append(String.format("%s: kills %d chests %d caches %d purse %d = %d of %d (x%.2f) | ", LokaTable.at(l).name, (int) kills, (int) chests, (int) caches,
+            sb.append(String.format("%s: %d enemies, kills %d chests %d caches %d purse %d = %d of %d (x%.2f) | ", LokaTable.at(l).name, (int) m[l][2], (int) kills, (int) chests, (int) caches,
                     (int) purse, (int) total, (int) Balance.gross(l), total / Balance.gross(l)));
             assertEquals((int) Balance.CHESTS[l], (int) m[l][1], LokaTable.at(l).name + " is built with the chests Balance plans for");
             assertEquals(Balance.gross(l), total, Balance.gross(l) * 0.18, LokaTable.at(l).name + " pays its budget");

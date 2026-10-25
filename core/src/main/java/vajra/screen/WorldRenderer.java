@@ -564,7 +564,7 @@ public final class WorldRenderer {
             if (t[0] + 40 > l && t[0] - 40 < l + viewW && t[1] + 40 > b && t[1] - 40 < b + viewH)
                 fx.drawFlame(batch, t[0], t[1], t[2], world.time(), i);
         }
-        for (int i = 0; i < world.wrecks.length; i++) { // MAYA'S GROVE: the fallen walls she wants home
+        for (int i = 0; i < world.wrecks.length && World.sideStory; i++) { // MAYA'S GROVE: the fallen walls she wants home (side story only)
             float[] wk = world.wrecks[i];
             if (!world.wreckTaken[i]
                     && wk[0] + 40 > l && wk[0] - 40 < l + viewW && wk[1] + 40 > b && wk[1] - 40 < b + viewH)

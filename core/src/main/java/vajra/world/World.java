@@ -29,6 +29,10 @@ public class World {
     public Checkpoint[] checkpoints = new Checkpoint[5]; // Atala bands 1-5: Bhu Loka has none
     public Checkpoint respawnCp;    // most recent collected checkpoint; null = region entrance
     public int lives = 3;
+    /** SIDE STORY: the people of Patala (the Scout, Maya, Kaliya, the Gold-Seller, Gauri's Maid) and the jobs they give (Maya's wrecks, the bounty).
+     *  OFF in the game for now - nobody is placed, so no voice scene, job or wreck exists; the code, scripts and saves are untouched. The tests
+     *  run with it on (-Dvajra.sidestory=true) so the dormant feature stays covered; flip it here when the side characters return. */
+    public static boolean sideStory = Boolean.getBoolean("vajra.sidestory");
     public static final int MAX_LIVES = 5; // a forged release can lift a run back to this, never past
     /** This run was flown with other pilots: it folds into the multiplayer book, not the
      *  campaign one. */

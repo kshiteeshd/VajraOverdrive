@@ -4,6 +4,10 @@ A 2D open-world exploration shooter on libGDX. **Version 1.0.0 is Atala and Vita
 the bottom, a grand gate, gated Atala above it (Bala), then Vitala's river of gold and fire on its roof (Bhairava), and past his gold
 door a closed hall marked *Sutala - coming soon*. 7 ships, 15 weapons, co-op multiplayer.
 
+**Right now:** a run starts with the base ship (Vajra Mk-1) and the Single Bolt only; every other hull shows in the hangar as a locked
+silhouette until it is bought. The side story - the people of Patala and the jobs they give - is held back (`World.sideStory`, off in the game, on in
+the tests); Vitala's roster is thinned to about 210 enemies.
+
 ## Download and install
 
 Grab the installer for your system from the [Releases page](../../releases/latest). Each one carries its own Java runtime, so nothing else needs installing.

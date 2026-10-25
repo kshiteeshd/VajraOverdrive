@@ -17,7 +17,7 @@ import vajra.world.World;
  *
  *  <ul>
  *  <li><b>HULLS</b> - a strip of seven hull cards and, under it, the three tiers of the selected
- *      hull. A hull you do not own is a LOCKED silhouette - nobody sees what a ship looks like until
+ *      hull. A hull you do not own is a LOCKED silhouette - a black cut-out of the ship, enough to tease its shape and nothing of its colours, until
  *      it is bought - and so is every tier you have not bought.</li>
  *  <li><b>ARMS</b> - the weapon wheel: the patterns round a ring, the fitted one lit, a pattern the
  *      pilot's loka does not offer yet a lock. The hub holds the chosen pattern, its bars and its
@@ -356,7 +356,7 @@ public final class BayUi {
                 bar(x + 50, y + 20, 84, d.turnRate / mx[2], UiTheme.SHIELD_R, UiTheme.SHIELD_G, UiTheme.SHIELD_B, 1f);
             } else { // a hull you do not own is a lock, not a picture
                 ui.shapes.setColor(ar, ag, ab, open ? 0.75f : 0.3f);
-                Ornament.lock(ui, x + STRIP_W / 2f, y + STRIP_H - 62, 2.2f);
+                Ornament.lock(ui, x + STRIP_W - 20, y + STRIP_H - 22, 1.1f);      // the padlock sits in the corner; the silhouette has the middle
             }
         }
         ShipDef d = ShipDef.ALL[hull];
@@ -368,7 +368,7 @@ public final class BayUi {
             else Ornament.panel(ui, x, TIER_Y, TIER_W, TIER_H, CUT + 2, 1, 1, 1, 0.16f, focus);
             if (!own) {
                 ui.shapes.setColor(ar, ag, ab, next ? 0.8f : 0.3f);
-                Ornament.lock(ui, x + TIER_W / 2f, TIER_Y + TIER_H - 96, 3.4f);
+                Ornament.lock(ui, x + TIER_W - 28, TIER_Y + TIER_H - 40, 1.6f);
             }
             if (t < 2) { // the chain between tiers: a gold link once the lower one is yours
                 ui.shapes.setColor(own ? gr : 1, own ? gg : 1, own ? gb : 1, own ? 0.9f : 0.2f);
@@ -475,6 +475,21 @@ public final class BayUi {
         }
     }
 
+    /** A locked ship as a cut-out: the sprite tinted black with a faint accent rim (four offset copies behind it), so the wings and nose read
+     *  but no colour or detail does. `lit` brightens the rim for what the pilot can buy next. */
+    private void silhouette(SpriteBatch b, TextureRegion r, float x, float y, float size, boolean lit) {
+        float rim = lit ? 0.55f : 0.25f;
+        b.setColor(UiTheme.GOLD_R, UiTheme.GOLD_G, UiTheme.GOLD_B, rim);
+        float o = Math.max(1f, size / 48f);
+        b.draw(r, x - o, y, size, size);
+        b.draw(r, x + o, y, size, size);
+        b.draw(r, x, y - o, size, size);
+        b.draw(r, x, y + o, size, size);
+        b.setColor(0.03f, 0.03f, 0.05f, 1f);
+        b.draw(r, x, y, size, size);
+        b.setColor(1, 1, 1, 1);
+    }
+
     private void hullText(SpriteBatch b, World w, ShipRenderer ships) {
         Hangar h = w.hangar;
         float gr = UiTheme.GOLD_R, gg = UiTheme.GOLD_G, gb = UiTheme.GOLD_B;
@@ -484,6 +499,7 @@ public final class BayUi {
             float x = stripX(i), y = STRIP_Y + (sel ? SEL_LIFT : 0), cx = x + STRIP_W / 2f;
             TextureRegion r = ships.hull(i, artLevel(h, i));
             if (r != null && own) b.draw(r, cx - 32, y + STRIP_H - 94, 64, 64);
+            else if (r != null) silhouette(b, ships.hull(i, 1), cx - 32, y + STRIP_H - 94, 64, open);   // a locked hull: its shape, none of its colour
             ui.hud.setColor(1, 1, 1, open ? 1f : 0.5f);
             centered(b, ui.hud, own ? d.name.toUpperCase() : markName(d), cx, y + STRIP_H - 110);
             boolean fly = h.shipIndex == i;
@@ -508,6 +524,7 @@ public final class BayUi {
             ui.hud.draw(b, d.upgrades[t].label + "   " + (own ? d.upgrades[t].name.toUpperCase() : "???"), x + 22, top - 28);
             TextureRegion r = ships.hull(d.id, t + 1);
             if (r != null && own) b.draw(r, cx - 48, top - 140, 96, 96);
+            else if (r != null) silhouette(b, r, cx - 48, top - 140, 96, next);                          // a tier not yet yours: its outline
             ui.hud.setColor(1, 1, 1, own || next ? 0.85f : 0.45f);
             centered(b, ui.hud, tierEffect(d, t), cx, top - 170);
             String st = tierState(h, d, t, w.lokaIndex);

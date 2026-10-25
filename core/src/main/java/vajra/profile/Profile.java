@@ -37,7 +37,12 @@ public final class Profile {
      *  none. It is what CONTINUE on the title loads; a run that ends (or a new game) clears it. */
     public String run;
 
-    public boolean hasRun() { return run != null && !run.isBlank(); }
+    public boolean hasRun() { return run != null && !run.isBlank() && !fromTestBuild(run); }
+
+    /** A run parked by the retired test build carries its 999,999-coin purse and every hull and pattern: it is not offered back (NEW GAME clears it). */
+    static boolean fromTestBuild(String run) {
+        return java.util.regex.Pattern.compile("coins\\W{1,3}9999\\d\\d\\b").matcher(run).find();
+    }
 
     public boolean learned(int id) {
         return lessons != null && id >= 0 && id < lessons.length && lessons[id];

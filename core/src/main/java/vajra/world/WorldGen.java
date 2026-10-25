@@ -189,6 +189,7 @@ final class WorldGen {
     /** A person at a post: off the roster (w.voices), awake to hover, named for the Chatter
      *  rail. Nobody here is a target; the voices are never counted by any roster law. */
     void addVoice(Enemy.Kind kind, String name, float cx, float depth, int band) {
+        if (!World.sideStory) return;                                          // the side characters are held back for now
         float cy = w.regionStart[band] + depth * (w.regionEnd[band] - w.regionStart[band]);
         float[] spot = openNear(cx, cy, w.regionStart[band] + 240, w.regionEnd[band] - 240);
         Enemy v = new Enemy(kind, spot[0], spot[1]);

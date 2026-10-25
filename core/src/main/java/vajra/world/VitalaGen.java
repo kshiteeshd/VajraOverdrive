@@ -119,10 +119,15 @@ final class VitalaGen {
 
     /** One court of Vitala: a commander (rank 1) and its followers, which will fly its formation (VitalaBrain). */
     private void court(Enemy.Kind cmd, Enemy.Kind ring, float y, float dx, int n, int backups, float wake) {
+        if (courtNo++ % 3 == 2) return;                                    // Vitala is thinned: every third court is not sent (the river is long, the fights are meant to matter)
+        n = Math.max(2, n - 1);
+        backups = Math.max(1, backups - 1);
         float x = rx(y, dx);
         float[] spot = g.openNear(x, y, y - 200f, y + 200f);
         g.court(cmd, ring, spot[0], spot[1], n, backups, 90f, 40f, wake);
     }
+
+    private int courtNo;
 
     private void elite(Enemy.Kind k, float y, float dx) {
         float[] spot = g.openNear(rx(y, dx), y, y - 150f, y + 150f);
