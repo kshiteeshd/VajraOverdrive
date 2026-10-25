@@ -228,13 +228,31 @@ class AstraTest {
     }
 
     @Test
-    void withNothingLockedTheReleaseFaltersAndCostsNothing() {
+    void withNothingLockedTheReleaseStillFliesAlongTheNose() {
         World w = arena(0);
         fuel(w, Astra.AKASHA, 5);
         w.astraBegin();
         hold(w, 1.2f);
-        assertFalse(w.astraLoose(), "nothing in front to answer");
-        assertEquals(5, w.hangar.shards[Astra.AKASHA], "so nothing is spent");
+        assertTrue(w.astraLoose(), "letting go looses the astra whether or not a foe is in front");
+        assertEquals(0, w.hangar.shards[Astra.AKASHA], "and it is paid for");
+        assertTrue(w.astra.stream().anyMatch(c -> c.armed), "the cubes are in flight");
+        float y0 = w.astra.get(0).y;
+        for (int i = 0; i < 20; i++) w.updateAstra(1 / 60f);
+        assertTrue(Math.abs(w.astra.get(0).y - y0) > 20f, "flying on along the nose");
+    }
+
+    @Test
+    void aCubeLoosedAtNothingFindsAFoeItMeetsAhead() {
+        World w = arena(0);
+        fuel(w, Astra.AKASHA, 5);
+        w.astraBegin();
+        hold(w, 1.2f);
+        w.astraLoose();                                                  // nothing was locked
+        Enemy late = foe(w.ship.x + (float) Math.cos(w.ship.facing) * 300f, w.ship.y + (float) Math.sin(w.ship.facing) * 300f);
+        w.enemies.add(late);                                             // a foe steps into the way after the loose
+        float hp = late.hp;
+        for (int i = 0; i < 90 && late.hp >= hp; i++) w.updateAstra(1 / 60f);
+        assertTrue(late.hp < hp, "a cube with nothing to chase turns on the foe it finds");
     }
 
     @Test

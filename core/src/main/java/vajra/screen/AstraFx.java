@@ -38,24 +38,10 @@ final class AstraFx {
 
     // ---- the invocation ---------------------------------------------------------------------------
 
+    /** The mandala that opens round the hull while the mantra is held: one per astra, its elements forming one by one with the charge (see Mandala). */
     private static void yantra(ShapeRenderer s, World w, float t) {
         float k = MathUtils.clamp(w.windK(), 0f, 1f);
-        boolean full = w.astraCharge >= vajra.world.Astra.WIND_FULL;
-        float[] e = {w.crestR(), w.crestG(), w.crestB()};
-        float cx = w.ship.x, cy = w.ship.y;
-        float r = 128f - 70f * k;                                         // the circle tightens as the mantra builds
-        float a = (0.14f + 0.34f * k) * (full ? 0.8f + 0.2f * MathUtils.sin(t * 14f) : 1f);
-        s.setColor(1f, 0.86f, 0.5f, a);
-        ring(s, cx, cy, r, 48, 1.4f);
-        ring(s, cx, cy, r * 0.62f, 36, 1f);
-        s.setColor(e[0], e[1], e[2], a * 1.1f);
-        triangle(s, cx, cy, r, t * 0.6f, 1.5f);                          // the two triangles turn against each other
-        triangle(s, cx, cy, r, 60f * MathUtils.degRad - t * 0.6f, 1.5f);
-        if (full) {                                                       // the full mantra: a ring of light spills out
-            float pulse = (t * 1.8f) % 1f;
-            s.setColor(e[0], e[1], e[2], 0.5f * (1f - pulse));
-            ring(s, cx, cy, r + pulse * 60f, 48, 2f);
-        }
+        Mandala.draw(s, w.ship.x, w.ship.y, k, t, w.astraCharge >= vajra.world.Astra.WIND_FULL, MathUtils.clamp(w.astraKind, 0, 5));
     }
 
     private static void ring(ShapeRenderer s, float cx, float cy, float r, int n, float th) {

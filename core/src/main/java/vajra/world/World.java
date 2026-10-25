@@ -1401,13 +1401,7 @@ public class World {
             return false;
         }
         int kind = astraKind;
-        refreshLocks(); // while the charge is still held: the locks are as many as the cubes it earned
-        if (astraLockCount == 0) { // nothing in front to answer: the mantra falters, and costs nothing
-            astraCharge = 0;
-            dropHeldCubes();
-            astraCd = Math.max(astraCd, Astra.FALTER_LOCKOUT);
-            return false;
-        }
+        refreshLocks(); // while the charge is still held: the locks are as many as the cubes it earned (there may be none: it flies on along the nose)
         if (!Astra.pay(hangar, kind)) { // the shards went (sold) while you held it
             astraCharge = 0;
             dropHeldCubes();
@@ -1429,11 +1423,11 @@ public class World {
         int fired = 0;
         for (AstraCube c : astra) {
             if (c.armed) continue;
-            Enemy t = astraLocks[fired % astraLockCount];
+            Enemy t = astraLockCount > 0 ? astraLocks[fired % astraLockCount] : null;   // no lock: it flies straight and finds what it meets
             float a = ship.facing + (fired - (held - 1) * 0.5f) * 0.18f; // a fan off the nose, a volley leaving as one
             c.dress(c.element, dm);
             c.arm(a, Astra.SPEED[c.element], t);
-            if (fired < ids.length) ids[n++] = t.netId;
+            if (t != null && fired < ids.length) ids[n++] = t.netId;
             fired++;
         }
         boons(kind);
@@ -1522,6 +1516,18 @@ public class World {
             }
         }
         float dm = Astra.damageMult(Math.max(0f, Math.min(1f, power)));
+        if (ids.length == 0) { // the guest loosed it with nothing locked: the same straight fan, from that hull
+            int count = Astra.cubesAt(kind, Astra.WIND_MIN + Math.max(0f, Math.min(1f, power)) * (Astra.WIND_FULL - Astra.WIND_MIN));
+            for (int i = 0; i < count; i++) {
+                AstraCube c = new AstraCube(from.x, from.y, 0f, 0f, null, 0f);
+                c.element = Astra.cubeElement(kind, i);
+                c.dress(c.element, dm);
+                c.arm(from.facing + (i - (count - 1) * 0.5f) * 0.18f, Astra.SPEED[c.element], null);
+                c.owner = seat;
+                astra.add(c);
+            }
+            return;
+        }
         for (int i = 0; i < ids.length; i++) {
             Enemy t = enemyByNetId(ids[i]);
             if (t == null) continue;
@@ -1574,6 +1580,21 @@ public class World {
             }
         }
         return true;
+    }
+
+    /** A cube with nothing to chase looks ahead for a foe: the nearest living one within 650 px that is not behind it. Null when the way is clear. */
+    public Enemy astraSeek(float x, float y, float vx, float vy) {
+        Enemy best = null;
+        float bd = 650f * 650f, vl = (float) Math.sqrt(vx * vx + vy * vy);
+        for (Enemy o : enemies) {
+            if (o.dead || o.dismissed || o.voice || o.ghost || o.bossHidden || o.submerged()) continue;
+            float dx = o.x - x, dy = o.y - y, d = dx * dx + dy * dy;
+            if (d >= bd) continue;
+            if (vl > 0.001f && (dx * vx + dy * vy) < 0f) continue;      // not behind the flight
+            bd = d;
+            best = o;
+        }
+        return best;
     }
 
     /** The nearest living foe to `from` within chain reach, other than the one just struck. */

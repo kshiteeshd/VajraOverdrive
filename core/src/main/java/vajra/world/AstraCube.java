@@ -106,10 +106,9 @@ public class AstraCube {
     public boolean think(World w, float dt, float turnRate) {
         if (life <= 0) return false;
         life -= dt;
-        if (target == null || target.dead) {
-            // nothing to chase: keep the current heading and let it expire, or the caster
-            // re-points it when it next fires
-            x += vx * dt;
+        if (target == null || target.dead) target = w.astraSeek(x, y, vx, vy);   // a cube loosed at nothing (or whose foe fell) looks ahead for the next
+        if (target == null) {
+            x += vx * dt;     // the way is clear: it flies on along its heading until it runs out
             y += vy * dt;
             return false;
         }
