@@ -1368,6 +1368,9 @@ public class World {
     }
     /** 0..1 through the invocation. The renderer and the HUD both read this, so the cage, the shake and the dial all
      *  build off one number. */
+    /** The view creeps out (it does not leap) while Brahma is forged and while the lotus works. */
+    public boolean astraSlowView() { return (astraInvoking && astraKind == Astra.BRAHMA) || flow.kind == AstraFlow.LOTUS; }
+
     public float windK() { return astraInvoking ? Astra.k(astraCharge) : 1f; }
 
     /** The astra F would invoke: the one X chose if it can be paid, else the first that can, else -1. */
@@ -1751,7 +1754,7 @@ public class World {
                 mandalaGuard(k);
                 refreshLocks();
                 ship.trauma = Math.max(ship.trauma, 0.1f + 0.2f * k);
-                if (k > 0.5f && fxRng.nextFloat() < 0.6f * k && !astra.isEmpty()) { // sparks off the cage come with the light, in the second half of the charge
+                if (k > 0.5f && astraKind != Astra.BRAHMA && fxRng.nextFloat() < 0.6f * k && !astra.isEmpty()) { // sparks off the cage come with the light, in the second half of the charge
                     AstraCube c = astra.get(fxRng.nextInt(astra.size()));
                     debris(c.x, c.y, 120, crestR(), crestG(), crestB());
                 }

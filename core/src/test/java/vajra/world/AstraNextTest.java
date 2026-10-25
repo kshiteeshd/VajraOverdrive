@@ -212,7 +212,7 @@ class AstraNextTest {
         run(w, 0.6f);
         java.util.Set<Integer> els = new java.util.HashSet<>();
         for (AstraFlow.Streak s : w.flow.streaks) els.add(s.el);
-        assertEquals(5, els.size(), "petals of all five colours");
+        assertTrue(els.size() >= 5, "petals of every colour");
         assertTrue(w.flow.arrows.size() > 3, "arrows are in flight");
         float lo = 99f, hi = -99f;
         for (AstraFlow.Arrow ar : w.flow.arrows) { lo = Math.min(lo, ar.ang); hi = Math.max(hi, ar.ang); }

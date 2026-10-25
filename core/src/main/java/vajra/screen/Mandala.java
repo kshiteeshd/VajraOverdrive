@@ -226,7 +226,7 @@ final class Mandala {
             s.setColor(A[0], A[1], A[2], MathUtils.clamp(base * 0.9f * flow(t, 1f, a), 0f, 1f));
             s.rectLine(cx + R * 1.06f * MathUtils.cos(a), cy + R * 1.06f * MathUtils.sin(a), cx + (R * 1.06f + len) * MathUtils.cos(a), cy + (R * 1.06f + len) * MathUtils.sin(a), 1.1f);
         }
-        if (tier >= 1) {                                                  // a ring of turning diamonds
+        if (tier >= 1 && !THIN) {                                         // a ring of turning diamonds
             int n = 16 + 4 * tier;
             float dp = st(k, 0.4f, 0.8f);
             for (int i = 0; i < n; i++) {
@@ -283,7 +283,7 @@ final class Mandala {
         if (tier >= 5) {                                                  // a crown of spikes, alternate long and short
             float cp = st(k, 0.72f, 1f);
             int n = 12;
-            for (int i = 0; i < n; i++) {
+            for (int i = 0; i < n && !THIN; i++) {
                 float f = MathUtils.clamp(cp * n - i, 0f, 1f);
                 if (f <= 0f) break;
                 float a = -t * 0.12f + i * TAU / n, h = R * (i % 2 == 0 ? 0.30f : 0.17f) * f * (0.9f + 0.1f * MathUtils.sin(t * 6f + i));
@@ -614,10 +614,48 @@ final class Mandala {
         }
     }
 
+    private static final com.badlogic.gdx.graphics.Color C1 = new com.badlogic.gdx.graphics.Color(), C2 = new com.badlogic.gdx.graphics.Color(), C3 = new com.badlogic.gdx.graphics.Color();
+
+    /** THE LIGHT OF THE LOTUS: a bright light that wells up from the very middle of the mandala and spreads out in every direction as three layers of lotus petals, brightest and whitest
+     *  at the heart and fading to nothing at the tips (a gradient: every petal is a fan of triangles whose colour falls off with the distance). It grows over the second half of the charge. */
+    private static void lotusLight(ShapeRenderer s, float cx, float cy, float R, float k, float t) {
+        float g = st(k, 0.5f, 1f);
+        if (g <= 0f) return;
+        g = g * g * (3f - 2f * g);
+        float breath = 1f + 0.05f * MathUtils.sin(t * 3f);
+        int[] counts = {8, 8, 12};
+        float[] lens = {1.25f, 0.98f, 0.66f}, halves = {0.22f, 0.28f, 0.34f}, offs = {0f, 0.5f, 0.25f};
+        for (int layer = 0; layer < 3; layer++) {
+            int n = counts[layer];
+            float len = R * lens[layer] * g * breath, a0 = (0.5f - 0.1f * layer) * g;
+            for (int i = 0; i < n; i++) {
+                float a = (i + offs[layer]) * TAU / n + t * (layer == 1 ? -0.08f : 0.06f), ca = MathUtils.cos(a), sa = MathUtils.sin(a), nx = -sa, ny = ca;
+                float pu = 0f, plx = cx, ply = cy, prx = cx, pry = cy, pa = a0;
+                for (int j = 1; j <= 8; j++) {
+                    float u = j / 8f, w = halves[layer] * len * (float) Math.sin(Math.PI * Math.pow(u, 0.8f)) * 0.9f, al = a0 * (float) Math.pow(1f - u, 1.35f);
+                    float x = cx + ca * len * u, y = cy + sa * len * u, lx = x + nx * w, ly = y + ny * w, rx = x - nx * w, ry = y - ny * w;
+                    float wr = 1f - 0.18f * u, wg = 0.96f - 0.30f * u, wb = 0.78f - 0.42f * u;      // white-gold at the heart, warm gold toward the tips
+                    C1.set(wr, wg, wb, pa);
+                    C2.set(wr, wg, wb, al);
+                    s.triangle(plx, ply, prx, pry, lx, ly, C1, C1, C2);
+                    s.triangle(prx, pry, rx, ry, lx, ly, C1, C2, C2);
+                    pu = u; plx = lx; ply = ly; prx = rx; pry = ry; pa = al;
+                }
+            }
+        }
+        C1.set(1f, 0.98f, 0.9f, 0.55f * g);                                // the bright heart
+        C2.set(1f, 0.9f, 0.6f, 0f);
+        for (int i = 0; i < 24; i++) {
+            float a = i * TAU / 24f, b = (i + 1) * TAU / 24f, r = R * 0.34f * g;
+            s.triangle(cx, cy, cx + r * MathUtils.cos(a), cy + r * MathUtils.sin(a), cx + r * MathUtils.cos(b), cy + r * MathUtils.sin(b), C1, C2, C2);
+        }
+    }
+
     /** BRAHMA, the last arrow, in LINES ONLY (no lights inside): a golden ring with a ring of ticks, thin concentric rings, a ring of ten element-coloured petals, five great petals
      *  each with a fine petal inside and five lesser ones between, two pentagons with their stars, spokes, four small faces drawn as rings, and a heart of three rings. */
     private static void brahma(ShapeRenderer s, float cx, float cy, float R, float k, float t, float base, float[] P, float[] A) {
         float rot = -MathUtils.PI / 2f + t * 0.1f;
+        lotusLight(s, cx, cy, R, k, t);
         col(s, P, base * 1.5f);
         ring(s, cx, cy, R, R, st(k, 0f, 0.12f), 0f, 96, 1.5f, 0.6f, t, 0);
         col(s, A, base);

@@ -38,7 +38,9 @@ final class AstraFx {
         }
         if (w.flow.kind == vajra.world.AstraFlow.BOULDER && w.flow.ship != null)             // the mandala STAYS while the rocks are thrown, pulsing
             Mandala.draw(s, w.flow.ship.x, w.flow.ship.y, 1f, t, true, vajra.world.Astra.PRITHVI);
+        boolean hush = w.winding() && w.astraKind == vajra.world.Astra.BRAHMA;                // Brahma is forged in lines and one light: no glowing shards
         for (AstraCube c : w.astra) {
+            if (hush && !c.armed) continue;
             if (c.x < l - 80 || c.x > l + viewW + 80 || c.y < b - 80 || c.y > b + viewH + 80) continue;
             float[] el = World.TATVA_RGB[MathUtils.clamp(c.element, 0, World.TATVA_RGB.length - 1)];
             if (c.armed) bolt(s, c, el, t, scale);

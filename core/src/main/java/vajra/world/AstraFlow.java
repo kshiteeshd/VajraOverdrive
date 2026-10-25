@@ -711,7 +711,7 @@ public final class AstraFlow {
                 s.rot = rng.nextFloat() * 6.2831853f;
                 s.rv = (rng.nextFloat() - 0.5f) * 9f;
                 s.flip = 3f + 6f * rng.nextFloat();
-                s.el = rng.nextInt(5);
+                s.el = rng.nextInt(6);                                       // 0 the pink of the cherry blossom, 1..5 the five elements (the sheet's own row order)
                 s.tgt = rng.nextInt(6) == 0 ? null : riverTgt[k];
                 s.phase = rng.nextFloat() * 6.2831853f;
                 streaks.add(s);

@@ -12,14 +12,14 @@ import vajra.world.World;
  *  effects/astra_wind.png (GUST, SWIRL, WISP, DEBRIS, FUNNEL, BLADE) and effects/astra_agni.png (HELD, BALL, BURST, BURN: the flame that rides a burning foe).
  *  A missing sheet draws nothing, never crashes. */
 final class FlowFx {
-    private static final int FIRE = 0, WIND = 1, AGNI = 2, EARTH = 3, LOTUS = 4, BOLT = 5;
+    private static final int FIRE = 0, WIND = 1, AGNI = 2, EARTH = 3, LOTUS = 4, BOLT = 5, PETAL = 6;
     private final Texture[] tex = {ImageKit.texture("effects/astra_fireflow.png", true), ImageKit.texture("effects/astra_wind.png", true), ImageKit.texture("effects/astra_agni.png", true),
-            ImageKit.texture("effects/astra_earth.png", true), ImageKit.texture("effects/astra_lotus.png", true), ImageKit.texture("effects/astra_lightning.png", true)};
-    private final TextureRegion[][][] reg = new TextureRegion[6][][];
+            ImageKit.texture("effects/astra_earth.png", true), ImageKit.texture("effects/astra_lotus.png", true), ImageKit.texture("effects/astra_lightning.png", true), ImageKit.texture("effects/astra_petal.png", true)};
+    private final TextureRegion[][][] reg = new TextureRegion[7][][];
 
     FlowFx() {
-        int[] rows = {5, 6, 4, 11, 6, 8};
-        for (int s = 0; s < 6; s++) {
+        int[] rows = {5, 6, 4, 11, 6, 8, 6};
+        for (int s = 0; s < 7; s++) {
             reg[s] = new TextureRegion[rows[s]][8];
             if (tex[s] == null) continue;
             for (int r = 0; r < rows[s]; r++)
@@ -93,17 +93,18 @@ final class FlowFx {
             sprite(b, WIND, 4, (int) (time * 14f), f.ship.x, f.ship.y, 110f, 0f, 0.9f * a);
         }
         if (f.kind == AstraFlow.LOTUS) {                                    // the shower: petals of all five colours streaming out in swirling curves
+            b.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);                                        // petals are solid pixel art, not glow
             for (AstraFlow.Streak st : f.streaks) {
                 if (st.x < l - 150 || st.x > l + vw + 150 || st.y < bt - 150 || st.y > bt + vh + 150) continue;
-                float u = st.age / st.life, al = Math.min(1f, u * 6f) * (1f - u);
-                float[] c = World.TATVA_RGB[st.el];
-                TextureRegion r = reg[LOTUS][2][((int) (st.age * 14f) + st.el) & 7];
+                float u = st.age / st.life, al = Math.min(1f, st.age * 8f) * Math.min(1f, (1f - u) * 5f);
+                int fr = (int) (st.age * 14f * (st.rv >= 0f ? 1f : -1f)) + st.el * 3;
+                TextureRegion r = reg[PETAL][st.el][fr & 7];
                 if (r == null) continue;
-                float len = 38f * st.size, wd = len * (0.55f + 0.45f * Math.abs((float) Math.cos(st.age * st.flip)));   // each petal single, tumbling and turning over
-                b.setColor(Math.min(1f, 0.25f + 1.1f * c[0]), Math.min(1f, 0.25f + 1.1f * c[1]), Math.min(1f, 0.25f + 1.1f * c[2]), al);
-                b.draw(r, st.x - len / 2f, st.y - wd / 2f, len / 2f, wd / 2f, len, wd, 1f, 1f, (float) Math.toDegrees(st.rot));
-                b.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE);
+                float sz = 40f * st.size;
+                b.setColor(1f, 1f, 1f, al);
+                b.draw(r, st.x - sz / 2f, st.y - sz / 2f, sz, sz);
             }
+            b.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE);
             for (float[] sp : f.sparks) {                                    // where an arrow struck
                 if (sp.length < 4) continue;
                 float[] c = World.TATVA_RGB[(int) sp[3]];
