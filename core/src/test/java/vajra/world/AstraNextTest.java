@@ -68,55 +68,40 @@ class AstraNextTest {
     // ---- AKASHA ----------------------------------------------------------------------------------------------------------------------
 
     @Test
-    void theLightningStrikesEveryFoeInReachNearestFirstStunsThemAndArcsToTheirNeighbours() {
+    void theLightningIsLoosedAsProjectilesAtRandomAnglesThatShockAndStunWhatTheyTouch() {
         World w = arena();
-        Enemy near = foe(w, 2600 + 120, 2700, 400), mid = foe(w, 2600, 2700 + 250, 400), far = foe(w, 2600 - 330, 2700, 400), out = foe(w, 2600 + 900, 2700, 400);
-        Enemy buddy = foe(w, 2600 + 120 + 90, 2700, 400);                 // within arc reach of the nearest
-        w.ship.shieldEnergy = 0f;
+        Enemy e = foe(w, 2600 + 220, 2700, 100000);
         w.flow.startLightning(w.ship, 0, 1f, 1f, 7L);
-        run(w, 0.02f);
-        assertTrue(near.hp == 400f && mid.hp == 400f, "nothing is struck in the very first instant");
-        run(w, 0.6f);
-        assertTrue(near.hp < 400f && mid.hp < 400f && far.hp < 400f, "every foe in reach was struck");
-        assertEquals(400f, out.hp, 0.001f, "and none outside it");
-        assertTrue(buddy.hp < 400f, "the lightning arcs to a neighbour within reach");
-        assertTrue(near.hp < buddy.hp + 1f || buddy.hp < 400f, "(the nearest took the full bolt)");
+        run(w, 0.3f);
+        assertTrue(!w.flow.zaps.isEmpty(), "bolts are in flight");
+        float lo = 99f, hi = -99f;
+        for (AstraFlow.Zap z : w.flow.zaps) { lo = Math.min(lo, z.ang); hi = Math.max(hi, z.ang); }
+        run(w, 0.5f);
+        for (AstraFlow.Zap z : w.flow.zaps) { lo = Math.min(lo, z.ang); hi = Math.max(hi, z.ang); }
+        assertTrue(hi - lo > 3f, "they leave at random angles, not in a ring (" + (hi - lo) + " rad)");
+        assertTrue(e.hp < 100000f - AstraFlow.ZAP_HIT, "the ones that touch a foe hurt it");
+        assertTrue(e.shockT > 0f || e.caught > 0f, "and shock it");
     }
 
     @Test
-    void aStruckFoeIsStunnedAndShockedAndTheNextWaveStrikesAgainForLess() {
+    void aBoltFlyingAwayFromEveryFoeHitsNothingAndTheLightningLastsAboutTwoSecondsThenEnds() {
         World w = arena();
-        Enemy e = foe(w, 2600 + 200, 2700, 5000);
-        w.flow.startLightning(w.ship, 0, 1f, 1f, 7L);
-        run(w, 0.12f);
-        assertTrue(e.caught > 0.3f, "it is stunned: its brain waits");
-        assertTrue(e.shockT > 0f, "and shocked: it jitters and crackles");
-        assertEquals(5000f - AstraFlow.ZAP_DAMAGE, e.hp, 1f, "the first strike is the full damage");
-        float afterFirst = e.hp;
-        run(w, 0.45f);
-        assertTrue(e.hp <= afterFirst - AstraFlow.ZAP_DAMAGE * 0.4f, "the second wave strikes again, lighter (" + (afterFirst - e.hp) + ")");
-    }
-
-    @Test
-    void theLightningLastsTwoSecondsInWavesOfBoltsInEveryDirectionWithSmallBoltsThrownAtFoes() {
-        World w = arena();
-        Enemy e = foe(w, 2600 + 250, 2700, 100000);
+        Enemy e = foe(w, 2600 + 220, 2700, 100000);
         w.flow.startLightning(w.ship, 0, 1f, 1f, 7L);
         run(w, 1.5f);
         assertTrue(w.flow.active(), "still crackling after a second and a half");
-        assertEquals(AstraFlow.WAVES, w.flow.waveCount() >= AstraFlow.WAVES - 1 ? AstraFlow.WAVES : w.flow.waveCount(), "waves keep coming");
-        float lo = 99f, hi = -99f;
-        w.flow.startLightning(w.ship, 0, 1f, 1f, 9L);                       // a fresh one, to read the spokes of its first wave
-        run(w, 0.02f);
-        for (AstraFlow.Bolt b : w.flow.bolts) { float a = (float) Math.atan2(b.y1 - b.y0, b.x1 - b.x0); lo = Math.min(lo, a); hi = Math.max(hi, a); }
-        assertTrue(hi - lo > 4f, "bolts leave in every direction (" + (hi - lo) + " rad)");
-        w.flow.startLightning(w.ship, 0, 1f, 1f, 7L);
-        e.hp = 100000f;
-        run(w, 0.3f);
-        assertTrue(!w.flow.zaps.isEmpty() || !w.flow.sparks.isEmpty() || e.hp < 100000f - AstraFlow.ZAP_DAMAGE, "small bolts are thrown at the foe");
         run(w, 4f);
         assertTrue(!w.flow.active(), "it ends");
         assertEquals(0f, e.shockT, 0.0001f, "and the shock ends with it");
+    }
+
+    @Test
+    void aFoeBeyondTheBoltsRangeIsNeverTouched() {
+        World w = arena();
+        Enemy out = foe(w, 2600 + 3000, 2700, 400);
+        w.flow.startLightning(w.ship, 0, 1f, 1f, 7L);
+        run(w, 3f);
+        assertEquals(400f, out.hp, 0.001f);
     }
 
     @Test

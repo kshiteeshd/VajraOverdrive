@@ -28,7 +28,7 @@ SKY = np.array([(255, 255, 255), (226, 238, 255), (176, 198, 255), (136, 138, 25
 
 def st(pts, ws, soft=1.0):
     """FX.stroke with every width scaled up: a bolt is a few pixels thick in a 32 px cell."""
-    return FX.stroke(pts, [w * 2.4 for w in ws], soft)
+    return FX.stroke(pts, [w * 1.6 for w in ws], soft)
 
 
 def path(rng, x0, x1, amp, n, y=32.0):
@@ -92,7 +92,7 @@ def zap_row(img, row):
         pts = path(rng, 6.0, 60.0, 4.0, 8)
         v = st(pts, [(0.6 + 1.9 * (i / 8.0)) for i in range(9)], 1.2)
         head = np.hypot(XS - 56, YS - 32)
-        v = np.maximum(v, np.clip(1.0 - head / 8.0, 0, 1) * (0.8 + 0.2 * math.sin(f * 1.7)))
+        v = np.maximum(v, np.clip(1.0 - head / 4.5, 0, 1) * (0.8 + 0.2 * math.sin(f * 1.7)))
         img[row * S:(row + 1) * S, f * S:(f + 1) * S] = FX.band(np.clip(v * 1.1, 0, 1), SKY)
 
 

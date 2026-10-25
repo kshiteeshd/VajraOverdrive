@@ -251,15 +251,8 @@ final class AstraFx {
     private static void lightning(ShapeRenderer s, World w, float t) {
         vajra.world.AstraFlow f = w.flow;
         if (f.ship == null) return;
-        for (int k = 0; k < f.waveCount(); k++) {
-            float age = f.t - k * vajra.world.AstraFlow.WAVE_GAP;
-            if (age < 0f || age > 0.6f) continue;
-            float rr = f.radius * Math.min(1f, age / 0.3f), fade = 1f - MathUtils.clamp((age - 0.3f) / 0.3f, 0f, 1f);
-            s.setColor(0.70f, 0.50f, 1f, 0.16f * fade);
-            ring(s, f.ship.x, f.ship.y, rr, 72, 9f);
-            s.setColor(0.85f, 0.75f, 1f, 0.10f * fade * Math.max(0f, 1f - age / 0.2f));
-            s.circle(f.ship.x, f.ship.y, f.radius * 0.35f, 32);
-        }
+        float fade = 1f - MathUtils.clamp(f.t / 0.3f, 0f, 1f);                // a violet flash at the hull as it begins
+        if (fade > 0f) { s.setColor(0.85f, 0.75f, 1f, 0.12f * fade); s.circle(f.ship.x, f.ship.y, f.radius * 0.35f, 32); }
     }
 
     private static float headSize(int element) {

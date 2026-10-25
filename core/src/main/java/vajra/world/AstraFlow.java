@@ -56,18 +56,14 @@ public final class AstraFlow {
     public final ArrayList<Object[]> zapped = new ArrayList<>();
     private static final class Strike { Enemy e; float at; boolean done; float mult; }
     private final ArrayList<Strike> strikes = new ArrayList<>();
-    private int wave;
     private float zapAcc;
-    /** WAVES of lightning: the ring leaves at WAVE_GAP intervals, each striking every foe in reach; the first is the heaviest. */
-    public static final int WAVES = 5;
-    public static final float WAVE_GAP = 0.4f, ZAP_RATE = 0.07f, ZAP_SPEED = 1400f, ZAP_HIT = 15f, SHOCK_SECONDS = 0.7f;
-    private static final float[] WAVE_MULT = {1f, 0.45f, 0.35f, 0.3f, 0.25f};
+    /** Lightning is loosed as projectiles for FIRE_SECONDS, one every ZAP_RATE, at random angles. */
+    public static final float FIRE_SECONDS = 2.0f, ZAP_RATE = 0.02f, ZAP_SPEED = 1300f, ZAP_HIT = 24f, SHOCK_SECONDS = 0.7f;
     /** A small bolt thrown from the hull at a foe: it flies at ZAP_SPEED and shocks the foe where it lands. */
-    public static final class Zap { public float x, y, ang, age; public Enemy e; }
+    public static final class Zap { public float x, y, ang, age, flown, range; }
     public final ArrayList<Zap> zaps = new ArrayList<>();
     /** Where a thrown bolt landed: x, y, seconds since. */
     public final ArrayList<float[]> sparks = new ArrayList<>();
-    public int waveCount() { return wave; }
 
     // ---- Prithvi: the boulders ----
     public static final float T_ROCK = 3.0f, ROCK_DAMAGE = 70f, CHUNK_DAMAGE = 28f, PEBBLE_DAMAGE = 7f;
@@ -132,7 +128,6 @@ public final class AstraFlow {
         spawnAcc = scorchAcc = 0f;
         cuts = 0;
         thrown = false;
-        wave = 0;
         zapAcc = 0f;
         zaps.clear();
         sparks.clear();
@@ -183,86 +178,66 @@ public final class AstraFlow {
         zapped.add(new Object[] {e, t + dur});
     }
 
-    private void launchWave(World w, int k) {
-        int spokes = 12 + 2 * Math.min(k, 3);
-        float a0 = rng.nextFloat() * 6.2831853f;
-        for (int i = 0; i < spokes; i++) {                                 // the ring: bolts to every side, no two waves the same
-            float a = a0 + i * 6.2831853f / spokes + (rng.nextFloat() - 0.5f) * 0.35f, len = radius * (0.55f + 0.45f * rng.nextFloat());
-            addBolt(ship.x, ship.y, ship.x + (float) Math.cos(a) * len, ship.y + (float) Math.sin(a) * len, 0.55f, true);
-        }
-        ArrayList<Enemy> in = new ArrayList<>();
+    /** One projectile: a bolt leaves the hull at a random angle (about half of them aimed at a foe, with error) and flies straight until it touches a foe or runs out of range. */
+    private void fire(World w) {
+        if (zaps.size() >= 60) return;
+        float a;
+        ArrayList<Enemy> pool = new ArrayList<>();
         for (Enemy e : w.enemies) {
             if (!eligible(e)) continue;
             float dx = e.x - ship.x, dy = e.y - ship.y;
-            if (dx * dx + dy * dy <= radius * radius) in.add(e);
+            if (dx * dx + dy * dy <= radius * radius * 2.2f) pool.add(e);
         }
-        final float sx = ship.x, sy = ship.y;
-        in.sort((p, q) -> Float.compare((p.x - sx) * (p.x - sx) + (p.y - sy) * (p.y - sy), (q.x - sx) * (q.x - sx) + (q.y - sy) * (q.y - sy)));
-        for (int i = 0; i < in.size(); i++) {                              // nearest first, one every 12 ms
-            Strike s = new Strike();
-            s.e = in.get(i);
-            s.at = t + 0.05f + 0.012f * Math.min(i, 40);
-            s.mult = WAVE_MULT[Math.min(k, WAVE_MULT.length - 1)];
-            strikes.add(s);
-        }
+        if (!pool.isEmpty() && rng.nextFloat() < 0.5f) {
+            Enemy e = pool.get(rng.nextInt(pool.size()));
+            a = (float) Math.atan2(e.y - ship.y, e.x - ship.x) + (rng.nextFloat() - 0.5f) * 0.25f;
+        } else a = rng.nextFloat() * 6.2831853f;
+        Zap z = new Zap();
+        float off = 24f;
+        z.x = ship.x + (float) Math.cos(a) * off; z.y = ship.y + (float) Math.sin(a) * off;
+        z.ang = a;
+        z.range = radius * (1.1f + 0.7f * rng.nextFloat());
+        zaps.add(z);
     }
 
     private void stepLightning(World w, float dt) {
         for (int i = bolts.size() - 1; i >= 0; i--) if ((bolts.get(i).age += dt) > bolts.get(i).life) bolts.remove(i);
         for (int i = sparks.size() - 1; i >= 0; i--) if ((sparks.get(i)[2] += dt) > 0.28f) sparks.remove(i);
-        while (wave < WAVES && t >= wave * WAVE_GAP) launchWave(w, wave++);
-        if (t >= 0.15f && t <= WAVES * WAVE_GAP - 0.1f) {                  // small bolts thrown from the hull at foes, one every 70 ms
+        if (t <= FIRE_SECONDS) {                                           // bolts loosed at random, many a second
             zapAcc += dt;
-            while (zapAcc >= ZAP_RATE) {
-                zapAcc -= ZAP_RATE;
-                if (zaps.size() >= 40) break;
-                ArrayList<Enemy> pool = new ArrayList<>();
-                for (Enemy e : w.enemies) {
-                    if (!eligible(e)) continue;
-                    float dx = e.x - ship.x, dy = e.y - ship.y;
-                    if (dx * dx + dy * dy <= radius * radius * 1.7f) pool.add(e);
-                }
-                if (pool.isEmpty()) break;
-                Zap z = new Zap();
-                z.x = ship.x; z.y = ship.y;
-                z.e = pool.get(rng.nextInt(pool.size()));
-                z.ang = (float) Math.atan2(z.e.y - z.y, z.e.x - z.x);
-                zaps.add(z);
-            }
+            while (zapAcc >= ZAP_RATE) { zapAcc -= ZAP_RATE; fire(w); }
         }
-        for (int i = zaps.size() - 1; i >= 0; i--) {                       // each flies at its foe and shocks it where it lands
+        for (int i = zaps.size() - 1; i >= 0; i--) {
             Zap z = zaps.get(i);
+            float step = ZAP_SPEED * dt;
             z.age += dt;
-            if (z.e.dead || z.age > 1.5f) { zaps.remove(i); continue; }
-            float dx = z.e.x - z.x, dy = z.e.y - z.y, d = (float) Math.sqrt(dx * dx + dy * dy), step = ZAP_SPEED * dt;
-            z.ang = (float) Math.atan2(dy, dx);
-            if (d <= step + Math.max(z.e.w, z.e.h) * 0.3f) {
-                sparks.add(new float[] {z.e.x, z.e.y, 0f});
-                if (!w.clientSeat) z.e.hurt(ZAP_HIT * dm, w, seat);
-                shock(z.e, SHOCK_SECONDS);
-                zaps.remove(i);
-            } else { z.x += dx / d * step; z.y += dy / d * step; }
-        }
-        for (Strike s : strikes) {
-            if (s.done || t < s.at) continue;
-            s.done = true;
-            Enemy e = s.e;
-            if (e.dead) continue;
-            addBolt(ship.x, ship.y, e.x, e.y, 0.4f, false);
-            shock(e, ZAP_STUN + 0.2f);
-            if (!w.clientSeat) {
-                e.hurt(ZAP_DAMAGE * dm * s.mult, w, seat);
-                if (!e.boss && !e.dead) { e.caught = Math.max(e.caught, ZAP_STUN * (s.mult < 1f ? 0.6f : 1f)); e.active = true; }
-                int arcs = 0;                                              // the lightning jumps from it to the two nearest foes within reach
-                for (Enemy o : w.enemies) {
-                    if (o == e || !eligible(o) || arcs >= 2) continue;
-                    float dx = o.x - e.x, dy = o.y - e.y;
-                    if (dx * dx + dy * dy > ARC_REACH * ARC_REACH) continue;
-                    arcs++;
-                    addBolt(e.x, e.y, o.x, o.y, 0.3f, false);
-                    shock(o, 0.4f);
-                    o.hurt(ZAP_DAMAGE * dm * s.mult * ARC_SHARE, w, seat);
-                }
+            z.x += (float) Math.cos(z.ang) * step;
+            z.y += (float) Math.sin(z.ang) * step;
+            z.flown += step;
+            Enemy hit = null;
+            for (Enemy e : w.enemies) {
+                if (!eligible(e)) continue;
+                float dx = e.x - z.x, dy = e.y - z.y, r = Math.max(e.w, e.h) * 0.5f + 8f;
+                if (dx * dx + dy * dy <= r * r) { hit = e; break; }
+            }
+            if (hit == null) { if (z.flown > z.range) zaps.remove(i); continue; }
+            zaps.remove(i);
+            sparks.add(new float[] {z.x, z.y, 0f});
+            shock(hit, SHOCK_SECONDS);
+            if (w.clientSeat) continue;
+            hit.hurt(ZAP_HIT * dm, w, seat);
+            if (!hit.boss && !hit.dead) { hit.caught = Math.max(hit.caught, ZAP_STUN); hit.active = true; }
+            Enemy best = null;
+            float bd = ARC_REACH * ARC_REACH;
+            for (Enemy o : w.enemies) {                                    // and it jumps, thin, to the nearest foe within reach
+                if (o == hit || !eligible(o)) continue;
+                float dx = o.x - hit.x, dy = o.y - hit.y, d = dx * dx + dy * dy;
+                if (d < bd) { bd = d; best = o; }
+            }
+            if (best != null) {
+                addBolt(hit.x, hit.y, best.x, best.y, 0.3f, false);
+                shock(best, 0.4f);
+                best.hurt(ZAP_HIT * dm * ARC_SHARE, w, seat);
             }
         }
         for (int i = zapped.size() - 1; i >= 0; i--) {
@@ -270,9 +245,7 @@ public final class AstraFlow {
             float left = (Float) zapped.get(i)[1] - t;
             if (left <= 0f || e.dead) { e.shockT = 0f; zapped.remove(i); } else e.shockT = left;
         }
-        boolean pending = false;
-        for (Strike s : strikes) if (!s.done) { pending = true; break; }
-        if (wave >= WAVES && t > WAVES * WAVE_GAP && !pending && bolts.isEmpty() && zaps.isEmpty() && sparks.isEmpty() && zapped.isEmpty()) cancel();
+        if (t > FIRE_SECONDS && bolts.isEmpty() && zaps.isEmpty() && sparks.isEmpty() && zapped.isEmpty()) cancel();
     }
 
     /** PRITHVI: boulders form out of the mandala and are hurled (docs/ASTRA_NEXT_PLAN.md section 3). The mandala stays while it lasts. */

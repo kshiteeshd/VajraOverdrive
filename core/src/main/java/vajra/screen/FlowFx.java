@@ -121,20 +121,10 @@ final class FlowFx {
     /** AKASHA: bolts tiled end to end from the sheet (each forms, crackles and fades over its life), arcs round the ring of each wave, small bolts in flight, sparks where they land,
      *  and a web of sparks over every shocked foe. */
     private void lightning(SpriteBatch b, AstraFlow f, float time) {
-        for (int k = 0; k < f.waveCount(); k++) {                           // each wave's ring: curls of crackle racing out round the hull
-            float age = f.t - k * AstraFlow.WAVE_GAP;
-            if (age < 0f || age > 0.5f) continue;
-            float rr = f.radius * Math.min(1f, age / 0.3f), al = 1f - Math.max(0f, age - 0.3f) / 0.2f;
-            int arcs = 18;
-            for (int i = 0; i < arcs; i++) {
-                float a = i * 6.2831853f / arcs + k * 0.37f;
-                sprite(b, BOLT, 5, (int) (time * 20f) + i, f.ship.x + rr * (float) Math.cos(a), f.ship.y + rr * (float) Math.sin(a), 110f, (float) Math.toDegrees(a) + 90f, al);
-            }
-        }
         for (AstraFlow.Bolt bo : f.bolts) {
             float dx = bo.x1 - bo.x0, dy = bo.y1 - bo.y0, len = (float) Math.sqrt(dx * dx + dy * dy);
             if (len < 8f) continue;
-            float u = bo.age / bo.life, deg = (float) Math.toDegrees(Math.atan2(dy, dx)), h = bo.big ? 74f : 46f, ux = dx / len, uy = dy / len;
+            float u = bo.age / bo.life, deg = (float) Math.toDegrees(Math.atan2(dy, dx)), h = 44f, ux = dx / len, uy = dy / len;
             int fr = Math.min(7, (int) (u * 8f)), n = Math.max(1, (int) Math.ceil(len / 60f));
             float seg = len / n;
             for (int i = 0; i < n; i++) {
@@ -145,7 +135,7 @@ final class FlowFx {
                 b.draw(r, cx - seg / 2f, cy - h / 2f, seg / 2f, h / 2f, seg, h, 1f, 1f, deg);
             }
         }
-        for (AstraFlow.Zap z : f.zaps) sprite(b, BOLT, 4, (int) (z.age * 30f), z.x - (float) Math.cos(z.ang) * 18f, z.y - (float) Math.sin(z.ang) * 18f, 88f, (float) Math.toDegrees(z.ang), 1f);
+        for (AstraFlow.Zap z : f.zaps) sprite(b, BOLT, 4, (int) (z.age * 30f), z.x - (float) Math.cos(z.ang) * 36f, z.y - (float) Math.sin(z.ang) * 36f, 130f, (float) Math.toDegrees(z.ang), 1f);
         for (float[] sp : f.sparks) sprite(b, BOLT, 7, Math.min(7, (int) (sp[2] / 0.28f * 8f)), sp[0], sp[1], 90f, 0f, 1f);
         int idx = 0;
         for (Object[] zz : f.zapped) {                                      // a web of sparks and a curl of crackle over every shocked foe
