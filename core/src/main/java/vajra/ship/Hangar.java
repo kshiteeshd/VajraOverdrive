@@ -36,8 +36,13 @@ public class Hangar {
     public int shipIndex;
     public int weaponIndex;
 
+    /** ASTRA TESTING STOCK: shards of every element a new run starts with, so every astra can be forged-by-spending and tried from the hangar's ASTRA tab.
+     *  A test switch (-Dvajra.teststock=0 turns it off; the unit tests do): set it to 0 here before the astra economy ships. */
+    public static final int TEST_STOCK = Integer.getInteger("vajra.teststock", 100);
+
     public Hangar() {
         java.util.Arrays.fill(look, -1);
+        java.util.Arrays.fill(shards, TEST_STOCK);
         owned[0][0] = true;   // the starting hull comes with the run
         weaponOwned[0] = true; // and the Single Bolt
     }
