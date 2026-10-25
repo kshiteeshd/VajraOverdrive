@@ -23,16 +23,18 @@ import vajra.ship.Hangar;
 public final class Astra {
     private Astra() {}
 
-    public static final int AKASHA = 0, VAYU = 1, AGNI = 2, JALA = 3, PRITHVI = 4, BRAHMA = 5;
-    /** The five elemental astras and the Brahmastra. */
-    public static final int KINDS = 6, ELEMENTS = 5;
+    public static final int AKASHA = 0, VAYU = 1, AGNI = 2, JALA = 3, PRITHVI = 4, BRAHMA = 5, PASHUPATA = 6;
+    /** The five elemental astras, the Brahmastra, and the Pashupatastra (Rasatala's: fire and stone). */
+    public static final int KINDS = 7, ELEMENTS = 5;
+    /** How far down the lokas each astra lives, 0 (Atala) to 6 (Patala): the higher it is, the bigger and richer its mandala, bolts and release are drawn. */
+    public static final int[] TIER = {0, 4, 1, 2, 3, 6, 5};
     /** Shards of the astra's element a release costs (the Brahmastra: five of each). */
     public static final int COST = 5;
 
     /** The shortest invocation that counts: let go before this and the mantra falters (nothing is spent). */
-    public static final float WIND_MIN = 0.4f;
+    public static final float WIND_MIN = 0.9f;
     /** The invocation at full strength. Holding on past it keeps the astra full and waiting. */
-    public static final float WIND_FULL = 1.5f;
+    public static final float WIND_FULL = 3.4f;
     /** Seconds before another astra can be invoked after a release. */
     public static final float COOLDOWN = 6f;
     /** Seconds before another can be invoked after a faltered mantra, so a stuttering key cannot flicker the cage. */
@@ -40,15 +42,16 @@ public final class Astra {
     /** How far from the hull a foe can be locked, and the half-extents of the view they must be inside. */
     public static final float LOCK_RANGE = 900f, VIEW_HALF_W = 700f, VIEW_HALF_H = 420f;
 
-    public static final String[] NAME = {"AKASHA ASTRA", "VAYU ASTRA", "AGNI ASTRA", "JALA ASTRA", "PRITHVI ASTRA", "BRAHMASTRA"};
-    public static final String[] EPITHET = {"THE HUNTER", "THE GALE", "THE PYRE", "THE FLOOD", "THE MOUNTAIN", "THE LAST ARROW"};
+    public static final String[] NAME = {"AKASHA ASTRA", "VAYU ASTRA", "AGNI ASTRA", "JALA ASTRA", "PRITHVI ASTRA", "BRAHMASTRA", "PASHUPATASTRA"};
+    public static final String[] EPITHET = {"THE HUNTER", "THE GALE", "THE PYRE", "THE FLOOD", "THE MOUNTAIN", "THE LAST ARROW", "THE THIRD EYE"};
     public static final String[] EFFECT = {
             "SEEKS ITS PREY THROUGH ROCK. THE SHIELD IS REFILLED.",
             "FLIES FAST AND CHAINS FROM FOE TO FOE. THE BOOST IS REFILLED.",
             "BURSTS ON IMPACT AND BURNS THE CROWD ROUND IT.",
             "EVERY HIT MENDS THE HULL.",
             "FEW CUBES, HEAVY BLOWS. STONE SKIN FOR TWO SECONDS.",
-            "ALL FIVE AT ONCE. FIVE SHARDS OF EVERY ELEMENT."};
+            "ALL FIVE AT ONCE. FIVE SHARDS OF EVERY ELEMENT.",
+            "THE THIRD EYE OPENS: A BEAM STEERED BY THE NOSE. ARMOUR AND ROCK DO NOT STOP IT. FIVE SHARDS OF FIRE AND STONE."};
 
     // per elemental kind, at FULL strength: cubes, damage per cube, speed, steering, chain hits, splash radius,
     // hull mended per hit. (The Brahmastra is built from these, half the cubes of each.)
@@ -67,9 +70,17 @@ public final class Astra {
     /** The tatva whose shards pay for this kind, or -1 for the Brahmastra (every one). */
     public static int element(int kind) { return kind >= 0 && kind < ELEMENTS ? kind : -1; }
 
+    /** The shards a kind has to pay with: its own element's; the Pashupatastra's fire and stone together; the Brahmastra's smallest element. */
+    public static int stock(Hangar h, int kind) {
+        if (kind == PASHUPATA) return h.shards[AGNI] + h.shards[PRITHVI];
+        if (kind >= ELEMENTS) { int m = Integer.MAX_VALUE; for (int t = 0; t < ELEMENTS; t++) m = Math.min(m, h.shards[t]); return m; }
+        return h.shards[kind];
+    }
+
     /** How many times this astra could be loosed right now from the shard pile. */
     public static int releases(Hangar h, int kind) {
         if (kind < 0 || kind >= KINDS) return 0;
+        if (kind == PASHUPATA) return (h.shards[AGNI] + h.shards[PRITHVI]) / COST;
         if (kind < ELEMENTS) return h.shards[kind] / COST;
         int n = Integer.MAX_VALUE;
         for (int t = 0; t < ELEMENTS; t++) n = Math.min(n, h.shards[t] / COST);
@@ -81,13 +92,16 @@ public final class Astra {
     /** Take the price out of the pile. False (and nothing taken) when it cannot be paid. */
     public static boolean pay(Hangar h, int kind) {
         if (!canLoose(h, kind)) return false;
-        if (kind < ELEMENTS) h.shards[kind] -= COST;
+        if (kind == PASHUPATA) { // five shards of fire and stone, from the deeper pile first
+            for (int i = 0; i < COST; i++) h.shards[h.shards[AGNI] >= h.shards[PRITHVI] ? AGNI : PRITHVI]--;
+        } else if (kind < ELEMENTS) h.shards[kind] -= COST;
         else for (int t = 0; t < ELEMENTS; t++) h.shards[t] -= COST;
         return true;
     }
 
     /** Cubes in an invocation of this kind at full strength. The Brahmastra is half of each element's, at least two. */
     public static int fullCubes(int kind) {
+        if (kind == PASHUPATA) return 3; // three small tridents ride the mandala; the release is a beam, not cubes
         if (kind < ELEMENTS) return CUBES[kind];
         int n = 0;
         for (int t = 0; t < ELEMENTS; t++) n += brahmaShare(t);
@@ -100,6 +114,7 @@ public final class Astra {
     /** The element of the i-th cube of an invocation: the kind itself, or, for the Brahmastra, the elements in turn
      *  in blocks, so every element is present at any charge. */
     public static int cubeElement(int kind, int i) {
+        if (kind == PASHUPATA) return i % 2 == 0 ? AGNI : PRITHVI;
         if (kind < ELEMENTS) return kind;
         return i % ELEMENTS; // interleaved: a half-charged Brahmastra still carries all five
     }
@@ -124,5 +139,8 @@ public final class Astra {
     /** Foes locked after `charge` seconds: one for every cube gathered, at most. */
     public static int locksAt(int kind, float charge) { return cubesAt(kind, charge); }
 
-    public static String key(int kind) { return kind < ELEMENTS ? NAME[kind] : NAME[BRAHMA]; }
+    public static String key(int kind) { return kind >= 0 && kind < KINDS ? NAME[kind] : NAME[BRAHMA]; }
+
+    /** The Pashupatastra's beam: seconds it burns, damage a second (it ignores armour and rock), half-width and length in px. */
+    public static final float GAZE_TIME = 2.2f, GAZE_DPS = 420f, GAZE_HALF = 26f, GAZE_LEN = 1250f;
 }

@@ -29,7 +29,8 @@ final class Mandala {
 
     /** The whole mandala. `k` is the charge 0..1, `t` the world clock, `full` a charge at its peak. */
     static void draw(ShapeRenderer s, float cx, float cy, float k, float t, boolean full, int style) {
-        float R = 128f - 62f * k;
+        int tier = vajra.world.Astra.TIER[MathUtils.clamp(style, 0, vajra.world.Astra.KINDS - 1)];   // how deep its loka lies: 0 Atala .. 6 Patala
+        float R = (128f - 62f * k) * (1f + 0.12f * tier);                                          // the deeper, the greater
         float pulse = full ? 0.82f + 0.18f * MathUtils.sin(t * 14f) : 1f;
         float base = (0.34f + 0.5f * k) * pulse;
         float[] P = PRIMARY[style], A = ACCENT[style];
@@ -42,6 +43,7 @@ final class Mandala {
             case PASHUPATA: pashupata(s, cx, cy, R, k, t, base, P, A); break;
             default: brahma(s, cx, cy, R, k, t, base, P, A); break;
         }
+        majesty(s, cx, cy, R, k, t, tier, base, P, A);
         if (full) { // the full mantra: the whole flares and rings of light spill out
             for (int i = 0; i < 2; i++) {
                 float ph = (t * 1.8f + i * 0.5f) % 1f;
@@ -183,6 +185,110 @@ final class Mandala {
             float rr = R * (0.55f + 0.45f * ph);
             s.setColor(c[0], c[1], c[2], 0.9f * (1f - ph) * a);
             s.circle(cx + rr * MathUtils.cos(ang), cy + rr * MathUtils.sin(ang) - 6f * ph, 1.3f * (1f - ph) + 0.4f, 6);
+        }
+    }
+
+    /** THE GRANDEUR OF DEPTH: what is added round a mandala the deeper its loka lies (tier 0 Atala .. 6 Patala). Every layer also builds with the charge, so the
+     *  richest ones take the whole invocation to finish.  0 a halo and rays; 1 a ring of turning diamonds; 2 an outer dashed ring with tick marks; 3 four great wing
+     *  arcs; 4 satellites circling the whole; 5 a crown of spikes; 6 a pillar of light and the five elements wheeling round it. */
+    private static void majesty(ShapeRenderer s, float cx, float cy, float R, float k, float t, int tier, float base, float[] P, float[] A) {
+        for (int i = 0; i < 4; i++) {                                     // a soft halo under it all
+            s.setColor(P[0], P[1], P[2], (0.012f + 0.004f * tier) * k);
+            s.circle(cx, cy, R * (1.32f - 0.1f * i), 44);
+        }
+        int rays = 8 + 4 * tier;                                          // radiant rays, drawn on one after another round the rim
+        float rp = st(k, 0.3f, 0.7f);
+        for (int i = 0; i < rays; i++) {
+            if (i / (float) rays > rp) break;
+            float a = t * 0.08f + i * TAU / rays, len = R * (0.07f + 0.05f * tier) * (i % 2 == 0 ? 1f : 0.55f);
+            s.setColor(A[0], A[1], A[2], MathUtils.clamp(base * 0.9f * flow(t, 1f, a), 0f, 1f));
+            s.rectLine(cx + R * 1.06f * MathUtils.cos(a), cy + R * 1.06f * MathUtils.sin(a), cx + (R * 1.06f + len) * MathUtils.cos(a), cy + (R * 1.06f + len) * MathUtils.sin(a), 1.1f);
+        }
+        if (tier >= 1) {                                                  // a ring of turning diamonds
+            int n = 16 + 4 * tier;
+            float dp = st(k, 0.4f, 0.8f);
+            for (int i = 0; i < n; i++) {
+                if (i / (float) n > dp) break;
+                float a = -t * 0.18f + i * TAU / n, ca = MathUtils.cos(a), sa = MathUtils.sin(a), x = cx + R * 1.16f * ca, y = cy + R * 1.16f * sa, d = 3.2f;
+                s.setColor(P[0], P[1], P[2], MathUtils.clamp(base * 1.4f * flow(t, 1.16f, a), 0f, 1f));
+                s.triangle(x + d * ca, y + d * sa, x - d * sa * 0.6f, y + d * ca * 0.6f, x + d * sa * 0.6f, y - d * ca * 0.6f);
+                s.triangle(x - d * ca, y - d * sa, x - d * sa * 0.6f, y + d * ca * 0.6f, x + d * sa * 0.6f, y - d * ca * 0.6f);
+            }
+        }
+        if (tier >= 2) {                                                  // an outer dashed ring turning the other way, with tick marks
+            col(s, A, base * 0.9f);
+            ring(s, cx, cy, R * 1.25f, R, st(k, 0.5f, 0.85f), t * 0.2f, 96, 1.1f, 0.6f, t, 2);
+            float tp = st(k, 0.55f, 0.9f);
+            for (int i = 0; i < 24; i++) {
+                if (i / 24f > tp) break;
+                float a = t * 0.2f + i * TAU / 24f;
+                s.setColor(P[0], P[1], P[2], MathUtils.clamp(base * 1.2f, 0f, 1f));
+                s.rectLine(cx + R * 1.25f * MathUtils.cos(a), cy + R * 1.25f * MathUtils.sin(a), cx + R * 1.31f * MathUtils.cos(a), cy + R * 1.31f * MathUtils.sin(a), i % 3 == 0 ? 2f : 1f);
+            }
+        }
+        if (tier >= 3) {                                                  // four great wing arcs at the quarters, doubled
+            float wp = st(k, 0.55f, 0.92f);
+            for (int q = 0; q < 4; q++) {
+                float mid = q * MathUtils.PI / 2f + t * 0.1f;
+                for (int line = 0; line < 2; line++) {
+                    int n = Math.max(2, (int) (30 * wp));
+                    float px = 0f, py = 0f, r = R * (1.40f + 0.06f * line);
+                    for (int i = 0; i <= n; i++) {
+                        float u = i / 30f - 0.5f, a = mid + u * 1.1f, x = cx + r * MathUtils.cos(a), y = cy + r * MathUtils.sin(a);
+                        if (i > 0) {
+                            s.setColor(A[0], A[1], A[2], MathUtils.clamp(base * (line == 0 ? 1.5f : 0.8f) * flow(t, 1.4f, a), 0f, 1f));
+                            s.rectLine(px, py, x, y, line == 0 ? 1.8f : 1f);
+                        }
+                        px = x;
+                        py = y;
+                    }
+                }
+            }
+        }
+        if (tier >= 4) {                                                  // satellites circling the whole, each with its own small ring
+            int sat = tier - 2;
+            float sp = st(k, 0.65f, 0.95f);
+            for (int i = 0; i < sat; i++) {
+                float a = t * 0.5f + i * TAU / sat, x = cx + R * 1.56f * MathUtils.cos(a), y = cy + R * 1.56f * MathUtils.sin(a);
+                s.setColor(P[0], P[1], P[2], MathUtils.clamp(base * sp, 0f, 1f));
+                s.circle(x, y, 9f * sp, 14);
+                col(s, A, base * 1.6f * sp);
+                ring(s, x, y, 12f * sp, R, 1f, t * 2f, 20, 1.1f, 0f, t, 0);
+                s.setColor(1f, 1f, 1f, 0.9f * sp);
+                s.circle(x, y, 2.6f * sp, 8);
+            }
+        }
+        if (tier >= 5) {                                                  // a crown of spikes, alternate long and short
+            float cp = st(k, 0.72f, 1f);
+            int n = 12;
+            for (int i = 0; i < n; i++) {
+                float f = MathUtils.clamp(cp * n - i, 0f, 1f);
+                if (f <= 0f) break;
+                float a = -t * 0.12f + i * TAU / n, h = R * (i % 2 == 0 ? 0.30f : 0.17f) * f * (0.9f + 0.1f * MathUtils.sin(t * 6f + i));
+                float b0 = R * 1.34f, ca2 = MathUtils.cos(a), sa2 = MathUtils.sin(a);
+                s.setColor(A[0], A[1], A[2], MathUtils.clamp(base * 1.6f, 0f, 1f));
+                s.triangle(cx + (b0 + h) * ca2, cy + (b0 + h) * sa2, cx + b0 * ca2 - 5f * sa2, cy + b0 * sa2 + 5f * ca2, cx + b0 * ca2 + 5f * sa2, cy + b0 * sa2 - 5f * ca2);
+            }
+            col(s, P, base * 1.2f);
+            ring(s, cx, cy, R * 1.34f, R, cp, 0f, 96, 1.3f, 0.6f, t, 0);
+        }
+        if (tier >= 6) {                                                  // a pillar of light, and the five elements wheeling round the whole
+            float lp = st(k, 0.8f, 1f);
+            for (int seg = 0; seg < 8; seg++) {                           // the pillar, fading as it climbs
+                float y0 = cy + seg * R * 0.33f * lp, fade = 1f - seg / 8f;
+                for (int i = 0; i < 4; i++) {
+                    s.setColor(1f, 0.9f, 0.55f, (0.030f + 0.012f * (3 - i)) * lp * fade);
+                    s.rect(cx - R * (0.34f - 0.07f * i), y0, R * (0.68f - 0.14f * i), R * 0.33f * lp);
+                }
+            }
+            for (int i = 0; i < 5; i++) {
+                float a = -t * 0.35f + i * TAU / 5f, x = cx + R * 1.78f * MathUtils.cos(a), y = cy + R * 1.78f * MathUtils.sin(a);
+                float[] e = World.TATVA_RGB[i];
+                s.setColor(e[0], e[1], e[2], 0.5f * lp);
+                s.circle(x, y, 14f * lp, 16);
+                s.setColor(1f, 1f, 1f, 0.9f * lp);
+                s.circle(x, y, 3.4f * lp, 8);
+            }
         }
     }
 

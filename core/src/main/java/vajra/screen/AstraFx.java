@@ -1,6 +1,7 @@
 package vajra.screen;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
@@ -18,19 +19,22 @@ final class AstraFx {
     private AstraFx() {}
 
     private static final float[] WHITE = {1f, 1f, 1f};
+    private static final Color tint = new Color(), tint2 = new Color();
 
     /** All of it, inside an open Filled shape pass in world space. */
     static void draw(ShapeRenderer s, World w, float l, float b, float viewW, float viewH) {
-        if (w.astra.isEmpty() && !w.winding()) return;
+        if (w.astra.isEmpty() && !w.winding() && w.gazeT <= 0f) return;
         s.flush();
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE);          // additive: light, not paint
         float t = w.clock;
         if (w.winding()) yantra(s, w, t);
+        float scale = 1f + 0.1f * vajra.world.Astra.TIER[MathUtils.clamp(w.astraKind, 0, vajra.world.Astra.KINDS - 1)];   // the deeper the astra, the greater its shards
+        if (w.gazeT > 0f) gaze(s, w, t);
         for (AstraCube c : w.astra) {
             if (c.x < l - 80 || c.x > l + viewW + 80 || c.y < b - 80 || c.y > b + viewH + 80) continue;
             float[] el = World.TATVA_RGB[MathUtils.clamp(c.element, 0, World.TATVA_RGB.length - 1)];
-            if (c.armed) bolt(s, c, el, t);
-            else orb(s, w, c, el, t);
+            if (c.armed) bolt(s, c, el, t, scale);
+            else orb(s, w, c, el, t, scale);
         }
         s.flush();
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
@@ -41,7 +45,7 @@ final class AstraFx {
     /** The mandala that opens round the hull while the mantra is held: one per astra, its elements forming one by one with the charge (see Mandala). */
     private static void yantra(ShapeRenderer s, World w, float t) {
         float k = MathUtils.clamp(w.windK(), 0f, 1f);
-        Mandala.draw(s, w.ship.x, w.ship.y, k, t, w.astraCharge >= vajra.world.Astra.WIND_FULL, MathUtils.clamp(w.astraKind, 0, 5));
+        Mandala.draw(s, w.ship.x, w.ship.y, k, t, w.astraCharge >= vajra.world.Astra.WIND_FULL, MathUtils.clamp(w.astraKind, 0, vajra.world.Astra.KINDS - 1));
     }
 
     private static void ring(ShapeRenderer s, float cx, float cy, float r, int n, float th) {
@@ -63,7 +67,7 @@ final class AstraFx {
     }
 
     /** A held shard: a glowing orb on the circle with a short arc of light behind it. */
-    private static void orb(ShapeRenderer s, World w, AstraCube c, float[] el, float t) {
+    private static void orb(ShapeRenderer s, World w, AstraCube c, float[] el, float t, float scale) {
         float dx = c.x - w.ship.x, dy = c.y - w.ship.y;
         float k = MathUtils.clamp(w.windK(), 0f, 1f);
         float lift = 0.7f + 0.3f * MathUtils.sin(t * 8f + c.slot * 3f);
@@ -73,24 +77,18 @@ final class AstraFx {
             s.setColor(el[0], el[1], el[2], 0.5f * (1f - i / 7f));
             s.circle(x, y, 3.4f * (1f - i / 8f), 8);
         }
-        glow(s, c.x, c.y, 4.4f + 2f * k, el, lift);
+        float tang = MathUtils.atan2(dy, dx) + MathUtils.HALF_PI;                                      // heading round the circle
+        shapedHead(s, c.x, c.y, tang, c.element, headSize(c.element) * scale * (0.75f + 0.45f * k), t, c.slot, el);   // the held shard wears its true shape
     }
 
     // ---- the loosed bolt -------------------------------------------------------------------------
 
-    private static void bolt(ShapeRenderer s, AstraCube c, float[] el, float t) {
+    private static void bolt(ShapeRenderer s, AstraCube c, float[] el, float t, float scale) {
         c.mark();
         float ang = MathUtils.atan2(c.vy, c.vx), ca = MathUtils.cos(ang), sa = MathUtils.sin(ang);
         float nx = -sa, ny = ca;                                         // across the flight
         int n = c.tn;
-        float hw;
-        switch (c.element) {
-            case 1: hw = 3.2f; break;
-            case 2: hw = 7f; break;
-            case 4: hw = 8f; break;
-            case 3: hw = 5.4f; break;
-            default: hw = 5f;
-        }
+        float hw = headSize(c.element) * scale;
         // the trail: wide and faint under, narrow and hot on top, each step thinner than the last
         float px = c.x, py = c.y;
         for (int i = 0; i < n; i++) {
@@ -114,57 +112,143 @@ final class AstraFx {
                 s.circle(x + nx * MathUtils.sin(i * 5f) * 4f, y + ny * MathUtils.sin(i * 5f) * 4f, 2f * k + 0.6f, 6);
             }
         }
-        // the head
-        glow(s, c.x, c.y, hw * 2.2f, el, 0.8f);
-        switch (c.element) {
+        shapedHead(s, c.x, c.y, ang, c.element, hw, t, c.slot, el);
+    }
+
+    /** The head of a shard, shaped for its element - in flight and while it is held on the mandala alike: a spinning star-diamond (Akasha), a slim arrowhead
+     *  with wheeling wisps (Vayu), a guttering fireball (Agni), a teardrop (Jala), a tumbling stone (Prithvi). `ang` is its heading, `hw` its size. */
+    private static void shapedHead(ShapeRenderer s, float x, float y, float ang, int element, float hw, float t, float slot, float[] el) {
+        float ca = MathUtils.cos(ang), sa = MathUtils.sin(ang), nx = -sa, ny = ca;
+        glow(s, x, y, hw * 2.2f, el, 0.8f);
+        switch (element) {
             case 0: { // Akasha: a spinning star-diamond that twinkles
-                float spin = t * 6f + c.slot;
-                diamond(s, c.x, c.y, hw * 1.7f, hw * 0.8f, spin, el, WHITE);
-                float tw = 0.5f + 0.5f * MathUtils.sin(t * 17f + c.slot);
+                float spin = t * 6f + slot;
+                diamond(s, x, y, hw * 1.7f, hw * 0.8f, spin, el, WHITE);
+                float tw = 0.5f + 0.5f * MathUtils.sin(t * 17f + slot);
                 s.setColor(1f, 1f, 1f, 0.8f * tw);
-                s.rectLine(c.x - hw * 2.6f, c.y, c.x + hw * 2.6f, c.y, 1f);
-                s.rectLine(c.x, c.y - hw * 2.6f, c.x, c.y + hw * 2.6f, 1f);
+                s.rectLine(x - hw * 2.6f, y, x + hw * 2.6f, y, 1f);
+                s.rectLine(x, y - hw * 2.6f, x, y + hw * 2.6f, 1f);
                 break;
             }
             case 1: { // Vayu: a slim arrowhead with two wisps wheeling round it
-                diamond(s, c.x, c.y, hw * 2.6f, hw * 0.7f, ang, el, WHITE);
+                diamond(s, x, y, hw * 2.6f, hw * 0.7f, ang, el, WHITE);
                 for (int i = 0; i < 2; i++) {
                     float a = t * 30f + i * MathUtils.PI;
                     s.setColor(el[0], el[1], el[2], 0.7f);
-                    s.circle(c.x + ca * MathUtils.cos(a) * 1.5f + nx * MathUtils.sin(a) * 6f,
-                            c.y + sa * MathUtils.cos(a) * 1.5f + ny * MathUtils.sin(a) * 6f, 1.6f, 6);
+                    s.circle(x + ca * MathUtils.cos(a) * 1.5f + nx * MathUtils.sin(a) * 6f,
+                            y + sa * MathUtils.cos(a) * 1.5f + ny * MathUtils.sin(a) * 6f, 1.6f, 6);
                 }
                 break;
             }
             case 2: { // Agni: a fireball with flickering tongues thrown back
                 float[] hot = {1f, 0.86f, 0.5f};
                 s.setColor(1f, 0.4f, 0.08f, 0.9f);
-                s.circle(c.x, c.y, hw * (0.95f + 0.1f * MathUtils.sin(t * 40f)), 12);
+                s.circle(x, y, hw * (0.95f + 0.1f * MathUtils.sin(t * 40f)), 12);
                 for (int i = -1; i <= 1; i++) {
-                    float fl = 1f + 0.4f * MathUtils.sin(t * 33f + i * 2f + c.slot);
-                    s.triangle(c.x + nx * i * hw * 0.7f, c.y + ny * i * hw * 0.7f,
-                            c.x + nx * i * hw * 0.2f - ca * hw * 2.2f * fl, c.y + ny * i * hw * 0.2f - sa * hw * 2.2f * fl,
-                            c.x + nx * (i * hw * 0.7f + hw * 0.5f), c.y + ny * (i * hw * 0.7f + hw * 0.5f));
+                    float fl = 1f + 0.4f * MathUtils.sin(t * 33f + i * 2f + slot);
+                    s.triangle(x + nx * i * hw * 0.7f, y + ny * i * hw * 0.7f,
+                            x + nx * i * hw * 0.2f - ca * hw * 2.2f * fl, y + ny * i * hw * 0.2f - sa * hw * 2.2f * fl,
+                            x + nx * (i * hw * 0.7f + hw * 0.5f), y + ny * (i * hw * 0.7f + hw * 0.5f));
                 }
                 s.setColor(hot[0], hot[1], hot[2], 1f);
-                s.circle(c.x, c.y, hw * 0.5f, 10);
+                s.circle(x, y, hw * 0.5f, 10);
                 break;
             }
             case 3: { // Jala: a teardrop, round at the front, drawn out behind
                 s.setColor(el[0], el[1], el[2], 0.95f);
-                s.circle(c.x + ca * hw * 0.3f, c.y + sa * hw * 0.3f, hw * 0.9f, 12);
-                s.triangle(c.x + nx * hw * 0.85f, c.y + ny * hw * 0.85f, c.x - nx * hw * 0.85f, c.y - ny * hw * 0.85f,
-                        c.x - ca * hw * 2.4f, c.y - sa * hw * 2.4f);
+                s.circle(x + ca * hw * 0.3f, y + sa * hw * 0.3f, hw * 0.9f, 12);
+                s.triangle(x + nx * hw * 0.85f, y + ny * hw * 0.85f, x - nx * hw * 0.85f, y - ny * hw * 0.85f,
+                        x - ca * hw * 2.4f, y - sa * hw * 2.4f);
                 s.setColor(1f, 1f, 1f, 0.85f);
-                s.circle(c.x + ca * hw * 0.5f + nx * hw * 0.3f, c.y + sa * hw * 0.5f + ny * hw * 0.3f, hw * 0.28f, 6);
+                s.circle(x + ca * hw * 0.5f + nx * hw * 0.3f, y + sa * hw * 0.5f + ny * hw * 0.3f, hw * 0.28f, 6);
                 break;
             }
             default: { // Prithvi: a stone shard, heavy and angular, tumbling slowly
-                float spin = ang + MathUtils.sin(t * 5f + c.slot) * 0.4f;
-                diamond(s, c.x, c.y, hw * 1.5f, hw * 1.05f, spin, new float[] {0.62f, 0.46f, 0.16f}, el);
+                float spin = ang + MathUtils.sin(t * 5f + slot) * 0.4f;
+                diamond(s, x, y, hw * 1.5f, hw * 1.05f, spin, new float[] {0.62f, 0.46f, 0.16f}, el);
                 break;
             }
         }
+    }
+
+    private static float headSize(int element) {
+        switch (element) {
+            case 1: return 3.2f;
+            case 2: return 7f;
+            case 4: return 8f;
+            case 3: return 5.4f;
+            default: return 5f;
+        }
+    }
+
+    /** THE THIRD EYE'S BEAM: an almond eye opens over the hull and a beam burns from it along the nose - a hot white core, a gold body, a vermilion edge, rings of
+     *  light running down its length and ash-white flares, wider and brighter at its root. It ignores rock, so it is drawn straight through it. */
+    private static void gaze(ShapeRenderer s, World w, float t) {
+        vajra.ship.Ship g = w.gazeShip;
+        if (g == null) return;
+        float open = MathUtils.clamp((vajra.world.Astra.GAZE_TIME - w.gazeT) / 0.3f, 0f, 1f) * MathUtils.clamp(w.gazeT / 0.4f, 0f, 1f);   // opens fast, closes slowly
+        float ca = MathUtils.cos(g.facing), sa = MathUtils.sin(g.facing), nx = -sa, ny = ca;
+        float len = vajra.world.Astra.GAZE_LEN * (0.3f + 0.7f * MathUtils.clamp((vajra.world.Astra.GAZE_TIME - w.gazeT) / 0.25f, 0f, 1f));
+        float half = vajra.world.Astra.GAZE_HALF * (1f + 0.1f * vajra.world.Astra.TIER[vajra.world.Astra.PASHUPATA]) * (0.85f + 0.15f * MathUtils.sin(t * 40f));
+        float x0 = g.x + ca * 18f, y0 = g.y + sa * 18f, x1 = g.x + ca * len, y1 = g.y + sa * len;
+        // the body: seven tapered layers, wide and faint to narrow and hot, each a quad whose colour fades from the root to the far end (no seams)
+        float rootW = half * 1.3f, tipW = half * 0.8f;
+        for (int l = 0; l < 8; l++) {
+            float f = l / 7f, k = 3.6f - 3.1f * f;
+            Color c0 = tint.set(1f, 0.20f + 0.52f * f, 0.05f + 0.36f * f, (0.09f + 0.07f * f) * open);
+            Color c1 = tint2.set(c0.r, c0.g, c0.b, c0.a * 0.25f);
+            float rx = -ny * 0f + nx * rootW * k * 0.5f, ry = ny * rootW * k * 0.5f, tx = nx * tipW * k * 0.5f, ty = ny * tipW * k * 0.5f;
+            s.triangle(x0 + rx, y0 + ry, x0 - rx, y0 - ry, x1 + tx, y1 + ty, c0, c0, c1);
+            s.triangle(x0 - rx, y0 - ry, x1 - tx, y1 - ty, x1 + tx, y1 + ty, c0, c1, c1);
+        }
+        {
+            Color c0 = tint.set(1f, 1f, 1f, 0.95f * open), c1 = tint2.set(1f, 0.95f, 0.8f, 0.2f * open);
+            float rx = nx * rootW * 0.2f, ry = ny * rootW * 0.2f, tx = nx * tipW * 0.2f, ty = ny * tipW * 0.2f;      // the hot white core
+            s.triangle(x0 + rx, y0 + ry, x0 - rx, y0 - ry, x1 + tx, y1 + ty, c0, c0, c1);
+            s.triangle(x0 - rx, y0 - ry, x1 - tx, y1 - ty, x1 + tx, y1 + ty, c0, c1, c1);
+        }
+        final int segs = 28;
+        for (int strand = 0; strand < 2; strand++) {                      // two strands of light twisting round the core
+            float px = 0f, py = 0f;
+            for (int i = 0; i <= segs * 2; i++) {
+                float u = i / (float) (segs * 2), off = half * 1.1f * MathUtils.sin(u * 22f - t * 13f + strand * MathUtils.PI) * (1f - 0.5f * u);
+                float x = x0 + (x1 - x0) * u + nx * off, y = y0 + (y1 - y0) * u + ny * off;
+                if (i > 0) {
+                    s.setColor(1f, 0.82f, 0.45f, 0.75f * (1f - 0.7f * u) * open);
+                    s.rectLine(px, py, x, y, 1.7f);
+                }
+                px = x;
+                py = y;
+            }
+        }
+        for (int i = 0; i < 9; i++) {                                    // rings of light running out along the beam
+            float ph = (t * 1.6f + i / 9f) % 1f, d = 30f + ph * (len - 30f), wd = half * (1.1f + 0.5f * ph);
+            s.setColor(1f, 0.8f, 0.45f, 0.5f * (1f - ph) * open);
+            s.rectLine(g.x + ca * d - nx * wd, g.y + sa * d - ny * wd, g.x + ca * d + nx * wd, g.y + sa * d + ny * wd, 2f);
+        }
+        for (int i = 0; i < 12; i++) {                                   // ash-white flares thrown off the edges
+            float ph = (t * 2.2f + i * 0.0833f) % 1f, d = ph * len, side = (i % 2 == 0 ? 1f : -1f);
+            s.setColor(1f, 0.9f, 0.7f, 0.7f * (1f - ph) * open);
+            s.circle(g.x + ca * d + nx * side * (half * (0.9f + ph)), g.y + sa * d + ny * side * (half * (0.9f + ph)), 2.2f * (1f - ph) + 0.6f, 6);
+        }
+        // the eye over the hull: an almond, an iris, a red pupil
+        float grand = 1f + 0.1f * vajra.world.Astra.TIER[vajra.world.Astra.PASHUPATA];
+        float ew = 38f * grand * open, eh = 15f * grand * open;
+        s.setColor(1f, 0.82f, 0.5f, 0.9f * open);
+        for (int side = -1; side <= 1; side += 2) {                       // the almond lies across the beam, its two lids bowing along it
+            float lx = 0f, ly = 0f;
+            for (int i = 0; i <= 14; i++) {
+                float u = i / 14f, across = -ew + 2f * ew * u, lid = side * eh * 4f * u * (1f - u);
+                float x = g.x + nx * across + ca * lid, y = g.y + ny * across + sa * lid;
+                if (i > 0) s.rectLine(lx, ly, x, y, 2f);
+                lx = x;
+                ly = y;
+            }
+        }
+        s.setColor(1f, 0.3f, 0.15f, 0.9f * open);
+        s.circle(g.x, g.y, 7f * open, 12);
+        s.setColor(1f, 1f, 1f, 0.95f * open);
+        s.circle(g.x, g.y, 2.6f * open, 8);
     }
 
     private static float[] ember(float k) {

@@ -543,6 +543,21 @@ public class Enemy {
         return hurt(amount, w, 0);
     }
 
+    /** A hit that nothing turns aside: plate does not blunt it and a body in rock or smoke is not safe from it (the Pashupatastra's gaze). */
+    public boolean hurtPiercing(float amount, World w, int owner) {
+        boolean plate = armoured, rock = inRock, smoke = smoked;
+        armoured = false;
+        inRock = false;
+        smoked = false;
+        try {
+            return hurt(amount, w, owner);
+        } finally {
+            armoured = plate;
+            inRock = rock;
+            smoked = smoke;
+        }
+    }
+
     /** The same hit, with the roster id that fired it (0 = this seat). */
     public boolean hurt(float amount, World w, int owner) {
         if (dead || submerged()) return false;         // (a body down at the floor, in rock or in smoke cannot be touched)

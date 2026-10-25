@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test;
 /** Every mandala at four charges (build/mandala-<style>.png): rows are the seven styles (Akasha, Vayu, Agni, Jala, Prithvi, Brahma, Pashupata), columns 25%,
  *  50%, 80% and a full pulsing charge. Checks that each one draws, and that a full charge is far richer than the first moments (its elements form one by one). */
 class MandalaShotTest {
-    private static final int CELL = 300, COLS = 4, ROWS = 7;
+    private static final int CELL = 460, COLS = 4, ROWS = 7;
     private static final float[] KS = {0.25f, 0.5f, 0.8f, 1f};
     private static final int[] STYLES = {0, 1, 2, 3, 4, 5, 6};
 
@@ -67,6 +67,27 @@ class MandalaShotTest {
                     new File("build").mkdirs();
                     com.badlogic.gdx.graphics.PixmapIO.writePNG(Gdx.files.local("build/mandala-all.png"), pm);
                     pm.dispose();
+                    // and the seven at a full charge side by side (4 x 2), to see the grandeur of depth: bigger and richer from Akasha to Brahma
+                    int fw = 4 * 560, fh = 2 * 560;
+                    FrameBuffer big = new FrameBuffer(Pixmap.Format.RGBA8888, fw, fh, false);
+                    OrthographicCamera cam2 = new OrthographicCamera(fw, fh);
+                    cam2.position.set(fw / 2f, fh / 2f, 0);
+                    cam2.update();
+                    big.begin();
+                    ScreenUtils.clear(0.04f, 0.035f, 0.05f, 1f);
+                    sr.setProjectionMatrix(cam2.combined);
+                    Gdx.gl.glEnable(GL20.GL_BLEND);
+                    Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE);
+                    sr.begin(ShapeRenderer.ShapeType.Filled);
+                    int[] order = {0, 2, 3, 4, 1, 6, 5};      // by loka: Akasha (Atala), Agni, Jala, Prithvi, Vayu, Pashupata, Brahma
+                    for (int i = 0; i < 7; i++)
+                        Mandala.draw(sr, (i % 4) * 560 + 280, (1 - i / 4) * 560 + 280, 1f, 3.0f, true, order[i]);
+                    sr.end();
+                    Pixmap pm2 = Pixmap.createFromFrameBuffer(0, 0, fw, fh);
+                    big.end();
+                    com.badlogic.gdx.graphics.PixmapIO.writePNG(Gdx.files.local("build/mandala-by-loka.png"), pm2);
+                    pm2.dispose();
+                    big.dispose();
                     sr.dispose();
                     fbo.dispose();
                 } catch (Throwable t) {

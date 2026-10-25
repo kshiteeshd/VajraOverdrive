@@ -238,7 +238,7 @@ final class VedicHud {
         for (int k = 0; k < Astra.COST; k++) {
             float from = 90 - k * cell - gap / 2f, to = from - (cell - gap);
             float[] e = kind == Astra.BRAHMA ? World.TATVA_RGB[k] : c;
-            boolean lit = kind == Astra.BRAHMA ? h.shards[k] >= Astra.COST : k < Math.min(Astra.COST, h.shards[kind]);
+            boolean lit = kind == Astra.BRAHMA ? h.shards[k] >= Astra.COST : k < Math.min(Astra.COST, Astra.stock(h, kind));
             if (lit) s().setColor(e[0], e[1], e[2], can ? 1f : 0.85f); else s().setColor(1, 1, 1, 0.14f);
             arc(GEM_CX, GEM_CY, RING_R, from, to, 5, lit ? 2.4f : 1.4f);
         }
@@ -260,6 +260,20 @@ final class VedicHud {
         if (kind == Astra.BRAHMA) { // the Brahmastra has no single gem: a gold diamond
             gold(can ? 1f : 0.4f);
             dia(GEM_CX, GEM_CY, 8);
+        }
+        if (kind == Astra.PASHUPATA) { // the third eye: an almond, an iris, a red point
+            gold(can ? 1f : 0.4f);
+            for (int side = -1; side <= 1; side += 2) {
+                float lx = GEM_CX - 11, ly = GEM_CY;
+                for (int j = 1; j <= 10; j++) {
+                    float u = j / 10f, px = GEM_CX - 11 + 22 * u, py = GEM_CY + side * 16 * u * (1 - u);
+                    s().rectLine(lx, ly, px, py, 1.4f);
+                    lx = px;
+                    ly = py;
+                }
+            }
+            s().setColor(1f, 0.25f, 0.15f, can ? 1f : 0.4f);
+            s().circle(GEM_CX, GEM_CY, 2.6f);
         }
     }
 

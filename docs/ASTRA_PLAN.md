@@ -73,6 +73,13 @@ plus its yantra drawn as shapes. A preview contact sheet comes first, you choose
   light at a full charge. `MandalaShotTest` writes `build/mandala-all.png` (all seven at 25 / 50 / 80 / full).
 - **The release always fires.** Letting go of F looses the astra even with nothing locked: the cubes fly along the nose, a cube with nothing to chase looks
   ahead (650 px) for a foe, and the shards are spent. (It used to falter, and cost nothing, unless a foe was in view.)
+- **Slower invocation**: `WIND_FULL` 1.5 s -> 3.4 s (`WIND_MIN` 0.9 s): the mandala has time to form, element by element.
+- **Held shards wear their shape** (star-diamond, arrowhead with wisps, fireball, teardrop, tumbling stone), the same heads the loosed bolts have, not plain circles.
+- **The Pashupatastra** (kind 6, `Astra.PASHUPATA`): paid in five shards of Agni + Prithvi in any mix; HOLD F, let go, and the third eye opens: a beam steered by the
+  nose for 2.2 s, 420 damage a second to everything on the line, **ignoring armour, rock and smoke** (`Enemy.hurtPiercing`). Seven cards in the hangar, an eye on the dial.
+- **Grandeur by loka** (`Astra.TIER`: Akasha 0 Atala, Agni 1, Jala 2, Prithvi 3, Vayu 4, Pashupata 5, Brahma 6): the mandala grows x1.12 a tier and gains layers - rays,
+  a ring of diamonds, an outer ring with ticks, four wing arcs, satellites, a crown of spikes, a pillar of light with the five elements wheeling - the shards grow 10% a tier
+  and the opening ring of a release 15% a tier. `build/mandala-by-loka.png` shows them side by side.
 - Agni's art sheet and the mandala proof (`tools/enemy_art/astra.py`, `tools/enemy_art/mandala.py`).
 
 ## 3. The UI

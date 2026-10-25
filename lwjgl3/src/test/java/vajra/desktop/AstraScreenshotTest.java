@@ -70,7 +70,8 @@ class AstraScreenshotTest {
                         vajra.enemy.Enemy e = new vajra.enemy.Enemy(
                                 vajra.enemy.Enemy.Kind.MAYAVI,
                                 w.ship.x + (i - 9) * 46f, w.ship.y + 150 + (i % 3) * 40);
-                        e.hp = 90;
+                        e.hp = e.maxHp = 9000;     // the invocation is slow now: a crowd must survive it, and not shoot back
+                        e.dmgScale = 0f;
                         e.active = true;
                         w.enemies.add(e);
                     }
@@ -81,7 +82,7 @@ class AstraScreenshotTest {
                     for (int i = 0; i < 6; i++) frame();
                     int early = countHeld(w);
                     float wide = shellRadius(w);
-                    for (int i = 0; i < 90; i++) frame();   // 1.5 s: full strength
+                    for (int i = 0; i < (int) (vajra.world.Astra.WIND_FULL * 60f) + 12; i++) frame();   // the whole invocation: full strength
                     int held = countHeld(w);
                     check(held > early, "the cage fills as F is held (" + early + " -> " + held + ")", failures);
                     check(held == vajra.world.Astra.CUBES[vajra.world.Astra.AKASHA],

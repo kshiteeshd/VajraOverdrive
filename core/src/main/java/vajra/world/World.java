@@ -1289,7 +1289,7 @@ public class World {
     /** The release is drawn in the astra's own tatva, lifted toward white for the crest: a hue that is nobody's
      *  element (it used to be water blue mixed in) reads as a mistake. */
     private static final float CREST_LIFT = 0.55f;
-    private static final float[] BRAHMA_RGB = {1f, 0.86f, 0.45f};
+    private static final float[] BRAHMA_RGB = {1f, 0.86f, 0.45f}, PASHUPATA_RGB = {0.92f, 0.84f, 0.66f};
 
     /** Which astra X has chosen: an {@link Astra} kind. */
     public int astraSel;
@@ -1312,6 +1312,37 @@ public class World {
 
     /** Cubes in flight or in the shell, oldest first. The renderer draws them; nothing else touches them. */
     public final List<AstraCube> astra = new ArrayList<>();
+
+    /** THE THIRD EYE: while > 0 the Pashupatastra's beam burns from {@link #gazeShip} along its nose (seconds left), its damage graded by {@link #gazeDm}. */
+    public float gazeT, gazeDm = 1f;
+    public Ship gazeShip;
+    public int gazeOwner;
+
+    private void startGaze(Ship from, int seat, float dm) {
+        gazeShip = from;
+        gazeOwner = seat;
+        gazeDm = dm;
+        gazeT = Astra.GAZE_TIME;
+    }
+
+    /** The beam's tick: every living foe on the line takes its share, plate and rock be damned. */
+    private void gazeBurn(float dt) {
+        Ship g = gazeShip;
+        if (g == null || g.hp <= 0) { gazeT = 0f; return; }
+        float ca = (float) Math.cos(g.facing), sa = (float) Math.sin(g.facing);
+        float half = Astra.GAZE_HALF * (1f + 0.1f * Astra.TIER[Astra.PASHUPATA]);
+        for (Enemy e : enemies) {
+            if (e.dead || e.dismissed || e.voice || e.ghost || e.bossHidden) continue;
+            float dx = e.x - g.x, dy = e.y - g.y;
+            float along = dx * ca + dy * sa, across = Math.abs(-dx * sa + dy * ca);
+            if (along < 0f || along > Astra.GAZE_LEN || across > half + Math.max(e.w, e.h) * 0.5f) continue;
+            e.hurtPiercing(Astra.GAZE_DPS * gazeDm * dt, this, gazeOwner);
+        }
+        if (fxRng.nextFloat() < 0.5f) {                                  // ash and sparks thrown off the beam's length
+            float d = fxRng.nextFloat() * Astra.GAZE_LEN * 0.8f;
+            debris(g.x + ca * d, g.y + sa * d, 160, crestR(), crestG(), crestB());
+        }
+    }
 
     public float astraCd() { return astraCd; }
     public boolean winding() { return astraInvoking; }
@@ -1347,7 +1378,7 @@ public class World {
     }
 
     /** The colour of an astra: its element's tatva, or the Brahmastra's own gold. */
-    public static float[] astraRgb(int kind) { return kind >= 0 && kind < Astra.ELEMENTS ? TATVA_RGB[kind] : BRAHMA_RGB; }
+    public static float[] astraRgb(int kind) { return kind >= 0 && kind < Astra.ELEMENTS ? TATVA_RGB[kind] : kind == Astra.PASHUPATA ? PASHUPATA_RGB : BRAHMA_RGB; }
 
     /** The colour of the astra in the shell or in flight. */
     public float[] astraRgb() { return astraRgb(astraKind); }
@@ -1415,6 +1446,16 @@ public class World {
         astraPunch = 0.4f + 0.6f * power;
         ship.dipT = 0.35f;
         ship.trauma = Math.max(ship.trauma, 0.4f + 0.4f * power);
+        float grand = 1f + 0.15f * Astra.TIER[kind];                                   // the deeper the astra, the greater its opening
+        if (kind == Astra.PASHUPATA) {                                                 // the third eye opens: a beam, not cubes
+            dropHeldCubes();
+            startGaze(ship, 0, dm);
+            if (astraWire != null) astraWire.astra(kind, power, new int[0], 0);
+            float[] eye = astraRgb();
+            addEffect(Effect.ring(ship.x, ship.y, (160f + 80f * power) * grand, eye[0], eye[1], eye[2]));
+            astraLockCount = 0;
+            return true;
+        }
 
         // every held cube goes to a locked foe, round and round the locks
         int n = 0, held = 0;
@@ -1435,7 +1476,8 @@ public class World {
         // for real and the kills pay the pilot who fired it.
         if (astraWire != null) astraWire.astra(kind, power, ids, n);
         float[] el = astraRgb();
-        addEffect(Effect.ring(ship.x, ship.y, 120f + 60f * power, el[0], el[1], el[2]));
+        addEffect(Effect.ring(ship.x, ship.y, (120f + 60f * power) * grand, el[0], el[1], el[2]));
+        addEffect(Effect.ring(ship.x, ship.y, (70f + 40f * power) * grand, crestR(), crestG(), crestB()));
         for (int i = 0; i < held; i++) debris(ship.x, ship.y, 340, crestR(), crestG(), crestB());
         astraLockCount = 0;
         return true;
@@ -1516,6 +1558,7 @@ public class World {
             }
         }
         float dm = Astra.damageMult(Math.max(0f, Math.min(1f, power)));
+        if (kind == Astra.PASHUPATA) { startGaze(from, seat, dm); return; }   // a guest's third eye burns from its own hull
         if (ids.length == 0) { // the guest loosed it with nothing locked: the same straight fan, from that hull
             int count = Astra.cubesAt(kind, Astra.WIND_MIN + Math.max(0f, Math.min(1f, power)) * (Astra.WIND_FULL - Astra.WIND_MIN));
             for (int i = 0; i < count; i++) {
@@ -1629,6 +1672,10 @@ public class World {
             }
         }
         astraPunch *= (float) Math.exp(-4.5f * dt);
+        if (gazeT > 0f) {
+            gazeT = Math.max(0f, gazeT - dt);
+            gazeBurn(dt);
+        }
 
         for (int i = astra.size() - 1; i >= 0; i--) {
             AstraCube c = astra.get(i);

@@ -47,7 +47,7 @@ public final class BayUi {
     static final float TIER_Y = 130;
     static final float WHEEL_CX = Ui.UI_W / 2f, WHEEL_CY = 378, WHEEL_R = 200, NODE = 48;
     static final float HUB_W = 256, HUB_H = 210;
-    static final float AST_W = 170, AST_H = 330, AST_GAP = 12;
+    static final float AST_W = 160, AST_H = 330, AST_GAP = 12;
     static final float AST_X0 = (Ui.UI_W - (Astra.KINDS * AST_W + (Astra.KINDS - 1) * AST_GAP)) / 2f;
     static final float AST_Y = 196;
     static final float SELL_X = 840;
@@ -283,6 +283,7 @@ public final class BayUi {
         int n = Astra.releases(h, kind);
         if (n > 0) return n + (n == 1 ? " RELEASE READY" : " RELEASES READY");
         if (kind == Astra.BRAHMA) return "NEEDS " + Astra.COST + " OF EACH";
+        if (kind == Astra.PASHUPATA) return Astra.stock(h, kind) + " / " + Astra.COST + " FIRE + STONE";
         return h.shards[kind] + " / " + Astra.COST + " SHARDS";
     }
 
@@ -294,7 +295,7 @@ public final class BayUi {
             for (int t = 0; t < Astra.ELEMENTS; t++) m = Math.min(m, h.shards[t]);
             return Math.max(0f, Math.min(1f, m / (float) Astra.COST));
         }
-        return Math.max(0f, Math.min(1f, h.shards[kind] / (float) Astra.COST));
+        return Math.max(0f, Math.min(1f, Astra.stock(h, kind) / (float) Astra.COST));
     }
 
     private static void add(StringBuilder s, String part) {
@@ -422,6 +423,22 @@ public final class BayUi {
             if (ready) {
                 ui.shapes.setColor(c[0], c[1], c[2], 0.16f); // a glow behind the gem once a release is paid for
                 ui.shapes.circle(x + AST_W / 2f, y + AST_H - 112, 40);
+            }
+            if (i == Astra.PASHUPATA) {                                     // no gem: the third eye, an almond with an iris and a red point
+                float ex = x + AST_W / 2f, ey = y + AST_H - 112;
+                ui.shapes.setColor(c[0], c[1], c[2], ready ? 1f : 0.55f);
+                for (int side = -1; side <= 1; side += 2) {
+                    float lx = ex - 30, ly = ey;
+                    for (int j = 1; j <= 12; j++) {
+                        float u = j / 12f, px = ex - 30 + 60 * u, py = ey + side * 40 * u * (1 - u);
+                        ui.shapes.rectLine(lx, ly, px, py, 2f);
+                        lx = px;
+                        ly = py;
+                    }
+                }
+                ui.shapes.circle(ex, ey, 7, 12);
+                ui.shapes.setColor(1f, 0.25f, 0.15f, ready ? 1f : 0.5f);
+                ui.shapes.circle(ex, ey, 3, 8);
             }
             bar(x + 20, y + AST_H - 196, AST_W - 40, astraFill(h, i), c[0], c[1], c[2], ready ? 1f : 0.6f);
         }
@@ -599,7 +616,7 @@ public final class BayUi {
             if (i < Astra.ELEMENTS) {
                 b.setColor(1, 1, 1, ready ? 1f : 0.55f);
                 b.draw(ui.icons.shard(i), cx - 32, top - 144, 64, 64);
-            } else {
+            } else if (i == Astra.BRAHMA) {
                 for (int t = 0; t < Astra.ELEMENTS; t++) {
                     float a = (float) Math.toRadians(90 - t * 72);
                     b.setColor(1, 1, 1, ready ? 1f : 0.55f);
