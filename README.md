@@ -1,8 +1,20 @@
 # Vajra Overdrive — Reboot
 
-A 2D open-world exploration shooter on libGDX. **Version 1.0.0 is Atala only**: a bare Bhu Loka at
-the bottom, a grand gate, then gated Atala above — 5200×20600 world px, 227 placed enemies, 7 ships,
-15 weapons.
+A 2D open-world exploration shooter on libGDX. **Version 1.0.0 is Atala and Vitala**, one continuous world: a bare Bhu Loka at
+the bottom, a grand gate, gated Atala above it (Bala), then Vitala's river of gold and fire on its roof (Bhairava), and past his gold
+door a closed hall marked *Sutala - coming soon*. 7 ships, 15 weapons, co-op multiplayer.
+
+## Download and install
+
+Grab the installer for your system from the [Releases page](../../releases/latest). Each one carries its own Java runtime, so nothing else needs installing.
+
+| system | file | how |
+|---|---|---|
+| Windows | `VajraOverdrive-setup.exe` | double-click. Windows may say *unknown publisher* (the installer is self-signed): **More info -> Run anyway**. |
+| Mac, Apple silicon (M1 and later) | `VajraOverdrive-mac-apple-silicon.dmg` | open it, drag the game onto Applications. First launch: **right-click the app -> Open** (it is not notarized). |
+| Mac, Intel | `VajraOverdrive-mac-intel.dmg` | same as above. |
+
+Each file has a `.sha256` beside it to verify the download. Saves live in your user folder (on a Mac: `~/Library/Application Support/Vajra Overdrive`).
 
 **The antagonist is Trivikrama** — the giant who humbled Indra and trisected the three worlds into
 Vayu, Brahma and himself. He broke the Vajrayudha and hid one band in each of the seven lokas of

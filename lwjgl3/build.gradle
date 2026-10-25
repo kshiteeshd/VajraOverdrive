@@ -15,7 +15,6 @@ test {
     useJUnitPlatform()
     // saves written by a test (profiles.json, vajra.save) go under build/, never over a pilot's real ones
     systemProperty 'vajra.data', 'build/testdata/'
-    systemProperty 'vajra.gameover', 'true' // the old ending under test; the game itself has no game over
     systemProperty 'vajra.testunlock', 'false' // the real economy under test; the game itself runs the unlocked test build
     systemProperty 'vajra.nostory', 'true' // NEW GAME goes straight to the run; the story's own test turns it back on
     forkEvery 1 // each GL test class gets its own process: Profiles and the GL context are static

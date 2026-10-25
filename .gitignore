@@ -33,3 +33,6 @@ tools/forge_out/
 
 # generated docs (rebuild with tools\collect-multiplayer.bat)
 code_notes/
+
+# built installers (published on GitHub Releases, not committed)
+finished game setup/

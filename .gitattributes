@@ -1,0 +1,5 @@
+# scripts that run on a Mac or on a Linux CI runner must keep LF line endings, whatever the checkout machine does
+*.sh text eol=lf
+gradlew text eol=lf
+# Windows batch files want CRLF
+*.bat text eol=crlf

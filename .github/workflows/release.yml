@@ -1,0 +1,73 @@
+name: release
+
+# Builds the installers: the Windows setup wizard (VajraOverdrive-setup.exe) and the Mac DMG (one for Apple silicon, one for Intel),
+# each carrying its own Java runtime so the player needs nothing installed. Push a tag like v1.0.0 to publish them on a GitHub Release;
+# run it by hand (Actions -> release -> Run workflow) to just build them as downloadable artifacts.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+env:
+  # the modules the game needs (the same set the bundled runtimes have always had)
+  JRE_MODULES: java.base,java.datatransfer,java.xml,java.prefs,java.desktop,java.logging,jdk.unsupported
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - name: Bundled runtime (Windows)
+        shell: bash
+        run: jlink --add-modules "$JRE_MODULES" --strip-debug --no-man-pages --no-header-files --compress=2 --output tools/jre/win
+      - name: Setup wizard
+        shell: bash
+        run: ./gradlew installer --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: |
+            build/installer/VajraOverdrive-setup.exe
+            build/installer/VajraOverdrive-setup.exe.sha256
+
+  mac:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: macos-14, slot: mac-arm, name: VajraOverdrive-mac-apple-silicon.dmg }
+          - { runner: macos-15-intel, slot: mac-x64, name: VajraOverdrive-mac-intel.dmg }
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - name: Bundled runtime (this Mac's architecture)
+        run: jlink --add-modules "$JRE_MODULES" --strip-debug --no-man-pages --no-header-files --compress=2 --output tools/jre/${{ matrix.slot }}
+      - name: DMG
+        run: |
+          ./gradlew macDmg --no-daemon
+          cp build/macstage/VajraOverdrive.dmg "${{ matrix.name }}"
+          shasum -a 256 "${{ matrix.name }}" | cut -d' ' -f1 > "${{ matrix.name }}.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.slot }}-installer
+          path: |
+            ${{ matrix.name }}
+            ${{ matrix.name }}.sha256
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, mac]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: dist, merge-multiple: true }
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

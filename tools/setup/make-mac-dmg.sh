@@ -39,12 +39,16 @@ if [ -z "$JRE" ]; then
     }
     JRE=java
 fi
+# saves live in the user's own library, never inside the app: an app run from the dmg or from a
+# protected /Applications is read-only, and a reinstall must not wipe a pilot's runs
+DATA="$HOME/Library/Application Support/Vajra Overdrive"
+mkdir -p "$DATA"
 cd "$RES" || exit 1
 # the working directory IS the install folder: the game reads relay.txt from
 # here and looks for the bundled relay (relay/lib) beside it
 # XstartOnFirstThread is macOS law for GLFW: a launcher zip built on Windows
 # never carries it, so the wrapper passes it itself
-exec "$JRE" -XstartOnFirstThread -cp "$RES/lib/*" vajra.desktop.DesktopLauncher
+exec "$JRE" -XstartOnFirstThread -Dvajra.data="$DATA/" -cp "$RES/lib/*" vajra.desktop.DesktopLauncher
 EOF
 chmod +x "$APP/Contents/MacOS/vajra"
 
