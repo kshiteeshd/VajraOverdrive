@@ -24,9 +24,9 @@ final class ShatterFx {
     private static final int RAYS = 11, K = 8, RING = 3;
     private static final float[] RADII = {0.06f, 0.12f, 0.20f, 0.30f, 0.42f, 0.58f, 0.80f, 1.25f};   // of the screen's diagonal
 
-    private static final class Piece { float[] px, py; float cx, cy, theta, ox, oy, tint, delay, bx, by, bw, bh; boolean flipU, flipV, swap; }
+    private static final class Piece { float[] px, py; float cx, cy, theta, ox, oy, tint, delay, bx, by, bw, bh, phase; boolean flipU, flipV, swap; }
 
-    private Texture tex, glass;
+    private Texture tex, glass, shine;
     private int tw, th;
     private PolygonSpriteBatch pb;
     private ShapeRenderer sr;
@@ -90,6 +90,7 @@ final class ShatterFx {
         pc.oy = (r.nextFloat() - 0.5f) * 70f;
         pc.tint = 0.84f + 0.16f * r.nextFloat();                          // (never above 1: a packed colour channel past 255 spills into the alpha and the piece vanishes)
         pc.flipU = r.nextBoolean();
+        pc.phase = r.nextFloat();
         pc.flipV = r.nextBoolean();
         pc.swap = r.nextBoolean();
         float x0 = 1e9f, x1 = -1e9f, y0 = 1e9f, y1 = -1e9f;
@@ -132,6 +133,7 @@ final class ShatterFx {
             th = bh;
             if (pb == null) { pb = new PolygonSpriteBatch(); sr = new ShapeRenderer(); }
             if (glass == null) glass = makeGlass();
+            if (shine == null) shine = makeShine();
             built = false;
             focus(w, camera, vp, bw, bh);
             build(m, bw, bh);
@@ -148,6 +150,9 @@ final class ShatterFx {
             pb.setProjectionMatrix(proj(bw, bh));
             pb.begin();
             for (Piece pc : pieces) drawPiece(pc, m, fade);
+            pb.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE);                  // the light that travels over the glass is added, not laid on
+            for (Piece pc : pieces) drawShine(pc, m, fade);
+            pb.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
             pb.end();
         }
         sr.setProjectionMatrix(proj(bw, bh));
@@ -208,6 +213,59 @@ final class ShatterFx {
         pb.draw(glass, vbuf, 0, (n + 1) * 5, tbuf, 0, ti);
     }
 
+    /** THE LIGHT ON THE GLASS: every piece, in its own time, has a bright band of light run across it (a hot white line with a soft glow behind and a thin ghost after), then rests; the
+     *  pieces nearer the heart catch it first. The band is a function of the position along the piece's own diagonal, so it is exact across the whole fan. */
+    private void drawShine(Piece pc, Maya m, float fade) {
+        float u = MathUtils.clamp((m.tiltTime() - pc.delay) / 1.6f, 0f, 1f);
+        u = u * u * (3f - 2f * u);
+        float cycle = (m.t * 0.30f + pc.phase + pc.delay * 0.15f) % 1f, run = 0.55f;
+        if (cycle > run || u <= 0f) return;
+        float sweep = -0.25f + 1.5f * (cycle / run);                       // where the band is, along the diagonal 0..1 (it starts and ends off the piece)
+        float edge = Math.min(1f, Math.min(cycle / 0.08f, (run - cycle) / 0.08f));
+        float col = Color.toFloatBits(1f, 1f, 1f, Math.min(1f, 0.95f * edge * u * fade));
+        int n = Math.min(pc.px.length, 38), vi = 0;
+        for (int i = -1; i < n; i++) {
+            float x = i < 0 ? pc.cx : pc.px[i], y = i < 0 ? pc.cy : pc.py[i];
+            float gu = (x - pc.bx) / pc.bw, gv = (y - pc.by) / pc.bh;
+            if (pc.swap) { float tt = gu; gu = gv; gv = tt; }
+            if (pc.flipU) gu = 1f - gu;
+            if (pc.flipV) gv = 1f - gv;
+            float q = (gu + gv) * 0.5f;
+            vbuf[vi++] = x;
+            vbuf[vi++] = y;
+            vbuf[vi++] = col;
+            vbuf[vi++] = q - sweep + 0.5f;
+            vbuf[vi++] = 0.5f;
+        }
+        int ti = 0;
+        for (int i = 1; i <= n; i++) {
+            tbuf[ti++] = 0;
+            tbuf[ti++] = (short) i;
+            tbuf[ti++] = (short) (i == n ? 1 : i + 1);
+        }
+        pb.draw(shine, vbuf, 0, (n + 1) * 5, tbuf, 0, ti);
+    }
+
+    /** The band's profile along u (0.5 is its middle): hot core, wide glow, a ghost line behind it; everything else clear, so edge clamping shows nothing. */
+    private static Texture makeShine() {
+        int w = 256;
+        Pixmap pm = new Pixmap(w, 2, Pixmap.Format.RGBA8888);
+        for (int x = 0; x < w; x++) {
+            float u = x / (w - 1f), d = u - 0.5f;
+            float core = 0.90f * (float) Math.exp(-(d * d) / (2f * 0.012f * 0.012f));
+            float glow = 0.26f * (float) Math.exp(-(d * d) / (2f * 0.07f * 0.07f));
+            float ghost = 0.30f * (float) Math.exp(-((d + 0.085f) * (d + 0.085f)) / (2f * 0.008f * 0.008f));
+            float a = MathUtils.clamp(1f - (1f - core) * (1f - glow) * (1f - ghost), 0f, 1f);
+            if (u < 0.02f || u > 0.98f) a = 0f;
+            for (int y = 0; y < 2; y++) pm.drawPixel(x, y, Color.rgba8888(0.92f, 0.96f, 1f, a));
+        }
+        Texture t = new Texture(pm);
+        pm.dispose();
+        t.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+        t.setWrap(Texture.TextureWrap.ClampToEdge, Texture.TextureWrap.ClampToEdge);
+        return t;
+    }
+
     /** The glass: a 128 x 128 overlay (white where the light catches, a cool dark toward the edges), laid over every piece in its own bounding box, flipped and turned a different way
      *  for each so no two pieces catch the light alike. */
     private static Texture makeGlass() {
@@ -266,6 +324,7 @@ final class ShatterFx {
     void dispose() {
         if (tex != null) tex.dispose();
         if (glass != null) glass.dispose();
+        if (shine != null) shine.dispose();
         if (pb != null) pb.dispose();
         if (sr != null) sr.dispose();
     }
