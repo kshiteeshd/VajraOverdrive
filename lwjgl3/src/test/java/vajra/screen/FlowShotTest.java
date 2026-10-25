@@ -75,7 +75,7 @@ class FlowShotTest {
                             case 3: w.flow.startBoulders(w.ship, 0, 1f, 1f, 5L); break;
                             default: w.flow.startLotus(w.ship, 0, 1f, 1f, 5L); break;
                         }
-                        float[][] moments = {{0.5f, 1.0f, 1.7f, 2.6f}, {0.7f, 1.3f, 1.9f, 2.5f}, {0.15f, 0.5f, 1.0f, 1.6f}, {0.5f, 1.2f, 2.0f, 3.0f}, {0.5f, 1.2f, 2.0f, 3.2f}};
+                        float[][] moments = {{0.5f, 1.0f, 1.7f, 2.6f}, {0.7f, 1.3f, 1.9f, 2.5f}, {0.15f, 0.5f, 1.0f, 1.6f}, {0.5f, 1.2f, 2.0f, 3.0f}, {0.6f, 1.2f, 2.0f, 3.2f}};
                         float[] at = moments[which];
                         Pixmap sheet = new Pixmap(W * 2, H * 2, Pixmap.Format.RGBA8888);
                         float t = 0;

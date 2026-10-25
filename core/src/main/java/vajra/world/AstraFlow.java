@@ -83,6 +83,15 @@ public final class AstraFlow {
     public final Enemy[] ltarget = new Enemy[PETALS];
     private final float[] lmote = new float[PETALS];
     private final int[] lstrike = new int[PETALS];
+    /** THE SHOWER: for SHOW_SECONDS petals of every element stream out of the hull through the mandala in swirling curves, and arrows leave the mandala's rim at random angles and fly a great
+     *  way, piercing up to ARROW_PIERCE foes each. */
+    public static final float SHOW_SECONDS = 4.2f, STREAK_RATE = 0.028f, ARROW_RATE = 0.06f, ARROW_SPEED = 1700f, ARROW_RANGE = 2600f, ARROW_HIT = 75f, ARROW_BOSS_HIT = 18f;
+    public static final int ARROW_PIERCE = 3;
+    public static final class Streak { public float x, y, h, om, sp, age, life, size, rot, rv, flip; public int el; }
+    public static final class Arrow { public float x, y, ang, flown; public int el, pierce; final Enemy[] hit = new Enemy[ARROW_PIERCE]; }
+    public final ArrayList<Streak> streaks = new ArrayList<>();
+    public final ArrayList<Arrow> arrows = new ArrayList<>();
+    private float streakAcc, arrowAcc;
 
     public int kind;
     public float t, radius, power, dm = 1f;
@@ -260,6 +269,9 @@ public final class AstraFlow {
         reset(from, seatId, damageMult, pow, seed);
         kind = LOTUS;
         radius = PETAL_RANGE;
+        streaks.clear();
+        arrows.clear();
+        streakAcc = arrowAcc = 0f;
         for (int i = 0; i < PETALS; i++) {
             lstate[i] = 0;
             lt[i] = 0f;
@@ -282,6 +294,8 @@ public final class AstraFlow {
         bolts.clear();
         zaps.clear();
         sparks.clear();
+        streaks.clear();
+        arrows.clear();
         for (Object[] z : zapped) ((Enemy) z[0]).shockT = 0f;
         zapped.clear();
         for (Enemy e : caught) e.caught = 0f;
@@ -656,7 +670,76 @@ public final class AstraFlow {
             py[i] += (float) Math.sin(ph[i]) * spd[i] * dt;
             if (age[i] >= life[i]) remove(i);
         }
-        if (!any || t > LOTUS_MAX) cancel();
+        stepShower(w, dt);
+        for (int i = sparks.size() - 1; i >= 0; i--) if ((sparks.get(i)[2] += dt) > 0.28f) sparks.remove(i);
+        boolean showing = t <= SHOW_SECONDS || !arrows.isEmpty() || !streaks.isEmpty() || !sparks.isEmpty();
+        if ((!any && !showing) || t > LOTUS_MAX) cancel();
+    }
+
+    /** Petals streaming out from the hull and arrows loosed from the mandala's rim (see SHOW_SECONDS). */
+    private void stepShower(World w, float dt) {
+        float mr = Astra.mandalaRadius(Astra.BRAHMA, 1f);
+        if (t <= SHOW_SECONDS) {
+            streakAcc += dt;
+            while (streakAcc >= STREAK_RATE) {
+                streakAcc -= STREAK_RATE;
+                if (streaks.size() >= 320) break;
+                Streak s = new Streak();
+                float a = rng.nextFloat() * 6.2831853f, r = mr * 0.85f * rng.nextFloat();
+                s.x = ship.x + (float) Math.cos(a) * r; s.y = ship.y + (float) Math.sin(a) * r;
+                s.h = a + 0.4f;                                              // out and a little round, each petal on its own
+                s.om = 0.15f + 0.5f * rng.nextFloat();
+                s.sp = 160f + 380f * rng.nextFloat();
+                s.life = 1.3f + 1.2f * rng.nextFloat();
+                s.size = 0.7f + 0.7f * rng.nextFloat();
+                s.rot = rng.nextFloat() * 6.2831853f;
+                s.rv = (rng.nextFloat() - 0.5f) * 7f;                       // it tumbles
+                s.flip = 3f + 5f * rng.nextFloat();
+                s.el = rng.nextInt(5);
+                streaks.add(s);
+            }
+            arrowAcc += dt;
+            while (arrowAcc >= ARROW_RATE) {
+                arrowAcc -= ARROW_RATE;
+                if (arrows.size() >= 80) break;
+                Arrow ar = new Arrow();
+                float a = rng.nextFloat() * 6.2831853f;
+                ar.x = ship.x + (float) Math.cos(a) * mr; ar.y = ship.y + (float) Math.sin(a) * mr;
+                ar.ang = a + (rng.nextFloat() - 0.5f) * 0.3f;
+                ar.el = rng.nextInt(5);
+                arrows.add(ar);
+            }
+        }
+        for (int i = streaks.size() - 1; i >= 0; i--) {
+            Streak s = streaks.get(i);
+            s.age += dt;
+            s.h += s.om * dt;
+            s.rot += s.rv * dt;
+            s.x += (float) Math.cos(s.h) * s.sp * dt;
+            s.y += (float) Math.sin(s.h) * s.sp * dt;
+            s.sp *= 1f - 0.45f * dt;
+            if (s.age >= s.life) streaks.remove(i);
+        }
+        for (int i = arrows.size() - 1; i >= 0; i--) {
+            Arrow ar = arrows.get(i);
+            float step = ARROW_SPEED * dt;
+            ar.x += (float) Math.cos(ar.ang) * step;
+            ar.y += (float) Math.sin(ar.ang) * step;
+            ar.flown += step;
+            for (Enemy e : w.enemies) {
+                if (!eligible(e)) continue;
+                float dx = e.x - ar.x, dy = e.y - ar.y, r = Math.max(e.w, e.h) * 0.5f + 10f;
+                if (dx * dx + dy * dy > r * r) continue;
+                boolean seen = false;
+                for (Enemy h : ar.hit) if (h == e) { seen = true; break; }
+                if (seen) continue;
+                ar.hit[ar.pierce++] = e;
+                sparks.add(new float[] {ar.x, ar.y, 0f, ar.el});
+                if (!w.clientSeat) e.hurt((e.boss ? ARROW_BOSS_HIT : ARROW_HIT) * dm, w, seat);
+                if (ar.pierce >= ARROW_PIERCE) break;
+            }
+            if (ar.pierce >= ARROW_PIERCE || ar.flown > ARROW_RANGE) arrows.remove(i);
+        }
     }
 
     /** The nearest living foe within range that no other petal is on (or, if every one is taken, the nearest). */

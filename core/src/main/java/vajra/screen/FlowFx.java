@@ -92,8 +92,29 @@ final class FlowFx {
             float a = f.t < AstraFlow.T_EYE ? Math.min(1f, f.t / 0.4f) : Math.max(0f, 1f - (f.t - AstraFlow.T_EYE) / 0.6f);
             sprite(b, WIND, 4, (int) (time * 14f), f.ship.x, f.ship.y, 110f, 0f, 0.9f * a);
         }
+        if (f.kind == AstraFlow.LOTUS) {                                    // the shower: petals of all five colours streaming out in swirling curves
+            for (AstraFlow.Streak st : f.streaks) {
+                if (st.x < l - 150 || st.x > l + vw + 150 || st.y < bt - 150 || st.y > bt + vh + 150) continue;
+                float u = st.age / st.life, al = Math.min(1f, u * 6f) * (1f - u);
+                float[] c = World.TATVA_RGB[st.el];
+                TextureRegion r = reg[LOTUS][2][((int) (st.age * 14f) + st.el) & 7];
+                if (r == null) continue;
+                float len = 72f * st.size, wd = len * (0.55f + 0.45f * Math.abs((float) Math.cos(st.age * st.flip)));   // each petal single, tumbling and turning over
+                b.setColor(Math.min(1f, 0.25f + 1.1f * c[0]), Math.min(1f, 0.25f + 1.1f * c[1]), Math.min(1f, 0.25f + 1.1f * c[2]), al);
+                b.draw(r, st.x - len / 2f, st.y - wd / 2f, len / 2f, wd / 2f, len, wd, 1f, 1f, (float) Math.toDegrees(st.rot));
+                b.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE);
+            }
+            for (float[] sp : f.sparks) {                                    // where an arrow struck
+                if (sp.length < 4) continue;
+                float[] c = World.TATVA_RGB[(int) sp[3]];
+                TextureRegion r = reg[BOLT][7][Math.min(7, (int) (sp[2] / 0.28f * 8f))];
+                if (r == null) continue;
+                b.setColor(c[0], c[1], c[2], 1f);
+                b.draw(r, sp[0] - 45f, sp[1] - 45f, 90f, 90f);
+            }
+        }
         if (f.kind == AstraFlow.LOTUS && f.ship != null) {                  // the lotus: a bud blooming at the hull and five petals, each tinted its element's colour
-            if (f.t < AstraFlow.T_BLOOM + 0.5f)
+            if (false)                                                      // (no bud over the mandala: its lines stay clear)
                 sprite(b, LOTUS, 0, Math.min(7, (int) (f.t / AstraFlow.T_BLOOM * 8f)), f.ship.x, f.ship.y, 330f, 0f, Math.max(0f, 1f - Math.max(0f, f.t - AstraFlow.T_BLOOM) / 0.5f));
             for (int i = 0; i < AstraFlow.PETALS; i++) {
                 if (f.lstate[i] == 4) continue;

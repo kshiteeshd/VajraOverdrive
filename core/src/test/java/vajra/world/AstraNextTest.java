@@ -205,6 +205,23 @@ class AstraNextTest {
     }
 
     @Test
+    void theShowerStreamsPetalsOfAllFiveElementsAndLoosesArrowsAtRandomThatFlyFarAndPierce() {
+        World w = arena();
+        Enemy a = foe(w, 2600 + 900, 2700, 100000), b = foe(w, 2600 + 1100, 2700, 100000);
+        w.flow.startLotus(w.ship, 0, 1f, 1f, 4L);
+        run(w, 0.6f);
+        java.util.Set<Integer> els = new java.util.HashSet<>();
+        for (AstraFlow.Streak s : w.flow.streaks) els.add(s.el);
+        assertEquals(5, els.size(), "petals of all five colours");
+        assertTrue(w.flow.arrows.size() > 3, "arrows are in flight");
+        float lo = 99f, hi = -99f;
+        for (AstraFlow.Arrow ar : w.flow.arrows) { lo = Math.min(lo, ar.ang); hi = Math.max(hi, ar.ang); }
+        assertTrue(hi - lo > 3f, "in all directions");
+        run(w, 3.5f);
+        assertTrue(a.hp < 100000f && b.hp < 100000f, "arrows crossed a thousand pixels and struck foes there");
+    }
+
+    @Test
     void aPetalCirclesItsFoeClosingInAndStrikesThreeTimes() {
         World w = arena();
         Enemy e = foe(w, 2600, 2700 + 500, 1000000);

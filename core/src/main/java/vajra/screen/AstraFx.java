@@ -32,6 +32,10 @@ final class AstraFx {
         if (w.gazeT > 0f) gaze(s, w, t);
         if (w.flow.kind == vajra.world.AstraFlow.VAYU) funnel(s, w, t);
         if (w.flow.kind == vajra.world.AstraFlow.LIGHTNING) lightning(s, w, t);
+        if (w.flow.kind == vajra.world.AstraFlow.LOTUS && w.flow.ship != null) {                // the mandala STANDS while the shower lasts, and the arrows fly
+            if (w.flow.t < vajra.world.AstraFlow.SHOW_SECONDS) Mandala.draw(s, w.flow.ship.x, w.flow.ship.y, 1f, t, true, vajra.world.Astra.BRAHMA);
+            arrows(s, w, l, b, viewW, viewH);
+        }
         if (w.flow.kind == vajra.world.AstraFlow.BOULDER && w.flow.ship != null)             // the mandala STAYS while the rocks are thrown, pulsing
             Mandala.draw(s, w.flow.ship.x, w.flow.ship.y, 1f, t, true, vajra.world.Astra.PRITHVI);
         for (AstraCube c : w.astra) {
@@ -253,6 +257,46 @@ final class AstraFx {
         if (f.ship == null) return;
         float fade = 1f - MathUtils.clamp(f.t / 0.3f, 0f, 1f);                // a violet flash at the hull as it begins
         if (fade > 0f) { s.setColor(0.85f, 0.75f, 1f, 0.12f * fade); s.circle(f.ship.x, f.ship.y, f.radius * 0.35f, 32); }
+    }
+
+    /** BRAHMA's arrows, drawn like a real arrow: a long thin shaft in the element's colour with a white core and two bands near the head, a small barbed leaf of a head, and three
+     *  feathers at the tail, each a row of angled barbs; a faint trail behind. */
+    private static void arrows(ShapeRenderer s, World w, float l, float b, float vw, float vh) {
+        for (vajra.world.AstraFlow.Arrow ar : w.flow.arrows) {
+            if (ar.x < l - 400 || ar.x > l + vw + 400 || ar.y < b - 400 || ar.y > b + vh + 400) continue;
+            float[] c = World.TATVA_RGB[ar.el];
+            float dx = MathUtils.cos(ar.ang), dy = MathUtils.sin(ar.ang), nx = -dy, ny = dx, x = ar.x, y = ar.y;
+            for (int j = 0; j < 6; j++) {                                    // a faint trail
+                float f = 1f - j / 6f, d0 = 100f + j * 24f;
+                s.setColor(c[0], c[1], c[2], 0.22f * f);
+                s.rectLine(x - dx * d0, y - dy * d0, x - dx * (d0 + 24f), y - dy * (d0 + 24f), 1.6f * f + 0.5f);
+            }
+            s.setColor(c[0], c[1], c[2], 0.20f);                             // the shaft's glow, then the shaft, then its white core
+            s.rectLine(x - dx * 92f, y - dy * 92f, x - dx * 6f, y - dy * 6f, 5f);
+            s.setColor(c[0], c[1], c[2], 1f);
+            s.rectLine(x - dx * 92f, y - dy * 92f, x - dx * 6f, y - dy * 6f, 1.9f);
+            s.setColor(1f, 1f, 1f, 0.9f);
+            s.rectLine(x - dx * 90f, y - dy * 90f, x - dx * 8f, y - dy * 8f, 0.7f);
+            for (int band = 0; band < 2; band++) {                           // two bands near the head
+                float d0 = 18f + band * 8f;
+                s.setColor(1f, 1f, 1f, 0.95f);
+                s.rectLine(x - dx * d0 + nx * 2.6f, y - dy * d0 + ny * 2.6f, x - dx * d0 - nx * 2.6f, y - dy * d0 - ny * 2.6f, 1.4f);
+            }
+            s.setColor(c[0], c[1], c[2], 1f);                                // the head: a small leaf with two barbs
+            s.triangle(x + dx * 16f, y + dy * 16f, x - dx * 6f + nx * 4.6f, y - dy * 6f + ny * 4.6f, x - dx * 6f - nx * 4.6f, y - dy * 6f - ny * 4.6f);
+            s.setColor(1f, 1f, 1f, 0.9f);
+            s.triangle(x + dx * 13f, y + dy * 13f, x - dx * 2f + nx * 1.8f, y - dy * 2f + ny * 1.8f, x - dx * 2f - nx * 1.8f, y - dy * 2f - ny * 1.8f);
+            s.setColor(c[0], c[1], c[2], 0.95f);
+            for (int side = -1; side <= 1; side += 2) {                      // the feathers: barbs raked back from the shaft, three pairs along the tail
+                for (int m = 0; m < 7; m++) {
+                    float d0 = 96f - m * 4.6f, len = 9f - Math.abs(m - 3) * 0.9f;
+                    s.rectLine(x - dx * d0, y - dy * d0, x - dx * (d0 + 7f) + nx * len * side, y - dy * (d0 + 7f) + ny * len * side, 1.1f);
+                }
+            }
+            s.setColor(1f, 1f, 1f, 0.8f);
+            for (int side = -1; side <= 1; side += 2)                        // the vane's edge
+                s.rectLine(x - dx * 94f + nx * 5f * side, y - dy * 94f + ny * 5f * side, x - dx * 66f + nx * 7f * side, y - dy * 66f + ny * 7f * side, 0.6f);
+        }
     }
 
     private static float headSize(int element) {

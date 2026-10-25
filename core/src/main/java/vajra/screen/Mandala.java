@@ -27,6 +27,8 @@ final class Mandala {
     /** THE LIGHT OF THE CHARGE, 0..1 (set at the top of every {@link #draw}): the first half of the invocation is plain lines and shapes, building anticipation;
      *  only then do the glow, the heads of what is forming, the pulsing energy, the circling lights and the sparks come in, and they are full at the end. */
     private static float LIGHT;
+    /** A mandala of LINES only (Brahma's): no halo, no glowing tips, no filled lights inside. Set at the top of every draw. */
+    private static boolean THIN;
 
     /** The light at charge k: nothing until half the invocation has passed, full by 95%. */
     static float light(float k) {
@@ -41,6 +43,7 @@ final class Mandala {
     static void draw(ShapeRenderer s, float cx, float cy, float k, float t, boolean full, int style) {
         int tier = vajra.world.Astra.TIER[MathUtils.clamp(style, 0, vajra.world.Astra.KINDS - 1)];   // how deep its loka lies: 0 Atala .. 6 Patala
         LIGHT = light(k);
+        THIN = style == vajra.world.Astra.BRAHMA;
         float R = vajra.world.Astra.mandalaRadius(style, k);                                       // the deeper, the greater: the same circle that shields the pilot
         float pulse = full ? 0.82f + 0.18f * MathUtils.sin(t * 14f) : 1f;
         float base = (0.34f + 0.5f * k) * pulse;
@@ -100,7 +103,7 @@ final class Mandala {
 
     /** The bright tip of something still forming. */
     private static void head(ShapeRenderer s, float x, float y, float w) {
-        if (LIGHT < 0.04f) return;                                       // early on the line simply grows: no glow at its tip
+        if (LIGHT < 0.04f || THIN) return;                               // early on the line simply grows: no glow at its tip
         float r = s.getColor().r, g = s.getColor().g, b = s.getColor().b;
         s.setColor(1f, 1f, 1f, 0.9f * LIGHT);
         s.circle(x, y, w * 1.4f + 1.2f, 8);
@@ -211,7 +214,7 @@ final class Mandala {
      *  richest ones take the whole invocation to finish.  0 a halo and rays; 1 a ring of turning diamonds; 2 an outer dashed ring with tick marks; 3 four great wing
      *  arcs; 4 satellites circling the whole; 5 a crown of spikes; 6 a pillar of light and the five elements wheeling round it. */
     private static void majesty(ShapeRenderer s, float cx, float cy, float R, float k, float t, int tier, float base, float[] P, float[] A) {
-        for (int i = 0; i < 4; i++) {                                     // a soft halo under it all
+        for (int i = 0; i < 4 && !THIN; i++) {                            // a soft halo under it all
             s.setColor(P[0], P[1], P[2], (0.012f + 0.004f * tier) * LIGHT);   // the soft halo is light: it comes with the light
             s.circle(cx, cy, R * (1.32f - 0.1f * i), 44);
         }
@@ -269,12 +272,12 @@ final class Mandala {
             float sp = st(k, 0.65f, 0.95f);
             for (int i = 0; i < sat; i++) {
                 float a = t * 0.5f + i * TAU / sat, x = cx + R * 1.56f * MathUtils.cos(a), y = cy + R * 1.56f * MathUtils.sin(a);
-                s.setColor(P[0], P[1], P[2], MathUtils.clamp(base * sp * LIGHT, 0f, 1f));
-                s.circle(x, y, 9f * sp, 14);
+                if (!THIN) { s.setColor(P[0], P[1], P[2], MathUtils.clamp(base * sp * LIGHT, 0f, 1f));
+                s.circle(x, y, 9f * sp, 14); }
                 col(s, A, base * 1.6f * sp);
                 ring(s, x, y, 12f * sp, R, 1f, t * 2f, 20, 1.1f, 0f, t, 0);
-                s.setColor(1f, 1f, 1f, 0.9f * sp);
-                s.circle(x, y, 2.6f * sp, 8);
+                if (!THIN) { s.setColor(1f, 1f, 1f, 0.9f * sp);
+                s.circle(x, y, 2.6f * sp, 8); }
             }
         }
         if (tier >= 5) {                                                  // a crown of spikes, alternate long and short
@@ -293,7 +296,7 @@ final class Mandala {
         }
         if (tier >= 6) {                                                  // a pillar of light, and the five elements wheeling round the whole
             float lp = st(k, 0.8f, 1f);
-            for (int seg = 0; seg < 8; seg++) {                           // the pillar, fading as it climbs
+            for (int seg = 0; seg < 8 && !THIN; seg++) {                           // the pillar, fading as it climbs
                 float y0 = cy + seg * R * 0.33f * lp, fade = 1f - seg / 8f;
                 for (int i = 0; i < 4; i++) {
                     s.setColor(1f, 0.9f, 0.55f, (0.030f + 0.012f * (3 - i)) * lp * fade * LIGHT);
@@ -303,6 +306,7 @@ final class Mandala {
             for (int i = 0; i < 5; i++) {
                 float a = -t * 0.35f + i * TAU / 5f, x = cx + R * 1.78f * MathUtils.cos(a), y = cy + R * 1.78f * MathUtils.sin(a);
                 float[] e = World.TATVA_RGB[i];
+                if (THIN) { s.setColor(e[0], e[1], e[2], 0.9f * lp); ring(s, x, y, 12f * lp, R, 1f, 0f, 24, 1.1f, 0f, t, 0); ring(s, x, y, 5f * lp, R, 1f, 0f, 14, 0.8f, 0f, t, 0); continue; }
                 s.setColor(e[0], e[1], e[2], 0.5f * lp * LIGHT);
                 s.circle(x, y, 14f * lp, 16);
                 s.setColor(1f, 1f, 1f, 0.9f * lp);
@@ -610,54 +614,95 @@ final class Mandala {
         }
     }
 
-    /** BRAHMA, the last arrow: a golden ring with five gems, a pentagon and its star, five petals each in an element's own colour, four small faces. */
+    /** BRAHMA, the last arrow, in LINES ONLY (no lights inside): a golden ring with a ring of ticks, thin concentric rings, a ring of ten element-coloured petals, five great petals
+     *  each with a fine petal inside and five lesser ones between, two pentagons with their stars, spokes, four small faces drawn as rings, and a heart of three rings. */
     private static void brahma(ShapeRenderer s, float cx, float cy, float R, float k, float t, float base, float[] P, float[] A) {
-        col(s, P, base * 1.4f);
-        ring(s, cx, cy, R, R, st(k, 0f, 0.12f), 0f, 80, 1.6f, 0.6f, t, 0);
+        float rot = -MathUtils.PI / 2f + t * 0.1f;
+        col(s, P, base * 1.5f);
+        ring(s, cx, cy, R, R, st(k, 0f, 0.12f), 0f, 96, 1.5f, 0.6f, t, 0);
         col(s, A, base);
-        ring(s, cx, cy, R * 0.94f, R, st(k, 0.05f, 0.16f), 0.4f, 80, 0.8f, 0.6f, t, 0);
+        ring(s, cx, cy, R * 0.94f, R, st(k, 0.05f, 0.16f), 0.4f, 96, 0.7f, 0.6f, t, 0);
+        float tk = st(k, 0.08f, 0.2f);                                    // a fine ring of ticks between the two
+        for (int i = 0; i < 90; i++) {
+            if (i / 90f > tk) break;
+            float a = i * TAU / 90f - t * 0.05f;
+            col(s, P, base * (i % 5 == 0 ? 1.6f : 0.8f));
+            float r0 = R * (i % 5 == 0 ? 0.94f : 0.96f);
+            s.rectLine(cx + r0 * MathUtils.cos(a), cy + r0 * MathUtils.sin(a), cx + R * MathUtils.cos(a), cy + R * MathUtils.sin(a), i % 5 == 0 ? 1.1f : 0.6f);
+        }
         float gem = st(k, 0.1f, 0.3f);
-        for (int i = 0; i < 5; i++) {                                     // five gems on the rim, each an element's colour
+        for (int i = 0; i < 5; i++) {                                     // five element marks on the rim: two thin rings each, no fill
             float f = MathUtils.clamp(gem * 5f - i, 0f, 1f);
             if (f <= 0f) break;
-            float a = -MathUtils.PI / 2f + i * TAU / 5f + t * 0.1f;
-            float[] e = World.TATVA_RGB[i];
-            col(s, e, 0.5f * f * base * 2f);
-            s.circle(cx + R * MathUtils.cos(a), cy + R * MathUtils.sin(a), 7f * f, 12);
-            col(s, WHITE, 0.9f * f);
-            s.circle(cx + R * MathUtils.cos(a), cy + R * MathUtils.sin(a), 2.3f * f, 8);
+            float a = -MathUtils.PI / 2f + i * TAU / 5f + t * 0.1f, x = cx + R * MathUtils.cos(a), y = cy + R * MathUtils.sin(a);
+            col(s, World.TATVA_RGB[i], 1f * f);
+            ring(s, x, y, 7f * f, R, 1f, 0f, 20, 1.2f, 0f, t, 0);
+            ring(s, x, y, 3.2f * f, R, 1f, 0f, 12, 0.8f, 0f, t, 0);
+        }
+        float[] rr = {0.80f, 0.66f, 0.46f, 0.24f};                          // thin concentric rings, turning, the odd ones dashed
+        for (int j = 0; j < rr.length; j++) {
+            col(s, j % 2 == 0 ? A : P, base * 0.9f);
+            ring(s, cx, cy, R * rr[j], R, st(k, 0.12f + 0.05f * j, 0.26f + 0.06f * j), t * (j % 2 == 0 ? 0.2f : -0.2f), 72, 0.7f, 0.5f, t, j == 1 || j == 3 ? 2 : 0);
+        }
+        float spk = st(k, 0.2f, 0.45f);                                   // spokes between the rings
+        for (int i = 0; i < 20; i++) {
+            if (i / 20f > spk) break;
+            float a = i * TAU / 20f + t * 0.05f;
+            col(s, A, base * 0.55f);
+            s.rectLine(cx + R * 0.24f * MathUtils.cos(a), cy + R * 0.24f * MathUtils.sin(a), cx + R * 0.80f * MathUtils.cos(a), cy + R * 0.80f * MathUtils.sin(a), 0.5f);
+        }
+        float tp = st(k, 0.2f, 0.55f);
+        for (int i = 0; i < 10; i++) {                                    // a ring of ten small petals, each an element's colour (twice round)
+            float f = MathUtils.clamp(tp * 10f - i, 0f, 1f);
+            if (f <= 0f) break;
+            col(s, World.TATVA_RGB[i % 5], base * 1.7f);
+            petal(s, cx, cy, rot + i * TAU / 10f + TAU / 20f, R * 0.66f, R * 0.93f, 0.17f, f, 0.8f, 0.7f, t, R);
         }
         float pet = st(k, 0.22f, 0.62f);
-        for (int i = 0; i < 5; i++) {                                     // five great petals, one per element, opening in turn
+        for (int i = 0; i < 5; i++) {                                     // five great petals, one per element, opening in turn, with a fine petal inside each
             float f = MathUtils.clamp(pet * 5f - i, 0f, 1f);
             if (f <= 0f) break;
-            col(s, World.TATVA_RGB[i], base * 1.9f);
-            petal(s, cx, cy, -MathUtils.PI / 2f + i * TAU / 5f + t * 0.1f, R * 0.18f, R * 0.88f, 0.34f, f, 1.5f, 0.8f, t, R);
+            float[] e = World.TATVA_RGB[i];
+            col(s, e, base * 1.9f);
+            petal(s, cx, cy, rot + i * TAU / 5f, R * 0.18f, R * 0.88f, 0.34f, f, 1.2f, 0.8f, t, R);
+            col(s, e, base * 1.1f);
+            petal(s, cx, cy, rot + i * TAU / 5f, R * 0.24f, R * 0.70f, 0.20f, f, 0.6f, 0.8f, t, R);
         }
-        col(s, A, base * 1.2f);
-        ngon(cx, cy, R * 0.62f, -MathUtils.PI / 2f + t * 0.1f, 5);
-        poly(s, 5, st(k, 0.5f, 0.68f), 1.2f, 0.7f, t, R, cx, cy);
-        col(s, P, base * 1.5f);
-        for (int i = 0; i < 5; i++) { // the star: each point to the point two on
-            PX[i] = cx + R * 0.62f * MathUtils.cos(-MathUtils.PI / 2f + t * 0.1f + (i * 2 % 5) * TAU / 5f);
-            PY[i] = cy + R * 0.62f * MathUtils.sin(-MathUtils.PI / 2f + t * 0.1f + (i * 2 % 5) * TAU / 5f);
+        float sm = st(k, 0.4f, 0.66f);
+        for (int i = 0; i < 5; i++) {                                     // five lesser petals between the great ones, pale
+            float f = MathUtils.clamp(sm * 5f - i, 0f, 1f);
+            if (f <= 0f) break;
+            col(s, A, base * 1.0f);
+            petal(s, cx, cy, rot + TAU / 10f + i * TAU / 5f, R * 0.14f, R * 0.52f, 0.2f, f, 0.6f, 0.7f, t, R);
         }
-        poly(s, 5, st(k, 0.6f, 0.78f), 1.3f, 0.7f, t, R, cx, cy);
+        for (int layer = 0; layer < 2; layer++) {                          // two pentagons, each with its star, turning against each other
+            float rad = layer == 0 ? R * 0.62f : R * 0.36f, rt = layer == 0 ? rot : -rot * 1.3f;
+            col(s, A, base * 1.2f);
+            for (int i = 0; i < 5; i++) {
+                PX[i] = cx + rad * MathUtils.cos(rt + i * TAU / 5f);
+                PY[i] = cy + rad * MathUtils.sin(rt + i * TAU / 5f);
+            }
+            poly(s, 5, st(k, 0.5f + 0.06f * layer, 0.68f + 0.06f * layer), layer == 0 ? 1.1f : 0.8f, 0.7f, t, R, cx, cy);
+            col(s, P, base * 1.5f);
+            for (int i = 0; i < 5; i++) {
+                PX[i] = cx + rad * MathUtils.cos(rt + (i * 2 % 5) * TAU / 5f);
+                PY[i] = cy + rad * MathUtils.sin(rt + (i * 2 % 5) * TAU / 5f);
+            }
+            poly(s, 5, st(k, 0.6f + 0.06f * layer, 0.78f + 0.06f * layer), layer == 0 ? 1.2f : 0.8f, 0.7f, t, R, cx, cy);
+        }
         float fc = st(k, 0.74f, 0.9f);
-        for (int i = 0; i < 4; i++) {                                     // the four faces: four small rings at the quarters
+        for (int i = 0; i < 4; i++) {                                     // the four faces: small double rings at the quarters
             float f = MathUtils.clamp(fc * 4f - i, 0f, 1f);
             if (f <= 0f) break;
-            float a = i * MathUtils.PI / 2f - t * 0.2f, x = cx + R * 0.36f * MathUtils.cos(a), y = cy + R * 0.36f * MathUtils.sin(a);
+            float a = i * MathUtils.PI / 2f - t * 0.2f, x = cx + R * 0.50f * MathUtils.cos(a), y = cy + R * 0.50f * MathUtils.sin(a);
             col(s, A, base * 1.5f * f);
-            ring(s, x, y, 6f * f, R, 1f, 0f, 16, 1.1f, 0f, t, 0);
-            col(s, WHITE, base * 1.2f * f);
-            s.circle(x, y, 1.4f * f, 6);
+            ring(s, x, y, 6f * f, R, 1f, 0f, 16, 0.9f, 0f, t, 0);
+            ring(s, x, y, 2.6f * f, R, 1f, 0f, 10, 0.7f, 0f, t, 0);
         }
-        float s4 = st(k, 0.86f, 1f);
-        if (s4 > 0f) {
-            bindu(s, cx, cy, 3.4f, P, s4, t);
-            runners(s, cx, cy, R, t, 5, 1.2f, A, s4);
-            sparks(s, cx, cy, R, t, 16, A, s4);
-        }
+        float s4 = st(k, 0.86f, 1f);                                      // the heart: three thin rings
+        col(s, P, base * 1.6f * s4);
+        ring(s, cx, cy, 3.4f * s4, R, 1f, 0f, 14, 0.9f, 0f, t, 0);
+        ring(s, cx, cy, 6.4f * s4, R, 1f, 0f, 18, 0.7f, 0f, t, 0);
+        ring(s, cx, cy, 10f * s4, R, 1f, t, 24, 0.6f, 0f, t, 3);
     }
 }
