@@ -99,7 +99,7 @@ final class FlowFx {
                 float[] c = World.TATVA_RGB[st.el];
                 TextureRegion r = reg[LOTUS][2][((int) (st.age * 14f) + st.el) & 7];
                 if (r == null) continue;
-                float len = 72f * st.size, wd = len * (0.55f + 0.45f * Math.abs((float) Math.cos(st.age * st.flip)));   // each petal single, tumbling and turning over
+                float len = 38f * st.size, wd = len * (0.55f + 0.45f * Math.abs((float) Math.cos(st.age * st.flip)));   // each petal single, tumbling and turning over
                 b.setColor(Math.min(1f, 0.25f + 1.1f * c[0]), Math.min(1f, 0.25f + 1.1f * c[1]), Math.min(1f, 0.25f + 1.1f * c[2]), al);
                 b.draw(r, st.x - len / 2f, st.y - wd / 2f, len / 2f, wd / 2f, len, wd, 1f, 1f, (float) Math.toDegrees(st.rot));
                 b.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE);

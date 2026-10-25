@@ -85,13 +85,16 @@ public final class AstraFlow {
     private final int[] lstrike = new int[PETALS];
     /** THE SHOWER: for SHOW_SECONDS petals of every element stream out of the hull through the mandala in swirling curves, and arrows leave the mandala's rim at random angles and fly a great
      *  way, piercing up to ARROW_PIERCE foes each. */
-    public static final float SHOW_SECONDS = 4.2f, STREAK_RATE = 0.028f, ARROW_RATE = 0.06f, ARROW_SPEED = 1700f, ARROW_RANGE = 2600f, ARROW_HIT = 75f, ARROW_BOSS_HIT = 18f;
+    public static final float SHOW_SECONDS = 4.2f, STREAK_RATE = 0.004f, PETAL_HIT = 9f, PETAL_BOSS_HIT = 1.5f, ARROW_RATE = 0.06f, ARROW_SPEED = 1700f, ARROW_RANGE = 2600f, ARROW_HIT = 75f, ARROW_BOSS_HIT = 18f;
     public static final int ARROW_PIERCE = 3;
-    public static final class Streak { public float x, y, h, om, sp, age, life, size, rot, rv, flip; public int el; }
+    public static final class Streak { public float x, y, h, om, sp, age, life, size, rot, rv, flip, phase; public int el; Enemy tgt; }
     public static final class Arrow { public float x, y, ang, flown; public int el, pierce; final Enemy[] hit = new Enemy[ARROW_PIERCE]; }
     public final ArrayList<Streak> streaks = new ArrayList<>();
     public final ArrayList<Arrow> arrows = new ArrayList<>();
-    private float streakAcc, arrowAcc;
+    private float streakAcc, arrowAcc, riverT;
+    /** The rivers: petals flow in RIVERS sweeping streams, each bending toward a foe of its own (Senbonzakura: a thousand blades that are petals). */
+    public static final int RIVERS = 6;
+    private final Enemy[] riverTgt = new Enemy[RIVERS];
 
     public int kind;
     public float t, radius, power, dm = 1f;
@@ -271,7 +274,8 @@ public final class AstraFlow {
         radius = PETAL_RANGE;
         streaks.clear();
         arrows.clear();
-        streakAcc = arrowAcc = 0f;
+        streakAcc = arrowAcc = riverT = 0f;
+        java.util.Arrays.fill(riverTgt, null);
         for (int i = 0; i < PETALS; i++) {
             lstate[i] = 0;
             lt[i] = 0f;
@@ -680,22 +684,36 @@ public final class AstraFlow {
     private void stepShower(World w, float dt) {
         float mr = Astra.mandalaRadius(Astra.BRAHMA, 1f);
         if (t <= SHOW_SECONDS) {
+            riverT -= dt;
+            if (riverT <= 0f) {                                              // each river of petals picks its foe anew (or none: it simply sweeps)
+                riverT = 0.45f;
+                ArrayList<Enemy> pool = new ArrayList<>();
+                for (Enemy e : w.enemies) {
+                    if (!eligible(e)) continue;
+                    float dx = e.x - ship.x, dy = e.y - ship.y;
+                    if (dx * dx + dy * dy <= 1800f * 1800f) pool.add(e);
+                }
+                for (int k = 0; k < RIVERS; k++) riverTgt[k] = pool.isEmpty() || rng.nextInt(5) == 0 ? null : pool.get(rng.nextInt(pool.size()));
+            }
             streakAcc += dt;
             while (streakAcc >= STREAK_RATE) {
                 streakAcc -= STREAK_RATE;
-                if (streaks.size() >= 320) break;
+                if (streaks.size() >= 900) break;
                 Streak s = new Streak();
-                float a = rng.nextFloat() * 6.2831853f, r = mr * 0.85f * rng.nextFloat();
+                int k = rng.nextInt(RIVERS);
+                float a = k * 6.2831853f / RIVERS + t * 0.8f + (rng.nextFloat() - 0.5f) * 0.3f, r = mr * 0.6f * rng.nextFloat();
                 s.x = ship.x + (float) Math.cos(a) * r; s.y = ship.y + (float) Math.sin(a) * r;
-                s.h = a + 0.4f;                                              // out and a little round, each petal on its own
-                s.om = 0.15f + 0.5f * rng.nextFloat();
-                s.sp = 160f + 380f * rng.nextFloat();
-                s.life = 1.3f + 1.2f * rng.nextFloat();
-                s.size = 0.7f + 0.7f * rng.nextFloat();
+                s.h = a + (rng.nextFloat() - 0.5f) * 0.5f;
+                s.om = (k % 2 == 0 ? 1f : -1f) * (0.6f + 0.9f * rng.nextFloat());   // the rivers curl alternately: a sweeping, flowing sheet
+                s.sp = 460f + 420f * rng.nextFloat();
+                s.life = 1.4f + 1.2f * rng.nextFloat();
+                s.size = 0.6f + 0.6f * rng.nextFloat();
                 s.rot = rng.nextFloat() * 6.2831853f;
-                s.rv = (rng.nextFloat() - 0.5f) * 7f;                       // it tumbles
-                s.flip = 3f + 5f * rng.nextFloat();
+                s.rv = (rng.nextFloat() - 0.5f) * 9f;
+                s.flip = 3f + 6f * rng.nextFloat();
                 s.el = rng.nextInt(5);
+                s.tgt = rng.nextInt(6) == 0 ? null : riverTgt[k];
+                s.phase = rng.nextFloat() * 6.2831853f;
                 streaks.add(s);
             }
             arrowAcc += dt;
@@ -713,12 +731,28 @@ public final class AstraFlow {
         for (int i = streaks.size() - 1; i >= 0; i--) {
             Streak s = streaks.get(i);
             s.age += dt;
-            s.h += s.om * dt;
             s.rot += s.rv * dt;
+            if (s.tgt != null && !s.tgt.dead) {                              // a blade of the river: bends toward its foe in a flowing wave
+                float want = (float) Math.atan2(s.tgt.y - s.y, s.tgt.x - s.x);
+                s.h += Math.max(-3.4f * dt, Math.min(3.4f * dt, World.wrapAngle(want - s.h))) + (float) Math.sin(s.age * 6f + s.phase) * 1.1f * dt;
+            } else {
+                s.h += s.om * dt;
+                s.sp *= 1f - 0.3f * dt;
+            }
             s.x += (float) Math.cos(s.h) * s.sp * dt;
             s.y += (float) Math.sin(s.h) * s.sp * dt;
-            s.sp *= 1f - 0.45f * dt;
-            if (s.age >= s.life) streaks.remove(i);
+            boolean spent = s.age >= s.life;
+            if (!spent && !w.clientSeat) {
+                for (Enemy e : w.enemies) {
+                    if (!eligible(e)) continue;
+                    float dx = e.x - s.x, dy = e.y - s.y, r = Math.max(e.w, e.h) * 0.5f + 6f;
+                    if (dx * dx + dy * dy > r * r) continue;
+                    e.hurt((e.boss ? PETAL_BOSS_HIT : PETAL_HIT) * dm, w, seat);
+                    spent = true;
+                    break;
+                }
+            }
+            if (spent) streaks.remove(i);
         }
         for (int i = arrows.size() - 1; i >= 0; i--) {
             Arrow ar = arrows.get(i);
