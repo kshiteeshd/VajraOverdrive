@@ -33,22 +33,13 @@ public class ShipDef {
     public final float damageReduction;
     public final Upgrade[] upgrades = new Upgrade[3];
 
-    /** TEST PRICING, flip-and-go: true scales every coin price to about a twentieth so the
-     *  forged sheets are flyable early (the real values stand in the ladder untouched and the
-     *  climbing order still holds); false is the shipping ladder and re-arms EconomyTest's
-     *  price window. Restore false before shipping. */
-    public static final boolean TEST_PRICING = true;
-
-    /** The test-price funnel: hull/tier coins at a twentieth, the free hull stays free. */
-    private static int priced(int cost) { return TEST_PRICING && cost > 0 ? cost / 20 : cost; }
-
     ShipDef(int id, String name, String flavor, int cost, int minLoka, float maxHp, float accel,
             float maxSpeed, float turnRate, float boostMult,
             float r, float g, float b, float damageReduction) {
         this.id = id;
         this.name = name;
         this.flavor = flavor;
-        this.cost = priced(cost);
+        this.cost = cost;
         this.minLoka = minLoka;
         this.maxHp = maxHp;
         this.accel = accel;
@@ -76,7 +67,7 @@ public class ShipDef {
                 float speedBonus, float turnBonus, float hullBonus, float shieldBonus) {
             this.label = label;
             this.name = name;
-            this.cost = ShipDef.priced(cost);
+            this.cost = cost;
             this.cooldownMult = cooldownMult;
             this.damageMult = damageMult;
             this.speedBonus = speedBonus;

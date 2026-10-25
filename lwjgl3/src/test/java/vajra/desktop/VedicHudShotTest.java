@@ -50,7 +50,6 @@ class VedicHudShotTest {
 
             @Override
             public void create() {
-                int was = Profiles.active().settings.hudStyle;
                 try {
                     ui = new Ui();
                     batch = new SpriteBatch();
@@ -59,13 +58,8 @@ class VedicHudShotTest {
                     fbo = new FrameBuffer(Pixmap.Format.RGBA8888, W, H, false);
 
                     World w = scene();
-                    Profiles.active().settings.hudStyle = 0;
-                    int[] classic = shot(w, dark());
-                    write(classic, "build/hud-classic-ready.png");
-                    Profiles.active().settings.hudStyle = 1;
                     int[] vedic = shot(w, dark());
                     write(vedic, "build/hud-vedic-ready.png");
-                    if (diff(classic, vedic) < 1500) failures.add("the two HUDs draw nearly the same frame");
 
                     // every instrument puts pixels where it lives (over the dark field)
                     if (lit(vedic, 70, 330, 672, 702) < 500) failures.add("no health tube out of the medallion");
@@ -78,9 +72,7 @@ class VedicHudShotTest {
                     if (lit(vedic, 1100, 1275, 650, 705) > 0) failures.add("something is drawn top-right: the astra count is gone from there");
                     if (lit(vedic, 1200, 1275, 270, 600) < 120) failures.add("no world meter on the right edge");
                     if (lit(vedic, 560, 720, 610, 650) > 0) failures.add("the eye is on screen while Bala is unaware of the pilot");
-                    // what the vedic set must NOT own: the score stays gold top-centre in both
-                    if (lit(classic, 500, 780, 684, 712) > 0 && lit(vedic, 500, 780, 684, 712) < 200)
-                        failures.add("the score moved or vanished under the vedic HUD");
+                    if (lit(vedic, 500, 780, 684, 712) < 200) failures.add("the score is gone from top-centre");
 
                     w.ship.hp = w.ship.maxHp() * 0.2f; // the low-hull cry
                     w.ship.shieldEnergy = 0;
@@ -99,12 +91,9 @@ class VedicHudShotTest {
 
                     w.ship.y = 3000;
                     write(shot(w, rock()), "build/hud-vedic-rock.png"); // over bright rock
-                    Profiles.active().settings.hudStyle = 0;
-                    write(shot(w, rock()), "build/hud-classic-rock.png");
                 } catch (Throwable t) {
                     boom.set(t);
                 } finally {
-                    Profiles.active().settings.hudStyle = was;
                     Gdx.app.exit();
                 }
             }

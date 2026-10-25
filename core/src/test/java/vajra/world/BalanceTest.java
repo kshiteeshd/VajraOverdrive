@@ -89,7 +89,7 @@ class BalanceTest {
             total += Balance.keep(l);
         }
         double sinks = 0;
-        for (vajra.ship.ShipDef d : vajra.ship.ShipDef.ALL) sinks += (vajra.ship.ShipDef.TEST_PRICING ? 20 : 1) * (d.cost + d.upgrades[1].cost + d.upgrades[2].cost);
+        for (vajra.ship.ShipDef d : vajra.ship.ShipDef.ALL) sinks += (d.cost + d.upgrades[1].cost + d.upgrades[2].cost);
         for (vajra.weapon.WeaponDef d : vajra.weapon.WeaponDef.ALL) sinks += d.cost + d.rankCost(0) + d.rankCost(1);
         double share = total / sinks;
         System.out.println("Balance: a typical pilot banks " + (int) total + " coins over seven lokas against " + (int) sinks + " of things to buy (" + Math.round(share * 100) + "%)");

@@ -38,8 +38,6 @@ public class GameScreen implements FlowState, ShipControls {
     private final Ui ui;
     private final Flow flow;
     private final WorldRenderer worldR;
-    /** Which loka a fresh run opens in: 0 Atala (the campaign), 1 Vitala (the test entry; the campaign gets there through Bala's gold door). */
-    private int startLoka;
     private final Hud hud;
     // THE WEAPON WHEEL: tap the weapon key to step, hold it to open the wheel (see WeaponWheel)
     private final WeaponWheel wheel;
@@ -90,17 +88,7 @@ public class GameScreen implements FlowState, ShipControls {
         this(batch, flow, ui, seed, null);
     }
 
-    /** A run that opens in Vitala (the second loka), the hangar as the save has it. */
-    public static GameScreen vitala(SpriteBatch batch, Flow flow, Ui ui) {
-        return new GameScreen(batch, flow, ui, 0, null, 1);
-    }
-
     private GameScreen(SpriteBatch batch, Flow flow, Ui ui, long seed, String savedRun) {
-        this(batch, flow, ui, seed, savedRun, 0);
-    }
-
-    private GameScreen(SpriteBatch batch, Flow flow, Ui ui, long seed, String savedRun, int loka) {
-        this.startLoka = loka;
         this.resume = savedRun;
         this.batch = batch;
         this.flow = flow;
@@ -135,14 +123,13 @@ public class GameScreen implements FlowState, ShipControls {
      *  forged charges, all of it is built inside the run and dies with it. The save
      *  only contributes the best score. */
     private World loadWorld() {
-        World w = startLoka == 1 ? World.vitala(seed) : new World(seed, World.CAMPAIGN);   // the campaign: Atala, and Vitala on its roof
+        World w = new World(seed, World.CAMPAIGN);   // the campaign: Atala, and Vitala on its roof
         SaveGame.load(w.hangar);
         w.selectShip(w.hangar.shipIndex);
         w.selectWeapon(w.hangar.weaponIndex);
         w.multiplayer = vajra.net.Net.session != null; // its own book, not the campaign one
         if (resume != null && !w.multiplayer) { // CONTINUE: the saved run over the fresh world, once
             vajra.world.RunSave.restore(w, resume);
-            if (vajra.ship.Hangar.UNLOCK_ALL) w.hangar.unlockAll(); // (test build: a parked run is unlocked too)
             resume = null;
         }
         if (vajra.net.Net.active()) // co-op: the guest runs only its hull; the host runs the fight
@@ -192,10 +179,6 @@ public class GameScreen implements FlowState, ShipControls {
         }
         if (keycode == Input.Keys.X) { // choose which astra the next F invokes
             world.cycleAstra();
-            return true;
-        }
-        if (keycode == Input.Keys.T) { // wear the next colourway (a, b, c) of the hull you fly
-            world.hangar.cycleLook(world.hangar.shipIndex);
             return true;
         }
         if (keycode == Input.Keys.Z) { // next hull you own (Q and E are the nose, always)

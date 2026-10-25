@@ -45,13 +45,11 @@ class WeaponWheelShotTest {
 
             @Override
             public void create() {
-                int was = Profiles.active().settings.hudStyle;
                 try {
                     ui = new Ui();
                     batch = new SpriteBatch();
                     flow = new Flow();
                     Profiles.clearRun();
-                    Profiles.active().settings.hudStyle = 1;
                     flow.set(new HomeScreen(flow, ui, batch));
                     flow.keyDown(Input.Keys.ENTER); // NEW GAME (the story is off under test)
                     GameScreen g = (GameScreen) flow.top();
@@ -86,7 +84,6 @@ class WeaponWheelShotTest {
                 } catch (Throwable t) {
                     boom.set(t);
                 } finally {
-                    Profiles.active().settings.hudStyle = was;
                     Profiles.clearRun();
                     Gdx.app.exit();
                 }

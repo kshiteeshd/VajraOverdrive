@@ -67,9 +67,7 @@ class TransitionScreenshotTest {
 
                     // 1b. the PROFILE row opens the pilot's page; ESC hands back home
                     flow.keyDown(com.badlogic.gdx.Input.Keys.DOWN); // PLAY -> MULTIPLAYER
-                    flow.keyDown(com.badlogic.gdx.Input.Keys.DOWN); // MULTIPLAYER -> TEST AREA
-                    flow.keyDown(com.badlogic.gdx.Input.Keys.DOWN); // TEST AREA -> VITALA
-                    flow.keyDown(com.badlogic.gdx.Input.Keys.DOWN); // VITALA -> TUTORIALS
+                    flow.keyDown(com.badlogic.gdx.Input.Keys.DOWN); // MULTIPLAYER -> TUTORIALS
                     flow.keyDown(com.badlogic.gdx.Input.Keys.DOWN); // TUTORIALS -> PROFILE
                     flow.keyDown(com.badlogic.gdx.Input.Keys.ENTER);
                     check(flow.top() instanceof vajra.screen.ProfileScreen,
@@ -89,8 +87,6 @@ class TransitionScreenshotTest {
                     flow.keyDown(com.badlogic.gdx.Input.Keys.UP); // the cursor stayed on PROFILE:
                     flow.keyDown(com.badlogic.gdx.Input.Keys.UP); // walk it back to PLAY for the handover
                     flow.keyDown(com.badlogic.gdx.Input.Keys.UP);
-                    flow.keyDown(com.badlogic.gdx.Input.Keys.UP);
-                    flow.keyDown(com.badlogic.gdx.Input.Keys.UP);
 
                     // 2. PLAY starts the run at once
                     flow.keyDown(com.badlogic.gdx.Input.Keys.ENTER);
@@ -108,7 +104,7 @@ class TransitionScreenshotTest {
                             "run frame shows the ship at the camera centre (" + shipsBright(game, 616, 664, 336, 384) + " px)",
                             failures);
                     check(green(game) > 150,
-                            "HUD hull bar still draws after the lights pass (" + green(game) + " px)",
+                            "the health tube still draws after the lights pass (" + green(game) + " px)",
                             failures);
 
                     // 4. ESC freezes the run under a pause card; ESC again pops straight back
@@ -185,10 +181,10 @@ class TransitionScreenshotTest {
     /** The green hull fill of the top-left bar block. */
     private static int green(int[] px) {
         int n = 0;
-        for (int y = 697; y < 707; y++)
-            for (int x = 14; x < 234; x++) {
+        for (int y = 672; y < 702; y++)                      // the vedic health tube, jade while the hull is full
+            for (int x = 70; x < 330; x++) {
                 int p = px[y * W + x];
-                if (Math.abs(r(p) - 34) < 40 && Math.abs(g(p) - 214) < 40 && Math.abs(b(p)) < 40) n++;
+                if (g(p) > r(p) + 50 && g(p) > b(p) + 25) n++;
             }
         return n;
     }

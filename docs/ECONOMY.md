@@ -85,12 +85,7 @@ Not bought with coins: five shards of a loka's own element forge its Astra, five
    lowering a share; if poor, add a chest or two. Never raise a single payout without touching the budget.
 5. Its hull (`ShipDef.minLoka`) and patterns (`WeaponDef.minLoka`) are offered when the pilot reaches it.
 
-## 7. Switches that make this moot while testing
-
-`ShipDef.TEST_PRICING = true` (hull and tier prices at a twentieth) and `Hangar.UNLOCK_ALL` (`-Dvajra.testunlock`, default **true**: every hull, tier and
-pattern owned, 999,999 coins) are test-build switches. The real economy only plays when both are off.
-
-## 8. What to tune first when playing
+## 7. What to tune first when playing
 
 1. `Balance.GROSS_BASE` / `GROWTH` (how rich a clear is), `TYPICAL` (how much of it a real pilot banks).
 2. `Balance.RAMP_LOW/HIGH` (how steep a loka is inside).

@@ -17,14 +17,14 @@ class HomeTest {
     @Test
     void theMenuCursorWrapsBothWays() {
         assertEquals(1, HomeScreen.move(0, 1));
-        assertEquals(8, HomeScreen.move(0, -1), "up from the top wraps to QUIT");
-        assertEquals(0, HomeScreen.move(8, 1), "down from the bottom wraps to the top");
+        assertEquals(6, HomeScreen.move(0, -1), "up from the top wraps to QUIT");
+        assertEquals(0, HomeScreen.move(6, 1), "down from the bottom wraps to the top");
     }
 
     @Test
     void withNoSaveTheRowsAreNewGameMultiplayerAndTheRest() {
         assertArrayEquals(
-                new String[] {"NEW GAME", "MULTIPLAYER", "TEST AREA", "VITALA", "TUTORIALS", "PROFILE", "SETTINGS", "UPDATE", "QUIT"},
+                new String[] {"NEW GAME", "MULTIPLAYER", "TUTORIALS", "PROFILE", "SETTINGS", "UPDATE", "QUIT"},
                 HomeScreen.rows(false));
     }
 

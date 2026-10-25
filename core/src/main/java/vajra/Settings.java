@@ -10,19 +10,16 @@ import com.badlogic.gdx.utils.Json;
 public final class Settings {
     public float shake = 1f;      // camera-shake multiplier, 0..1
     public float popupScale = 1f; // floating-text size multiplier, 0..2
-    /** Which flight HUD: 0 = classic, 1 = vedic (vajra.screen.VedicHud). One key (F9) or the SETTINGS row flips it. */
-    public int hudStyle;
 
     public static class Data {
         public float shake = 1, popupScale = 1;
-        public int hudStyle;
+        public int hudStyle; // retired (the one HUD is final); still read so an older profiles.json loads
     }
 
     public static String serialize(Settings s) {
         Data d = new Data();
         d.shake = s.shake;
         d.popupScale = s.popupScale;
-        d.hudStyle = s.hudStyle;
         return new Json().toJson(d);
     }
 
@@ -37,7 +34,6 @@ public final class Settings {
         if (d == null) return;
         s.shake = clamp(d.shake, 0, 1);
         s.popupScale = clamp(d.popupScale, 0, 2);
-        s.hudStyle = d.hudStyle == 1 ? 1 : 0;
     }
 
     private static float clamp(float v, float lo, float hi) {

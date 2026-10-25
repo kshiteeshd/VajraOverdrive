@@ -32,7 +32,6 @@ class HangarSwitchTest {
             @Override
             public void create() {
                 try {
-                    System.setProperty("vajra.testunlock", "true");
                     Ui ui = new Ui();
                     SpriteBatch batch = new SpriteBatch();
                     Flow flow = new Flow();
@@ -77,6 +76,5 @@ class HangarSwitchTest {
             }
         }, cfg);
         if (boom.get() != null) throw new AssertionError("the hangar switch failed", boom.get());
-        assertTrue(Hangar.UNLOCK_ALL || true);
     }
 }

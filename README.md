@@ -964,9 +964,7 @@ the shaft opens. While a stack is up the lamp/mushroom light pools and the above
 line up with the far floor; they come back on the layers in step B), and the minimap draws the wall tiles over the land again.
 The old gate walls are real gates again (the boulder belt remains as the lip of the hole).
 
-**TEST BUILD, STEP A.2 (unlocked, faster, alive).** (1) **Everything is unlocked and free:** `Hangar.UNLOCK_ALL` (on by default; `-Dvajra.testunlock=false`
-for the real economy, which the unit tests use) gives every hull and tier, every pattern at rank III, 999,999 coins and 99 of every shard from the first frame,
-including a CONTINUEd run. (2) **Ten layers everywhere** (it was 10-20 by band). (3) **Speed** - the whole game frame at 1920x1080 went from about 11-13 ms to
+**STEP A.2 (faster, alive).** (1) *(the test build's everything-unlocked purse was retired: the game plays the real economy from the first frame).* (2) **Ten layers everywhere** (it was 10-20 by band). (3) **Speed** - the whole game frame at 1920x1080 went from about 11-13 ms to
 about 4.5-7 ms (`PerfProbeTest` times every render pass with `Probe`; `GameFrameProbeTest` times update + render + HUD and fails above 16 ms): the walls are
 **baked in 512 px chunks** (`TileChunks`: each chunk holds its soft shadow, side face and tiles in one premultiplied texture, so a layer is a handful of
 quads instead of thousands of tile sprites; mirage tiles stay live; a frame that lacks a chunk falls back to the per-tile path), the **far floor is raycast at half
@@ -1037,23 +1035,6 @@ tinted by the band's accent. A frame in the Mirage Wood costs about 9 ms here.
   world sampled once per 32 px), and the vedic dial names the band.
 - `lwjgl3/.../WorldShotTest` writes `build/world-0..7.png` (one real frame per band, the mountains, the pillars, the boulder
   belt, each with a ring of hostile rounds in the air) and times the raycaster.
-
-### The test area (world, variant two)
-
-Main menu: **TEST AREA** (between MULTIPLAYER and TUTORIALS; the menu is nine rows tall with CONTINUE now, so the pitch is
-26 and the first row 292). A free-flight area built from the OLD WALL TILES and nothing else: no ground, no sky, no stars, and
-**the ship is not drawn** (you fly by the walls and your rounds). The play layer is the real world's walls (they stop the hull
-and the rounds; the boulder belt is lifted out, enemies, story, shop and death are off). Behind it the SAME walls are stacked
-again **fifteen times** (`LayerStack`): each layer is **smaller** by the shrink factor about the screen centre (`0.96^k` by
-default) - so when the camera moves it slides by only that fraction of the distance, which is the parallax - and **darker and
-bluer** the further back; each can also peek out down-left of the one in front by `PEEK` px (0 by default). **Behind the last
-layer is the raycast world** (`TerrainLayer`, the land the game is built on), far and hazed but drawn **twice the size** the
-stack's depth alone would give it. W A S D fly, Q E turn, SPACE fire, SHIFT boost, G shield, `[` `]` change how fast the layers
-shrink (85-99%), `,` `.` how far each peeks out (0-40 px), `-` `=` how many layers (0-30), ESC returns.
-
-Smoothness: the whole stack is ONE sprite batch (no per-layer restarts, no full-screen haze quads - the tint carries the
-haze), and bullets only copy the frame when a round exists. Fifteen layers cost about 7 ms a frame here (worst 8 ms over a
-flight; `TestAreaShotTest` fails above 14 ms on average). It writes `build/test-area-*.png`.
 
 ## Presentation
 
@@ -1367,11 +1348,9 @@ meeting. Foes still standing wake at full armour. NEW GAME over a save asks once
 erases it; dying with no lives left, or winning, ends the run and clears it. Multiplayer flights are never parked.
 The save lives in the pilot's `profiles.json` (`run`); tests write theirs under `build/testdata/`.
 
-## The vedic HUD (alternative flight instruments)
+## The flight HUD (the vedic instrument set)
 
-The classic HUD is untouched and is still the default. **F9** (in a run, or anywhere) or **SETTINGS > HUD** swaps to the
-**vedic** instrument set, `core/.../screen/VedicHud.java`, and back; the choice is saved per pilot (`settings.hudStyle`:
-0 classic, 1 vedic). It follows the pilot's own sketch, in a quiet muted gold, every instrument hanging from one 18-unit
+This is the game's one HUD (the classic set and its F9 / SETTINGS switch are gone): `core/.../screen/VedicHud.java`. It follows the pilot's own sketch, in a quiet muted gold, every instrument hanging from one 18-unit
 margin, drawn straight onto the game with no tinted plate behind them:
 
 - **Top-left:** a round **weapon medallion** (the pattern's card, the weapon key under it), and out of it a long glass
@@ -1393,12 +1372,12 @@ margin, drawn straight onto the game with no tinted plate behind them:
   five elements), a whole glowing ring meaning a release is in hand, a thin gold line draining while it recovers, and
   while you HOLD F the ring fills from the top in the astra's colour with a gold tick where the mantra starts to count.
   A small gold number appears only when more than one release is in hand. `X` chooses.
-- **Right edge:** the **world meter** is the classic one - the depth tape and the loka's name and yojana.
+- **Right edge:** the **world meter** - the depth tape and the loka's name and yojana.
 
-The score, the combo, the hull-and-purse line, the crew, the jobs and the toasts are the classic HUD's (the hull-and-purse
-line and the crew sit below the medallion in this set).
+The score, the combo, the hull-and-purse line, the crew, the jobs and the toasts are drawn by `Hud` (the hull-and-purse
+line and the crew sit below the medallion).
 
-**The weapon key** (both HUDs): **tap V** for the next pattern you own (B for the previous); **hold V** and a solo flight **pauses** with
+**The weapon key:** **tap V** for the next pattern you own (B for the previous); **hold V** and a solo flight **pauses** with
 the picture **blurred** behind it (`Blur`: a two-pass gaussian over a quarter-size copy; a shared flight cannot pause, so it
 crawls instead) and the **weapon wheel** opens round the screen centre - point the mouse at a pattern, let go to fit it (the dead
 centre keeps what you have). While a session owns V for push-to-talk, B is the weapon key instead.

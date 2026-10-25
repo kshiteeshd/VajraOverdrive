@@ -122,7 +122,7 @@ public final class Scenes {
                 if (mayaMet(w))
                     s.add(narr(w, CLOSE, "A LETTER, CARRIED UP FROM MAYA VANA: HE HELD THE DOOR TOO LONG.",
                             "GO DEEPER, INDRA. THE HAMMER WAITS IN MY FORGE."));
-                s.add(narr(w, CLOSE, "THE FIRST PIECE ANSWERS. BELOW, VITALA BURNS GOLD."));
+                s.add(narr(w, CLOSE, "THE FIRST PIECE ANSWERS. BEYOND IT, VITALA BURNS GOLD."));
                 break;
         }
         return s;

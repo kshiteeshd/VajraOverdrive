@@ -12,7 +12,7 @@ import vajra.flow.FlowState;
 import vajra.update.Updater;
 
 /** The title screen: an opaque ink field, the pixel logo, a temple divider, and its text rows:
- *  CONTINUE (only when the pilot left a run mid-flight) / NEW GAME / MULTIPLAYER / TEST AREA / TUTORIALS /
+ *  CONTINUE (only when the pilot left a run mid-flight) / NEW GAME / MULTIPLAYER / TUTORIALS /
  *  PROFILE / SETTINGS / UPDATE / QUIT.
  *
  *  <p>The look is a vector-display take on temple geometry, all in the theme's one gold on ink:
@@ -28,10 +28,10 @@ import vajra.update.Updater;
 public class HomeScreen implements FlowState {
     /** The rows with no save to continue: NEW GAME leads. */
     static final String[] MENU =
-            {"NEW GAME", "MULTIPLAYER", "TEST AREA", "VITALA", "TUTORIALS", "PROFILE", "SETTINGS", "UPDATE", "QUIT"};
+            {"NEW GAME", "MULTIPLAYER", "TUTORIALS", "PROFILE", "SETTINGS", "UPDATE", "QUIT"};
     static final String CONTINUE = "CONTINUE";
     static final String SURE = "ERASE SAVE?  ENTER AGAIN";
-    private static final float MENU_Y = 292;  // first row baseline: up to nine rows, tighter pitch
+    private static final float MENU_Y = 292;  // first row baseline: up to eight rows, tighter pitch
     private static final float PITCH = 26;    // row pitch (rows abut at HALF_H 13, no dead zone)
     private static final float HALF_W = 200;  // row hit half-width
     private static final float HALF_H = 13;   // row hit half-height
@@ -125,8 +125,6 @@ public class HomeScreen implements FlowState {
         switch (MENU[row()]) {
             case "NEW GAME": newGame(); break;
             case "MULTIPLAYER": flow.push(new NetScreen(flow, ui, batch)); break;
-            case "TEST AREA": flow.push(new TestAreaScreen(flow, ui, batch)); break; // world variant two: layered walls, free flight
-            case "VITALA": flow.set(GameScreen.vitala(batch, flow, ui)); break; // the second loka, straight from the menu (test build)
             case "TUTORIALS": flow.push(new TutorialScreen(flow, ui, batch)); break;
             case "PROFILE": flow.push(new ProfileScreen(flow, ui, batch)); break;
             case "SETTINGS": flow.push(new SettingsScreen(flow, ui, batch)); break;

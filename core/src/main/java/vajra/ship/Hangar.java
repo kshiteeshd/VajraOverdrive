@@ -23,7 +23,7 @@ public class Hangar {
     public int coins = 0; // a new run is broke — every coin is earned inside it
     public long best;     // the one thing that persists: best run score
     public int loka = 0;  // deepest loka this run has reached (index into LokaTable)
-    // Magnetism: the pickup tug. Fixed at 15 for dev builds so loot actually reaches the hull.
+    // Magnetism: the pickup tug, fixed so loot reaches the hull.
     public float magnet = 15f;
     public final int[] shards = new int[5];         // Pancha Tatva stock (index = World.TATVA)
     public final boolean[] pieces = new boolean[7]; // Vajrayudha: one per loka
@@ -31,21 +31,15 @@ public class Hangar {
     public final boolean[] weaponOwned = new boolean[WeaponDef.ALL.length];
     /** Each pattern's temper: 0 = rank I, 1 = II, 2 = III (see WeaponDef.ranked). */
     public final int[] weaponRank = new int[WeaponDef.ALL.length];
-    /** Which tier's LOOK each hull wears: -1 = the highest owned (the real economy), else 0, 1 or 2 when the pilot has chosen one (the three
-     *  colourways of every mark can then be flown side by side, which is what a test build needs). Stats still follow the tiers owned. */
+    /** Which tier's LOOK each hull wears: -1 = the highest owned, the only choice the game offers. Stats follow the tiers owned. */
     public final int[] look = new int[ShipDef.ALL.length];
     public int shipIndex;
     public int weaponIndex;
-
-    /** TEST BUILD: every hull, every tier, every pattern at its top rank, a fat purse and a full stock of shards, from the first frame
-     *  (-Dvajra.testunlock=false for the real economy; the unit tests turn it off). */
-    public static final boolean UNLOCK_ALL = Boolean.parseBoolean(System.getProperty("vajra.testunlock", "true"));
 
     public Hangar() {
         java.util.Arrays.fill(look, -1);
         owned[0][0] = true;   // the starting hull comes with the run
         weaponOwned[0] = true; // and the Single Bolt
-        if (UNLOCK_ALL) unlockAll();
     }
 
     /** Take over another hangar's whole state: the purse, the stock, the hulls and tiers, the patterns, the looks, the chosen hull and pattern
@@ -65,7 +59,7 @@ public class Hangar {
         weaponIndex = o.weaponIndex;
     }
 
-    /** Own everything and pay for nothing: all hulls and tiers, all patterns at rank III, 999999 coins, 99 of every shard. */
+    /** Own everything and pay for nothing: all hulls and tiers, all patterns at rank III, 999999 coins, 99 of every shard (the tests' fixture). */
     public void unlockAll() {
         for (boolean[] hull : owned) java.util.Arrays.fill(hull, true);
         java.util.Arrays.fill(weaponOwned, true);
@@ -79,16 +73,6 @@ public class Hangar {
         int chosen = look[id];
         if (chosen >= 0 && chosen < 3 && owned[id][chosen]) return chosen + 1;
         return owned[id][2] ? 3 : owned[id][1] ? 2 : 1;
-    }
-
-    /** Wear the next owned look of hull `id` (the test build's T key): a, b, c, a... Returns the variation now worn (1..3). */
-    public int cycleLook(int id) {
-        int now = variation(id) - 1;
-        for (int step = 1; step <= 3; step++) {
-            int t = (now + step) % 3;
-            if (owned[id][t]) { look[id] = t; return t + 1; }
-        }
-        return now + 1;
     }
 
     /** True when this run has bought the hull (x.1 is the ship itself). */

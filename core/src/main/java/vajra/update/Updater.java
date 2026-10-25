@@ -14,9 +14,9 @@ import java.util.concurrent.TimeUnit;
 
 import com.badlogic.gdx.Gdx;
 
-/** The home screen's UPDATE row: pulls the newest setup exe from a source the
- *  install carries — "updates.txt" beside the game, one line, an http(s) URL or a
- *  plain file path (this dev tree's own setup exe is a valid source). It asks the
+/** The home screen's UPDATE row: pulls the newest setup exe from the source named in
+ *  "updates.txt" beside the game (one line, an http(s) URL or a plain file path) or,
+ *  when there is none, from the project's latest GitHub Release. It asks the
  *  downloaded wizard for its build stamp (--version) and compares it with the
  *  installed gamever.txt: same build stops there, a different one installs silently
  *  over this very install and relaunches, an exe that answers nothing is refused —
@@ -32,6 +32,8 @@ public final class Updater {
     public String message() { return message; }
 
     static final String NEW_EXE = "update-new.exe";
+    /** Where an install looks when updates.txt names nothing: the newest setup on the project's GitHub Releases. */
+    static final String RELEASES = "https://github.com/kshiteeshd/VajraOverdrive/releases/latest/download/VajraOverdrive-setup.exe";
 
     /** The update source: one line in updates.txt beside the game. */
     static String source() {
@@ -84,17 +86,18 @@ public final class Updater {
 
     public void begin() {
         if (state == State.DOWNLOADING || state == State.RUNNING) return;
+        if (!System.getProperty("os.name", "").toLowerCase().contains("win")) { // the swap is the Windows setup's; a Mac installs the new DMG by hand
+            state = State.FAILED;
+            message = "ON A MAC, DOWNLOAD THE NEWEST DMG: github.com/kshiteeshd/VajraOverdrive/releases";
+            return;
+        }
         if (!new File("play.bat").isFile()) { // the updater serves the install, not a dev tree
             state = State.FAILED;
             message = "UPDATING NEEDS THE INSTALLED GAME (play.bat BESIDE IT)";
             return;
         }
-        String src = source();
-        if (src == null) {
-            state = State.UNCONFIGURED;
-            message = "PUT updates.txt BESIDE THE GAME — ONE LINE: A URL OR PATH TO THE NEW SETUP EXE";
-            return;
-        }
+        String named = source();
+        final String src = named != null ? named : RELEASES; // no updates.txt: the public releases
         state = State.DOWNLOADING;
         message = "FETCHING THE NEWEST BUILD ...";
         Thread t = new Thread(() -> work(src), "vajra-update");

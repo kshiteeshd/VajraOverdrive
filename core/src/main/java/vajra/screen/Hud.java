@@ -30,11 +30,9 @@ import java.util.Locale;
  *  behind it. No key bindings are drawn here — the control screen is the key reference. */
 public final class Hud {
     private final Ui ui;
-    private final HudBars bars = new HudBars();            // the mask bar block
     private final WeaponCards cards = new WeaponCards();   // the 15 weapon face cards
     private final ShardGauge shards;                       // bottom-right shard + forge readout
-    private final HudCompass compass;                      // bottom-left
-    private final VedicHud vedic;                          // the alternative instruments (Settings.hudStyle == 1)
+    private final VedicHud vedic;                          // the flight instruments
     private final GlyphLayout measure = new GlyphLayout();
 
     // --- WEAPON PLATE: the fitted pattern's face card, bottom-right, riding directly on the
@@ -109,7 +107,6 @@ public final class Hud {
     public Hud(Ui ui) {
         this.ui = ui;
         this.shards = new ShardGauge(ui);
-        this.compass = new HudCompass(ui);
         this.vedic = new VedicHud(ui, shards, cards);
     }
 
@@ -138,10 +135,7 @@ public final class Hud {
     }
 
     /** Where the crew block starts: its classic place, or lower in the vedic set (the medallion is above it). */
-    private static float crewY() { return vedicOn() ? VedicHud.CREW_Y : CREW_Y; }
-
-    /** Is the alternative (vedic) instrument set the pilot's choice? One setting, read each frame. */
-    private static boolean vedicOn() { return vajra.profile.Profiles.active().settings.hudStyle == 1; }
+    private static float crewY() { return VedicHud.CREW_Y; }
 
     private void shapePass(World w, boolean hangar, boolean over, BayUi shopUi) {
         if (over) { // the results card: ink plate + the shared border, both in this pass
@@ -154,46 +148,30 @@ public final class Hud {
             return;
         }
         shards.update(w);
-        boolean v = vedicOn();
-        if (!v) gaze.shapes(ui, w, 1 / 60f);
         jobs.shapes(ui, w);
         toast.shapes(ui, w);
-        if (!v) bars.shapes(ui.shapes, w);
         crewShapes(w);
-        if (v) {
-            depthTape(w); // the world meter stays the classic one in this set too
-            vedic.shapes(w, 1 / 60f); // health tube, weapon medallion, lives, gaze, minimap with shield and boost, astra dial
-        } else {
-            depthTape(w);
-            compass.shapes(ui.shapes, w);
-            shards.shapes(w);
-        }
+        depthTape(w);
+        vedic.shapes(w, 1 / 60f); // health tube, weapon medallion, lives, gaze, minimap with shield and boost, astra dial
     }
 
     private void batchPass(SpriteBatch batch, World w, boolean hangar, boolean over,
                            ShipRenderer ships, BayUi shopUi) {
         if (!hangar) {
-            boolean v = vedicOn();
             drawScore(batch);
-            if (!v) gaze.label(ui, batch, w);
             jobs.text(ui, batch, w);
             toast.text(ui, batch, w);
-            drawIndicator(batch, w); // the classic world meter's words, in both sets
-            if (!v) {
-                compass.label(batch, w);
-                drawWeapon(batch, w);
-            }
+            drawIndicator(batch, w); // the world meter's words
             drawVitals(batch);
             drawCrew(batch, w);
-            if (v) vedic.labels(batch, w);
-            else shards.draw(batch, w);
+            vedic.labels(batch, w);
         }
         if (w.victoryT >= 0 && w.victoryT < World.VICTORY_LAP) {
             float a = w.victoryT < 3f ? 1 : World.VICTORY_LAP - w.victoryT;
             boolean vit = w.stage >= 1;
             Template.title(ui, batch, vit ? "VITALA CONQUERED" : "ATALA CONQUERED", Template.CARD_Y, a);
             Template.sub(ui, batch, vit ? "the second piece answers - beyond the gold door, Sutala is yet to come"
-                    : "the first piece answers - below, Vitala burns gold", Template.CARD_SUB_Y, a);
+                    : "the first piece answers - beyond it, Vitala burns gold", Template.CARD_SUB_Y, a);
         } else if (w.campaign && w.ship.y > vajra.world.Hataki.HEIGHT + 200f) {
             Template.title(ui, batch, "SUTALA", Template.CARD_Y, 1);                     // the hall past the gold door: the next loka is not built yet
             Template.sub(ui, batch, "coming soon", Template.CARD_SUB_Y, 1);
@@ -433,27 +411,14 @@ public final class Hud {
     /** The combo window left, read from the world each frame (it drains continuously, so it is
      *  the one number here that cannot be cached). */
     private float comboT;
-    private final HudGaze gaze = new HudGaze();
     private final HudJobs jobs = new HudJobs();
     private final HudToast toast = new HudToast();
 
-    /** Bottom-right: the fitted weapon's face card sits directly on the shard gauge, its name
-     *  to the left. V/B still cycles the loadout — the card and name changing is the whole
-     *  cue, no key text needed. */
-    private void drawWeapon(SpriteBatch batch, World w) {
-        float y = cardY(w);
-        batch.draw(cards.get(shownWeapon), CARD_X, y, CARD, CARD);
-        ui.hud.setColor(1, 1, 1, 0.85f);
-        ui.hud.draw(batch, weaponStr, CARD_X - 10 - weaponNameW, y + CARD / 2f + 5);
-        ui.hud.setColor(1, 1, 1, 1);
-    }
-
-    /** Top-left, under the bar block: the fitted hull and the purse on one dim line —
+    /** Top-left, under the medallion: the fitted hull and the purse on one dim line —
      *  "which hull am I flying" and "what can I spend". */
     private void drawVitals(SpriteBatch batch) {
         ui.hud.setColor(1, 1, 1, 0.7f);
-        boolean v = vedicOn(); // under the medallion in the vedic set
-        ui.hud.draw(batch, vitalsStr, v ? VedicHud.M : HudBars.X, v ? VedicHud.VITALS_Y : VITALS_Y);
+        ui.hud.draw(batch, vitalsStr, VedicHud.M, VedicHud.VITALS_Y); // under the medallion
         ui.hud.setColor(1, 1, 1, 1);
     }
 

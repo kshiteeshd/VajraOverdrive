@@ -29,7 +29,6 @@ public class ControlScreen implements FlowState {
             {"V / B", "Next / previous weapon you own."},
             {"1 - 7", "Fit that hull - one you have not bought is a no-op."},
             {"Z", "Next hull you own."},
-            {"T", "Wear the next colourway (a, b, c) of the hull you fly."},
             {"F", "HOLD to invoke the astra you have chosen: a cage of cubes gathers and foes in front of the nose are locked. LET GO to loose it. Five shards a release, paid at the loosing."},
             {"X", "Choose which astra F invokes: Akasha, Vayu, Agni, Jala, Prithvi, or the Brahmastra of all five."},
             {"ENTER", "In the hangar: buy or fit the selected card. TAB changes section."},

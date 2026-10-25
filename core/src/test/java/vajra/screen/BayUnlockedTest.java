@@ -67,16 +67,6 @@ class BayUnlockedTest {
     }
 
     @Test
-    void theLookKeyCyclesTheColourwaysOfTheHullYouFly() {
-        World w = new World();
-        w.hangar.unlockAll();
-        int id = w.hangar.shipIndex;
-        int a = w.hangar.variation(id), b = w.hangar.cycleLook(id), c = w.hangar.cycleLook(id), d = w.hangar.cycleLook(id);
-        assertEquals(a, d, "three presses come back round");
-        assertTrue(a != b && b != c && a != c, "each press is a different look: " + a + b + c);
-    }
-
-    @Test
     void withoutTheUnlockTheLookFollowsTheHighestTierBought() {
         vajra.ship.Hangar h = new vajra.ship.Hangar();
         assertEquals(1, h.variation(0));

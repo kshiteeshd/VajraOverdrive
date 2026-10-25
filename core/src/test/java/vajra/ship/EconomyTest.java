@@ -45,7 +45,6 @@ class EconomyTest {
 
     @Test
     void aHullWithItsTiersCostsAboutOneLokasKeep() {
-        if (ShipDef.TEST_PRICING) return; // the ladder is scaled to pocket change; this window re-arms with it
         for (int i = 1; i < ShipDef.ALL.length; i++) {
             ShipDef d = ShipDef.ALL[i];
             double all = d.cost + d.upgrades[1].cost + d.upgrades[2].cost;
