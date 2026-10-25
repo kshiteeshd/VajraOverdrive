@@ -250,6 +250,10 @@ public class Enemy {
     public int trailAt;
     /** The heading of the round that is hurting it right now (armour reads it): (0, 0) when the hurt is not a round. */
     public float hitVx, hitVy;
+    /** THE ASTRA FLOW (world/AstraFlow): seconds a tornado still holds this foe (its brain sleeps and the flow moves it), its throw velocity, and how long it burns
+     *  (and whose fire it is) after Agni's flames touched it. */
+    public float caught, flowVx, flowVy, burnT;
+    public int burnOwner;
 
     /** Down at the floor, in the rock, or in smoke: no body in the fight. */
     public boolean submerged() { return depth > 0.4f || inRock || smoked; }
@@ -340,6 +344,7 @@ public class Enemy {
 
     public void update(float dt, World world, float t) {
         if (dead || parley) return;
+        if (caught > 0f) { caught -= dt; if (hitFlash > 0) hitFlash -= dt; return; }   // the tornado has it: the flow moves it, its brain waits
         if (fireTimer > 0) fireTimer -= dt;
         if (hitFlash > 0) hitFlash -= dt;
         if (contactCd > 0) contactCd -= dt;

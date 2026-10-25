@@ -1312,6 +1312,8 @@ public class World {
 
     /** Cubes in flight or in the shell, oldest first. The renderer draws them; nothing else touches them. */
     public final List<AstraCube> astra = new ArrayList<>();
+    /** The Agni and Vayu releases: fire flowing out of the hull, and the tornado (see AstraFlow). */
+    public final AstraFlow flow = new AstraFlow();
 
     /** THE THIRD EYE: while > 0 the Pashupatastra's beam burns from {@link #gazeShip} along its nose (seconds left), its damage graded by {@link #gazeDm}. */
     public float gazeT, gazeDm = 1f;
@@ -1446,6 +1448,21 @@ public class World {
         ship.dipT = 0.35f;
         ship.trauma = Math.max(ship.trauma, 0.4f + 0.4f * power);
         float grand = 1f + 0.15f * Astra.TIER[kind];                                   // the deeper the astra, the greater its opening
+        if (kind == Astra.AGNI || kind == Astra.VAYU) {                                // a flow, not cubes: fire pours out of the hull / the wind turns into a tornado
+            long seed = (long) (clock * 1000f) * 31L + 7L;
+            if (kind == Astra.AGNI) {
+                dropHeldCubes();
+                flow.startAgni(ship, 0, dm, power, seed);
+            } else {
+                flow.startVayu(ship, 0, dm, power, seed);                              // the held shards keep circling, then stream out with the wind
+                boons(kind);
+            }
+            if (astraWire != null) astraWire.astra(kind, power, new int[0], 0);
+            float[] fl = astraRgb();
+            addEffect(Effect.ring(ship.x, ship.y, (140f + 70f * power) * grand, fl[0], fl[1], fl[2]));
+            astraLockCount = 0;
+            return true;
+        }
         if (kind == Astra.PASHUPATA) {                                                 // the third eye opens: a beam, not cubes
             dropHeldCubes();
             startGaze(ship, 0, dm);
@@ -1558,6 +1575,11 @@ public class World {
         }
         float dm = Astra.damageMult(Math.max(0f, Math.min(1f, power)));
         if (kind == Astra.PASHUPATA) { startGaze(from, seat, dm); return; }   // a guest's third eye burns from its own hull
+        if (kind == Astra.AGNI || kind == Astra.VAYU) {                       // and its fire or its storm from its own hull
+            long seed = (long) (clock * 1000f) * 31L + seat;
+            if (kind == Astra.AGNI) flow.startAgni(from, seat, dm, power, seed); else flow.startVayu(from, seat, dm, power, seed);
+            return;
+        }
         if (ids.length == 0) { // the guest loosed it with nothing locked: the same straight fan, from that hull
             int count = Astra.cubesAt(kind, Astra.WIND_MIN + Math.max(0f, Math.min(1f, power)) * (Astra.WIND_FULL - Astra.WIND_MIN));
             for (int i = 0; i < count; i++) {
@@ -1671,6 +1693,8 @@ public class World {
             }
         }
         astraPunch *= (float) Math.exp(-4.5f * dt);
+        if (!astraInvoking && flow.holdsShards()) for (AstraCube c : astra) if (!c.armed) c.hold(ship, dt, 1f, WIND_R_OUT, WIND_R_IN);   // the storm's shards keep circling
+        flow.step(this, dt);
         if (gazeT > 0f) {
             gazeT = Math.max(0f, gazeT - dt);
             gazeBurn(dt);

@@ -32,6 +32,7 @@ public final class WorldRenderer {
     private final ShopImages shopSignV;      // and the Gold Assay
     private final ChestImages chestArt;
     private final HazardFx hazardFx;
+    private final FlowFx flowFx = new FlowFx();
     private final ShopImages shopSign;
     private final NebulaImages nebula;
     private final EnemyImages foes;
@@ -620,6 +621,7 @@ public final class WorldRenderer {
         }
         if (world.vents.count() > 0) ventArt.draw(batch, world, l, b, viewW, viewH);
         hazardFx.draw(batch, world, l, b, viewW, viewH);
+        flowFx.draw(batch, world, l, b, viewW, viewH);        // the pyre bloom and the tornado
         batch.end();
     }
 
@@ -881,6 +883,7 @@ public final class WorldRenderer {
         shopSignV.dispose();
         chestArt.dispose();
         hazardFx.dispose();
+        flowFx.dispose();
         ventArt.dispose();
         shopSign.dispose();
         shots.dispose();

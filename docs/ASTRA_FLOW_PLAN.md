@@ -103,6 +103,14 @@ Rules:
 | 7 | **Co-op**: the host runs the flow; the wire sends kind, power and a seed; guests replay the particles from the seed and only draw (damage stays on the host) | a two-seat test |
 | 8 | **Tuning and perf**: particle cap, culling off-screen, frame-time guard in `GameFrameProbeTest`, damage scaling by loka in `BalanceTest` | frame stays under 16 ms with a full bloom |
 
+### Built (steps 2-6)
+`world/AstraFlow` (pooled particles on a flow field, walls, Agni and Vayu rites), `Enemy.caught/burnT`, `Enemy.hurtPiercing`, `screen/FlowFx` (sprites) and the funnel in `AstraFx`.
+Agni: 18 emitters open in order, streams run to 650 px, curl and lean toward foes, ignite (14 dps for 3 s, refreshed not stacked), contact damage 30 dps, a foe that dies burning
+ignites neighbours within 100 px and pays a coin, scorch is left. Vayu: foes within 450-650 px are caught and carried round (heavier lag, bosses are not caught), cut one by one nearest
+first from 0.55 s every 0.2 s for 55% of health, enemy rounds are drawn in harmless, then the throw (foes outward, +37.5% impact on a wall, rounds blown away, the held shards stream
+out as seeking bolts). Guests' releases start the same flow on the hub from their hull. Not yet: foe panic while burning, scorch as a Hazards patch, a boss being shoved, other
+seats seeing a guest's particles (the hub's damage is right; the picture is the hub's), and a frame-time guard with a full bloom.
+
 ## 6. Tests I will write
 
 Agni: eighteen emitters open in order; a stream reaches 650 px; a foe within the stream ignites and burns 3 s; a second touch refreshes; a dying burning foe ignites a neighbour; a

@@ -453,16 +453,26 @@ class AstraTest {
         Enemy a = hub.enemies.get(0), b = hub.enemies.get(1);
         a.netId = 11;
         b.netId = 12;
-        hub.astraFor(1, Astra.AGNI, 1f, new int[] {11, 12});
+        hub.astraFor(1, Astra.AKASHA, 1f, new int[] {11, 12});
         assertEquals(2, hub.astra.size());
         for (AstraCube c : hub.astra) {
             assertEquals(1, c.owner, "the kill is the guest's");
-            assertEquals(Astra.AGNI, c.element);
-            assertEquals(Astra.DAMAGE[Astra.AGNI] * Astra.damageMult(1f), c.damage, 1e-3f);
+            assertEquals(Astra.AKASHA, c.element);
+            assertEquals(Astra.DAMAGE[Astra.AKASHA] * Astra.damageMult(1f), c.damage, 1e-3f);
         }
         hub.astra.clear();
         hub.astraFor(1, 99, 1f, new int[] {11}); // a nonsense kind is dropped, never a crash
         assertTrue(hub.astra.isEmpty());
+    }
+
+    @Test
+    void aGuestsAgniOrVayuIsALoosedFlowOnTheHubFromThatGuestsHull() {
+        World hub = arena(0);
+        hub.astraFor(1, Astra.AGNI, 1f, new int[0]);
+        assertEquals(vajra.world.AstraFlow.AGNI, hub.flow.kind, "the fire pours out on the hub");
+        assertEquals(1, hub.flow.seat, "and its kills are the guest's");
+        hub.astraFor(1, Astra.VAYU, 1f, new int[0]);
+        assertEquals(vajra.world.AstraFlow.VAYU, hub.flow.kind, "and the tornado turns there");
     }
 
     // --- helpers -----------------------------------------------------------------------------------

@@ -23,13 +23,14 @@ final class AstraFx {
 
     /** All of it, inside an open Filled shape pass in world space. */
     static void draw(ShapeRenderer s, World w, float l, float b, float viewW, float viewH) {
-        if (w.astra.isEmpty() && !w.winding() && w.gazeT <= 0f) return;
+        if (w.astra.isEmpty() && !w.winding() && w.gazeT <= 0f && !w.flow.active()) return;
         s.flush();
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE);          // additive: light, not paint
         float t = w.clock;
         if (w.winding()) yantra(s, w, t);
         float scale = 1f + 0.1f * vajra.world.Astra.TIER[MathUtils.clamp(w.astraKind, 0, vajra.world.Astra.KINDS - 1)];   // the deeper the astra, the greater its shards
         if (w.gazeT > 0f) gaze(s, w, t);
+        if (w.flow.kind == vajra.world.AstraFlow.VAYU) funnel(s, w, t);
         for (AstraCube c : w.astra) {
             if (c.x < l - 80 || c.x > l + viewW + 80 || c.y < b - 80 || c.y > b + viewH + 80) continue;
             float[] el = World.TATVA_RGB[MathUtils.clamp(c.element, 0, World.TATVA_RGB.length - 1)];
@@ -170,6 +171,41 @@ final class AstraFx {
                 break;
             }
         }
+    }
+
+    /** THE TORNADO'S BODY: three tapered spiral arms turning round the hull (drawn smooth, as light), a faint outer ring, a ring at the eye, and on the throw
+     *  rings of wind running out. Strength follows the beats: it builds through the draw, holds at the eye, and thins as everything is thrown. */
+    private static void funnel(ShapeRenderer s, World w, float t) {
+        vajra.world.AstraFlow f = w.flow;
+        if (f.ship == null) return;
+        float R = f.radius, cx = f.ship.x, cy = f.ship.y;
+        float a = f.t < vajra.world.AstraFlow.T_EYE ? MathUtils.clamp(f.t / 0.5f, 0f, 1f) : MathUtils.clamp(1f - (f.t - vajra.world.AstraFlow.T_EYE) / 0.9f, 0f, 1f);
+        if (a <= 0.01f) return;
+        float sc = R / 450f;
+        for (int arm = 0; arm < 3; arm++) {
+            float px = 0f, py = 0f;
+            for (int i = 0; i <= 40; i++) {
+                float u = i / 40f, r = R * (0.95f - 0.83f * u), th = -f.t * 2.4f + arm * MathUtils.PI2 / 3f + u * 3.4f;
+                float x = cx + r * MathUtils.cos(th), y = cy + r * MathUtils.sin(th), wd = (3f + 9f * (float) Math.sin(Math.PI * u)) * sc;
+                if (i > 0) {
+                    s.setColor(0.35f, 0.9f, 0.85f, 0.10f * a);
+                    s.rectLine(px, py, x, y, wd * 2.4f);
+                    s.setColor(0.8f, 1f, 1f, 0.30f * a * (0.5f + 0.5f * u));
+                    s.rectLine(px, py, x, y, Math.max(1f, wd * 0.45f));
+                }
+                px = x;
+                py = y;
+            }
+        }
+        s.setColor(0.6f, 1f, 0.95f, 0.18f * a);
+        ring(s, cx, cy, R * 0.97f, 72, 2f);
+        ring(s, cx, cy, R * 0.12f, 28, 2f);
+        if (f.t >= vajra.world.AstraFlow.T_EYE)                            // the throw: rings of wind running outward
+            for (int i = 0; i < 3; i++) {
+                float ph = ((f.t - vajra.world.AstraFlow.T_EYE) * 1.4f + i / 3f) % 1f;
+                s.setColor(0.8f, 1f, 1f, 0.5f * (1f - ph) * a);
+                ring(s, cx, cy, R * (0.15f + 0.9f * ph), 72, 3f);
+            }
     }
 
     private static float headSize(int element) {
