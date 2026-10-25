@@ -318,7 +318,11 @@ final class ShatterFx {
         }
     }
 
+    /** The crack lines themselves are not drawn (the glass shows only where it has parted: the pieces' own edges); flip to see them. */
+    private static final boolean LINES = false;
+
     private void line(int pass, float x0, float y0, float x1, float y1, float a) {
+        if (!LINES) return;
         if (pass == 0) { sr.setColor(0f, 0f, 0f, 0.85f * a); sr.rectLine(x0, y0, x1, y1, 3.6f); }
         else { sr.setColor(0.92f, 0.96f, 1f, 0.75f * a); sr.rectLine(x0, y0, x1, y1, 1.2f); }
     }
