@@ -1348,6 +1348,18 @@ public class World {
 
     public float astraCd() { return astraCd; }
     public boolean winding() { return astraInvoking; }
+
+    /** How far the camera should pull back for what the astras are doing (>= 1; GameScreen eases toward it, quickly out and slowly back): a little while the mantra builds,
+     *  a screen's worth for Agni's bloom (650 px reach), the tornado's whole radius for Vayu, the Pashupatastra's long beam, a volley in flight. 1 when nothing is going on. */
+    public float astraView() {
+        float v = 1f;
+        if (astraInvoking) v = Math.max(v, 1f + 0.3f * Astra.k(astraCharge));
+        if (flow.kind == AstraFlow.AGNI && flow.t < 2.9f) v = Math.max(v, 1.9f);
+        if (flow.kind == AstraFlow.VAYU && flow.t < AstraFlow.T_END) v = Math.max(v, Math.max(1.5f, Math.min(2.0f, flow.radius / 330f)));
+        if (gazeT > 0f) v = Math.max(v, 1.9f);
+        for (AstraCube c : astra) if (c.armed) { v = Math.max(v, 1.35f); break; }
+        return v;
+    }
     /** 0..1 through the invocation. The renderer and the HUD both read this, so the cage, the shake and the dial all
      *  build off one number. */
     public float windK() { return astraInvoking ? Astra.k(astraCharge) : 1f; }

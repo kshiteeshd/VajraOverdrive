@@ -123,3 +123,27 @@ never cut. Both: deterministic from a seed; the particle count never exceeds the
 1. **Agni reach**: 650 px (a screen) as proposed, or the whole view?
 2. **Vayu cutting**: 55% of health per cut as proposed (kills fodder, wounds big foes), or a kill on everything but rulers?
 3. **Should the throw damage the pilot's allies in co-op?** I propose no.
+
+## 8. The camera (built) and the other astras as flows (proposals)
+
+**Camera.** `World.astraView()` says how far the view should pull back and `GameScreen.updateZoom` eases toward it (out in about a third of a second, back more slowly):
+a little while the mantra builds (up to x1.3 at full charge), x1.9 for Agni's bloom (its 650 px reach fits), the tornado's whole radius for Vayu (x1.5-2.0), x1.9 for the
+Pashupatastra's beam, x1.35 while a volley is in flight. It always pulls out, never in. `AstraZoomTest` runs the real game and checks the zoom and that nothing breaks at it.
+
+**The same method for the rest** - a flow on a field, sprites on 32x32 sheets, the world answering - each with ONE verb that no other astra has:
+
+| astra | verb | the simulation | art (32x32 sheets) | unique to it |
+|---|---|---|---|---|
+| **Jala** the flood | **surge** | a crest of water travels along the nose (900 px, 1.4 s) as a moving pressure front on the field: foes in it are *carried* forward (the Agni/Vayu carry), enemy rounds are pushed back and returned harmless, a foe carried into rock takes impact; behind the crest a shallow sheet of water lingers 4 s: foes in it are **soaked** (-40% speed) | CREST (a curved line of foam), FOAM, DROPLET, RIPPLE rings, SHEEN (a puddle that glints) | heals the hull per foe struck; soaked foes **extinguish** burning and **conduct** a Pashupata beam |
+| **Prithvi** the mountain | **quake** | a shock ring leaves the hull and CRACKS run out along the ground as particles that travel straight and branch (like lightning on the floor); where a crack ends a stone pillar rises (a temporary solid tile for 6 s: it blocks bullets and walls foes in); rubble hops off every crack | CRACK segment, PILLAR (top-down stone block rising in 8 frames), PEBBLES, DUST, SHOCK ring | the only astra that **builds cover**: pilot gets stone skin 2 s; a foe crossing a crack is staggered |
+| **Akasha** the hunter | **mark** | the held shards become comets; on release a CONSTELLATION draws itself between every locked foe (lines of light, nearest first, one every 0.1 s), then each comet runs its line and strikes in that order, each strike a ripple that chains to the next star | STAR (twinkling), LINE (a line of light, tiled), COMET head and tail, RIPPLE | the only **targeted, geometric** astra: more locks, more lines, a bigger shape; goes through rock; refills the shield |
+| **Pashupata** the third eye | **gaze** | the beam stays, but now **burns the world as it sweeps**: ash particles drift off it, the ground it crosses is scorched white (ASH, like Agni's scorch), a foe it holds does not die but **dissolves to ash** over 0.6 s (a dissolve, not a hit flash), and a ring of heat flexes at the hull | ASH (flakes), CINDER, EYE (open/close), BEAM tiles | the one that **cannot be stopped**: armour, rock, smoke, shield; a sustained steered beam |
+| **Brahma** the last arrow | **ending** | time slows to 0.35 for ~1.2 s while the five elements' flows spiral in from five points into one arrow; the arrow crosses the screen; at its end a five-stage nova: a ring of FIRE (ignite), then WIND (pull and cut), WATER (soak and push), STONE (stagger and crack), LIGHT (mark every foe) - each ring is the flow of its own astra | the five sheets plus ARROW and NOVA rings | the finale: **uses all five flows in order**; whole-screen; the camera pulls to its widest |
+
+**Elemental reactions (the thing that would make it feel like one simulation).** Because every flow acts on the same bodies and the same ground, the astras can answer each other, at no
+extra cost per astra: wind spreads fire (a burning foe inside the tornado ignites foes within 200 px, not 100); water puts fire out and, with fire, makes **steam** (a drifting cloud that hides
+foes from aim and slows them); stone pillars stop wind and fire; the Pashupata beam through a soaked foe jumps to the nearest soaked foe. Each is a few lines on the shared
+`burnT / soakT / staggerT / markT` timers on an enemy.
+
+Order I would build them in: Jala, Prithvi (they need the new shared **status timers** and temporary cover), Akasha (a rework of the volley), the Pashupata ash pass, then Brahma last
+(it composes the five).

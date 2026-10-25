@@ -300,7 +300,8 @@ public class GameScreen implements FlowState, ShipControls {
         // ever moves - the moment opens the fight up instead of closing in on it
         float pull = Math.max(Math.max(speed, pressure), world.astraPunch);
         float want = ZOOM + pull * (ZOOM_OUT - ZOOM); // always >= ZOOM: out, never in
-        zoom += (want - zoom) * (1f - (float) Math.exp(-3f * dt)); // ~1/3 s to settle
+        want = Math.max(want, world.astraView());      // and an astra at work pulls the view back far enough to see all of it
+        zoom += (want - zoom) * (1f - (float) Math.exp(-(want > zoom ? 3f : 1.4f) * dt)); // ~1/3 s to settle going out, a slower, easier return
     }
 
     @Override

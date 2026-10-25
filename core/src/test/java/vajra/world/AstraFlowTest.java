@@ -112,6 +112,26 @@ class AstraFlowTest {
         for (int i = 0; i < 200; i++) { a.updateAstra(DT); assertTrue(a.flow.n <= AstraFlow.CAP); }
     }
 
+    @Test
+    void theCameraPullsBackWhileAnAstraWorksAndReturnsWhenItIsDone() {
+        World w = arena();
+        assertEquals(1f, w.astraView(), 0.001f, "nothing going on: the resting view");
+        w.hangar.shards[Astra.AGNI] = 5;
+        w.astraSel = Astra.AGNI;
+        w.astraBegin();
+        run(w, Astra.WIND_FULL * 0.9f);
+        assertTrue(w.astraView() > 1.15f && w.astraView() < 1.35f, "the view eases back a little as the mantra builds: " + w.astraView());
+        run(w, Astra.WIND_FULL * 0.2f);
+        w.astraLoose();
+        assertTrue(w.astraView() >= 1.9f, "Agni's bloom shows a screen's reach: " + w.astraView());
+        for (int i = 0; i < 900 && w.flow.active(); i++) w.updateAstra(DT);
+        assertEquals(1f, w.astraView(), 0.001f, "and it comes back when the fire is gone");
+        World v = arena();
+        v.flow.startVayu(v.ship, 0, 1f, 1f, 3L);
+        v.updateAstra(DT);
+        assertTrue(v.astraView() >= 1.5f, "the tornado's whole radius is in view: " + v.astraView());
+    }
+
     // ---- VAYU ----------------------------------------------------------------------------------------------------------------------------
 
     @Test
