@@ -7,6 +7,9 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.graphics.glutils.FrameBuffer;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector3;
@@ -24,9 +27,18 @@ final class ShatterFx {
     private static final int RAYS = 11, K = 8, RING = 3;
     private static final float[] RADII = {0.06f, 0.12f, 0.20f, 0.30f, 0.42f, 0.58f, 0.80f, 1.25f};   // of the screen's diagonal
 
-    private static final class Piece { float[] px, py; float cx, cy, theta, ox, oy, tint, delay, bx, by, bw, bh, phase; boolean flipU, flipV, swap, inner; }
+    private static final class Piece { float[] px, py; float cx, cy, theta, ox, oy, tint, delay, bx, by, bw, bh, phase, rad; boolean flipU, flipV, swap, inner; int id; }
 
-    private Texture tex, glass, shine;
+    private Texture tex, glass, shine, snapTex;
+    private SpriteBatch sb;
+    private final FrameBuffer[] win = new FrameBuffer[vajra.world.Maya.DOOR_COUNT];
+    private final TextureRegion[] winReg = new TextureRegion[vajra.world.Maya.DOOR_COUNT];
+    private final boolean[] winDone = new boolean[vajra.world.Maya.DOOR_COUNT];
+    private long winSeed = Long.MIN_VALUE;
+    private int hot = -1;
+
+    /** Shows the world from (x, y) on the back buffer and copies it into `into` (GameScreen does it: the world's renderer owns its own frame buffers, so it cannot draw into one of ours). */
+    interface Capturer { void capture(Texture into, float x, float y); }
     private int tw, th;
     private PolygonSpriteBatch pb;
     private ShapeRenderer sr;
@@ -69,8 +81,8 @@ final class ShatterFx {
             for (int k = RING; k >= 1; k--) inner.add(new float[] {chx[j][k], chy[j][k]});
             for (int k = RING; k <= K; k++) outer.add(new float[] {chx[i][k], chy[i][k]});
             for (int k = K; k >= RING; k--) outer.add(new float[] {chx[j][k], chy[j][k]});
-            addPiece(inner, bw, bh, r, true);
-            addPiece(outer, bw, bh, r, false);
+            addPiece(inner, bw, bh, r, true, i * 2);
+            addPiece(outer, bw, bh, r, false, i * 2 + 1);
         }
         ArrayList<Piece> order = new ArrayList<>();                         // the pieces turn ONE AT A TIME: the inner ones first, then the outer, each group in a random order
         for (int g = 0; g < 2; g++) {
@@ -79,15 +91,16 @@ final class ShatterFx {
             java.util.Collections.shuffle(grp, r);
             order.addAll(grp);
         }
-        float gap = 6.4f / Math.max(1, order.size());
-        for (int i = 0; i < order.size(); i++) order.get(i).delay = i * gap;
+        float gap = Maya.TILT_SPAN / Math.max(1, order.size());
+        for (int i = 0; i < order.size(); i++) order.get(i).delay = m.mode == Maya.ALL_AT_ONCE ? r.nextFloat() * 0.08f : i * gap;   // one by one, or in the same instant
     }
 
-    private void addPiece(ArrayList<float[]> poly, int bw, int bh, Random r, boolean inner) {
+    private void addPiece(ArrayList<float[]> poly, int bw, int bh, Random r, boolean inner, int id) {
         ArrayList<float[]> p = clip(clip(clip(clip(poly, 0, 0f, true), 0, bw, false), 1, 0f, true), 1, bh, false);
         if (p.size() < 3) return;
         Piece pc = new Piece();
         pc.inner = inner;
+        pc.id = id;
         pc.px = new float[p.size()];
         pc.py = new float[p.size()];
         float sx = 0f, sy = 0f;
@@ -105,6 +118,7 @@ final class ShatterFx {
         pc.swap = r.nextBoolean();
         float x0 = 1e9f, x1 = -1e9f, y0 = 1e9f, y1 = -1e9f;
         for (int i = 0; i < pc.px.length; i++) { x0 = Math.min(x0, pc.px[i]); x1 = Math.max(x1, pc.px[i]); y0 = Math.min(y0, pc.py[i]); y1 = Math.max(y1, pc.py[i]); }
+        for (int i = 0; i < pc.px.length; i++) pc.rad = Math.max(pc.rad, (float) Math.hypot(pc.px[i] - pc.cx, pc.py[i] - pc.cy));
         pc.bx = x0; pc.by = y0; pc.bw = Math.max(1f, x1 - x0); pc.bh = Math.max(1f, y1 - y0);
         pieces.add(pc);
     }
@@ -154,6 +168,12 @@ final class ShatterFx {
         Gdx.gl.glCopyTexSubImage2D(GL20.GL_TEXTURE_2D, 0, 0, 0, 0, 0, bw, bh);
         float fade = m.fade();
         boolean tilting = m.tiltTime() > 0f;
+        if (m.mode == Maya.DOORS && m.open() > 0f) {                             // which door the hull is over (on the glass, where the pieces are), and the count at PICK_AT
+            tmp.set(w.ship.x, w.ship.y, 0f);
+            camera.project(tmp, vp.getScreenX(), vp.getScreenY(), vp.getScreenWidth(), vp.getScreenHeight());
+            hot = pieceAt(tmp.x, tmp.y);
+            if (m.t >= Maya.PICK_AT && m.chosen < 0 && hot >= 0) m.chosen = hot;
+        }
         if (tilting) {                                                        // the glass is cut: a dark ground shows in whatever gaps the turning leaves
             Gdx.gl.glClearColor(0.02f, 0.02f, 0.035f, 1f);
             Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
@@ -164,6 +184,12 @@ final class ShatterFx {
             pb.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE);                  // the light that travels over the glass is added, not laid on
             for (Piece pc : pieces) drawShine(pc, m, fade);
             pb.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+            float veil = m.doorVeil();                                           // the chosen door comes to fill the screen (the others are lost behind it), then clears as the hull is through
+            if (veil > 0f && m.chosen >= 0 && m.chosen < winReg.length && winDone[m.chosen]) {
+                pb.setColor(1f, 1f, 1f, veil * veil * (3f - 2f * veil));
+                pb.draw(winReg[m.chosen], 0f, 0f, bw, bh);
+                pb.setColor(1f, 1f, 1f, 1f);
+            }
             pb.end();
         }
         sr.setProjectionMatrix(proj(bw, bh));
@@ -171,8 +197,90 @@ final class ShatterFx {
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
         sr.begin(ShapeRenderer.ShapeType.Filled);
         cracks(m, fade);
+        if (m.mode == Maya.DOORS) frames(m);
         sr.end();
+        float flash = m.mode == Maya.DOORS ? Math.max(0f, 1f - Math.abs(m.t - Maya.TELE_AT) / 0.25f) : 0f;      // the instant the hull goes through
+        if (flash > 0f) {
+            sr.begin(ShapeRenderer.ShapeType.Filled);
+            sr.setColor(1f, 1f, 1f, 0.75f * flash);
+            sr.rect(0f, 0f, bw, bh);
+            sr.end();
+        }
     }
+
+    /** The piece (its id) whose polygon holds the screen point, else the one whose middle is nearest; -1 with no pieces. */
+    private int pieceAt(float x, float y) {
+        int best = -1;
+        float bd = Float.MAX_VALUE;
+        for (Piece pc : pieces) {
+            boolean in = false;
+            for (int i = 0, j = pc.px.length - 1; i < pc.px.length; j = i++)
+                if (((pc.py[i] > y) != (pc.py[j] > y)) && (x < (pc.px[j] - pc.px[i]) * (y - pc.py[i]) / (pc.py[j] - pc.py[i]) + pc.px[i])) in = !in;
+            if (in) return pc.id;
+            float d = (pc.cx - x) * (pc.cx - x) + (pc.cy - y) * (pc.cy - y);
+            if (d < bd) { bd = d; best = pc.id; }
+        }
+        return best;
+    }
+
+    /** THE DOORS' FRAMES: every piece outlined in gold as its door opens, the door the hull is over burning brighter (that is the one it will be carried through). */
+    private void frames(Maya m) {
+        float o = m.open();
+        if (o <= 0f) return;
+        float pulse = 0.75f + 0.25f * MathUtils.sin(m.t * 9f);
+        for (Piece pc : pieces) {
+            boolean mine = pc.id == (m.chosen >= 0 ? m.chosen : hot);
+            float a = o * (mine ? 1f : 0.55f) * (mine ? pulse : 1f), w1 = mine ? 5f : 2.6f;
+            for (int i = 0, j = pc.px.length - 1; i < pc.px.length; j = i++) {
+                sr.setColor(1f, 0.8f, 0.35f, 0.85f * a);
+                sr.rectLine(pc.px[j], pc.py[j], pc.px[i], pc.py[i], w1);
+                sr.setColor(1f, 1f, 0.92f, 0.9f * a);
+                sr.rectLine(pc.px[j], pc.py[j], pc.px[i], pc.py[i], w1 * 0.35f);
+            }
+        }
+    }
+
+    /** DOORS: from PREP_AT, a couple of pieces a frame get their window (the world as seen from the door's far side), as a small picture of the whole screen. */
+    void prepare(World w, Capturer cap) {
+        Maya m = w.maya;
+        if (!m.active || m.mode != Maya.DOORS || m.t < Maya.PREP_AT || pieces.isEmpty()) return;
+        int bw = Gdx.graphics.getBackBufferWidth(), bh = Gdx.graphics.getBackBufferHeight();
+        if (bw < 16 || bh < 16) return;
+        if (winSeed != m.seed) { winSeed = m.seed; java.util.Arrays.fill(winDone, false); refreshed = false; }
+        if (snapTex == null || snapTex.getWidth() != bw || snapTex.getHeight() != bh) {
+            if (snapTex != null) snapTex.dispose();
+            Pixmap pm = new Pixmap(bw, bh, Pixmap.Format.RGBA8888);
+            snapTex = new Texture(pm);
+            pm.dispose();
+            snapTex.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+            for (int i = 0; i < win.length; i++) { if (win[i] != null) { win[i].dispose(); win[i] = null; } winDone[i] = false; }
+        }
+        if (sb == null) sb = new SpriteBatch();
+        int made = 0;
+        for (Piece pc : pieces) {
+            if (made >= 2) break;
+            int id = pc.id;
+            boolean again = id == m.chosen && m.t >= Maya.PICK_AT && !refreshed;       // the chosen door is drawn once more, fresh, as it comes to fill the screen
+            if (id >= m.doors || (winDone[id] && !again)) continue;
+            cap.capture(snapTex, m.doorX[id], m.doorY[id]);
+            if (win[id] == null) {
+                win[id] = new FrameBuffer(Pixmap.Format.RGBA8888, Math.max(64, bw / 3), Math.max(64, bh / 3), false);
+                winReg[id] = new TextureRegion(win[id].getColorBufferTexture());
+                winReg[id].flip(false, true);                                                   // (a frame buffer's rows run bottom first)
+            }
+            win[id].begin();
+            sb.getProjectionMatrix().setToOrtho2D(0, 0, win[id].getWidth(), win[id].getHeight());
+            sb.begin();
+            sb.draw(snapTex, 0f, 0f, win[id].getWidth(), win[id].getHeight(), 0f, 0f, 1f, 1f);
+            sb.end();
+            win[id].end();
+            winDone[id] = true;
+            if (again) refreshed = true;
+            made++;
+        }
+    }
+
+    private boolean refreshed;
 
     private final com.badlogic.gdx.math.Matrix4 pm4 = new com.badlogic.gdx.math.Matrix4();
 
@@ -214,6 +322,23 @@ final class ShatterFx {
             tbuf[ti++] = (short) (i == n ? 1 : i + 1);
         }
         pb.draw(tex, vbuf, 0, (n + 1) * 5, tbuf, 0, ti);
+        float open = m.open();
+        if (open > 0f && pc.id < winDone.length && winDone[pc.id]) {                        // the door: the far place, seen through this piece, opening from its middle outward
+            vi = 0;
+            for (int i = -1; i < n; i++) {
+                float x = i < 0 ? pc.cx : pc.px[i], y = i < 0 ? pc.cy : pc.py[i];
+                float dx = x - pc.cx - pc.ox * u, dy = y - pc.cy - pc.oy * u;
+                float sx = pc.cx + (dx * ca - dy * sa) * inv, sy = pc.cy + (dx * sa + dy * ca) * inv;
+                float d = i < 0 ? 0f : (float) Math.hypot(x - pc.cx, y - pc.cy) / Math.max(1f, pc.rad);
+                float al = MathUtils.clamp(open * 1.8f - 0.8f * d, 0f, 1f);
+                vbuf[vi++] = x;
+                vbuf[vi++] = y;
+                vbuf[vi++] = Color.toFloatBits(1f, 1f, 1f, al);
+                vbuf[vi++] = sx / tw;
+                vbuf[vi++] = sy / th;
+            }
+            pb.draw(win[pc.id].getColorBufferTexture(), vbuf, 0, (n + 1) * 5, tbuf, 0, ti);
+        }
         float ga = (0.45f + 0.55f * u) * fade, gcol = Color.toFloatBits(1f, 1f, 1f, ga);      // the glass over it: a sheen, a bright streak, a darkening toward the edges
         vi = 0;
         for (int i = -1; i < n; i++) {
@@ -345,6 +470,9 @@ final class ShatterFx {
     void dispose() {
         if (tex != null) tex.dispose();
         if (glass != null) glass.dispose();
+        if (snapTex != null) snapTex.dispose();
+        for (FrameBuffer f : win) if (f != null) f.dispose();
+        if (sb != null) sb.dispose();
         if (shine != null) shine.dispose();
         if (pb != null) pb.dispose();
         if (sr != null) sr.dispose();

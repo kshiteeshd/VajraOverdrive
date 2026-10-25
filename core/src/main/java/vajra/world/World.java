@@ -1743,8 +1743,51 @@ public class World {
     /** The invocation builds, cubes in flight fly and retire. Rock is never consulted - that is the whole point of them. */
     public final Maya maya = new Maya();
 
+    /** Bala begins a Maya-astra. The third (DOORS) also lays out its doors: spots in Atala, open ground, far from him, so each door is a place to fly back from. */
+    public void startMaya(Enemy by, int mode) {
+        maya.start(by, (long) (clock * 1000f) + 17L * by.bossCasts, mode);
+        if (mode != Maya.DOORS) return;
+        java.util.Random r = new java.util.Random(maya.seed * 31L + 7L);
+        float top = Math.max(2000f, PIT_Y - 2600f);
+        maya.doors = Maya.DOOR_COUNT;
+        for (int i = 0; i < Maya.DOOR_COUNT; i++) {
+            float px = PIT_X, py = 1500f;
+            for (int tries = 0; tries < 60; tries++) {
+                px = 500f + r.nextFloat() * Math.max(200f, width - 1000f);
+                py = 1500f + r.nextFloat() * Math.max(200f, top - 1500f);
+                boolean open = true;
+                for (int k = 0; k < 9 && open; k++) open = !blockedPx(px + (k % 3 - 1) * 90f, py + (k / 3 - 1) * 90f);
+                if (open) break;
+            }
+            maya.doorX[i] = px;
+            maya.doorY[i] = py;
+        }
+    }
+
+    /** The count: the hull goes through the door of the piece it was over (or, with nobody to count, the nearest door). */
+    private void mayaCarry() {
+        maya.carried = true;
+        if (clientSeat) return;
+        int d = maya.chosen;
+        if (d < 0 || d >= maya.doors) {
+            d = 0;
+            float best = Float.MAX_VALUE;
+            for (int i = 0; i < maya.doors; i++) {
+                float dx = maya.doorX[i] - ship.x, dy = maya.doorY[i] - ship.y, q = dx * dx + dy * dy;
+                if (q < best) { best = q; d = i; }
+            }
+        }
+        if (maya.doors == 0) return;
+        addEffect(Effect.ring(ship.x, ship.y, 260, 0.9f, 0.9f, 1f));
+        ship.x = maya.doorX[d];
+        ship.y = maya.doorY[d];
+        addEffect(Effect.ring(ship.x, ship.y, 260, 0.9f, 0.9f, 1f));
+        ship.trauma = Math.min(1f, ship.trauma + 0.5f);
+    }
+
     public void updateAstra(float dt) {
         maya.step(dt);
+        if (maya.active && maya.mode == Maya.DOORS && !maya.carried && maya.t >= Maya.TELE_AT) mayaCarry();
         if (astraCd > 0) astraCd -= dt;
         if (astraInvoking) {
             if (ship.hp <= 0 || runEnded()) {

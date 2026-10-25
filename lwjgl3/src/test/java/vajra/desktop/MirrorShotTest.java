@@ -56,14 +56,20 @@ class MirrorShotTest {
                         e.active = true;
                         w.enemies.add(e);
                     }
-                    w.maya.start(w.ship.x + 120f, w.ship.y + 200f, 5L);
-                    float[] at = {2.7f, 6.0f, 8.5f, 11.5f};
+                    Enemy bala = new Enemy(Enemy.Kind.MAYAVI, w.ship.x + 120f, w.ship.y + 200f);
+                    bala.hp = bala.maxHp = 5000;
+                    bala.dmgScale = 0f;
+                    bala.bossCasts = 2;
+                    w.enemies.add(bala);
+                    float startY = w.ship.y;
+                    w.startMaya(bala, vajra.world.Maya.DOORS);
+                    float[] at = {2.7f, 9.0f, 15.3f, 19.6f};
                     int shot = 0;
-                    for (int i = 0; i < 60 * 16; i++) {
+                    for (int i = 0; i < 60 * 22; i++) {
                         flow.render(1 / 60f);
                         if (shot < at.length && w.maya.t >= at[shot]) shot("build/mirror-" + (++shot) + ".png");
                     }
-                    ended[0] = !w.maya.active;
+                    ended[0] = !w.maya.active && Math.abs(w.ship.y - startY) > 300f;
                 } catch (Throwable t) {
                     boom.set(t);
                 } finally {
@@ -81,6 +87,6 @@ class MirrorShotTest {
             }
         }, cfg);
         if (boom.get() != null) throw new AssertionError("the mirror frame failed", boom.get());
-        assertTrue(ended[0], "the glass mends and the effect ends");
+        assertTrue(ended[0], "the doors close and the hull has been carried through one of them");
     }
 }

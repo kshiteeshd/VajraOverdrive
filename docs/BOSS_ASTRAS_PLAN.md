@@ -31,3 +31,8 @@ serpents, and Trivikrama, who broke the Vajra).
    Hiranyaksha (needs a hostile Vayu), Puloman (a darkness pass), Trivikrama last (the lotus and the Narayanastra).
 
 Only Bala and Bhairava exist in the game today; the others are built with their lokas.
+
+## Built: Bala's Maya-astra (world/Maya, screen/ShatterFx)
+Bala casts it three times over the fight: at 85% (the glass breaks piece by piece), at the duel (all pieces at once) and at the berserk (piece by piece, then DOORS). He stands still and silent while it runs, and the cracks' heart is
+wherever he stands. In DOORS each piece opens on another part of Atala (24 spots of open ground, far from him), shown as a window drawn from there; the piece the hull is over at the count (19 s) carries it through (20 s) and the way back
+to Bala is the fight. `ShatterFx.LINES` draws the crack lines (off).

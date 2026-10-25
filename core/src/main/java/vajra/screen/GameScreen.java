@@ -423,6 +423,9 @@ public class GameScreen implements FlowState, ShipControls {
         Gdx.gl.glClearColor(UiTheme.INK_R, UiTheme.INK_G, UiTheme.INK_B, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
+        if (world.maya.active && shatter != null) shatter.prepare(world, this::captureFrom);   // (doors: the far side of each piece, drawn and kept before the real frame)
+        Gdx.gl.glClearColor(UiTheme.INK_R, UiTheme.INK_G, UiTheme.INK_B, 1);
+        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
         worldR.render(world, camera, viewport);
         if (wheelOpen && !director.active()) {
             blur.render(batch, 1.6f);   // the held wheel: the flight behind it goes soft
@@ -445,6 +448,30 @@ public class GameScreen implements FlowState, ShipControls {
             ui.shapes.rect(0, 0, Ui.UI_W, Ui.UI_H);
             ui.shapes.end();
         }
+    }
+
+    private final OrthographicCamera snapCam = new OrthographicCamera();
+
+    /** Draws the world as seen from (x, y) on the back buffer and copies the picture into `into`: the hull is put there for the moment of the drawing and put back (the frame that follows
+     *  clears and draws the real view). */
+    private void captureFrom(com.badlogic.gdx.graphics.Texture into, float x, float y) {
+        vajra.ship.Ship s = world.ship;
+        float ox = s.x, oy = s.y;
+        snapCam.viewportWidth = camera.viewportWidth;
+        snapCam.viewportHeight = camera.viewportHeight;
+        snapCam.zoom = Math.max(1f, camera.zoom);
+        snapCam.position.set(x, y, 0f);
+        snapCam.update();
+        s.x = x;
+        s.y = y;
+        Gdx.gl.glClearColor(UiTheme.INK_R, UiTheme.INK_G, UiTheme.INK_B, 1);
+        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+        worldR.render(world, snapCam, viewport);
+        s.x = ox;
+        s.y = oy;
+        Gdx.gl.glViewport(0, 0, Gdx.graphics.getBackBufferWidth(), Gdx.graphics.getBackBufferHeight());
+        into.bind();
+        Gdx.gl.glCopyTexSubImage2D(GL20.GL_TEXTURE_2D, 0, 0, 0, 0, 0, into.getWidth(), into.getHeight());
     }
 
     private final float[] frameMs = new float[60];

@@ -37,6 +37,7 @@ public class BossBrain {
     public static void think(Enemy e, World w, float dt, float t) {
         // threshold crossings are beats: stagger, ring effect, screen trauma
         float frac = e.hp / e.maxHp;
+        if (!e.bossHidden && e.bossPhase == 1 && e.bossCasts == 0 && frac <= 0.85f && !w.maya.active) castMaya(e, w);   // the first casting, early in the commander's phase
         if (!e.bossHidden && e.bossPhase == 1 && frac <= 2f / 3f) beginPhase(e, w, 2);
         else if (!e.bossHidden && e.bossPhase == 2 && frac <= 1f / 3f) beginPhase(e, w, 3);
 
@@ -180,6 +181,13 @@ public class BossBrain {
         }
     }
 
+    /** The Maya-astra, three times over the fight: the first shatters the glass piece by piece, the second all at once, the third opens doors into Atala (world/Maya). */
+    private static void castMaya(Enemy e, World w) {
+        int mode = e.bossCasts == 0 ? vajra.world.Maya.ONE_BY_ONE : e.bossCasts == 1 ? vajra.world.Maya.ALL_AT_ONCE : vajra.world.Maya.DOORS;
+        e.bossCasts++;
+        w.startMaya(e, mode);
+    }
+
     private static void beginPhase(Enemy e, World w, int phase) {
         e.bossPhase = phase;
         e.bossInvuln = true;
@@ -187,7 +195,7 @@ public class BossBrain {
         e.bossTelegraph = false;
         e.bossStream = 0;
         w.addEffect(Effect.ring(e.x, e.y, 320, 1f, 0.84f, 0.3f));
-        w.maya.start(e, (long) (w.clock * 1000f) + phase * 17L);   // Bala's Maya-astra: the screen is a mirror, and it breaks
+        castMaya(e, w);                                            // Bala's Maya-astra: the screen is a mirror, and it breaks
         w.ship.trauma = Math.min(1f, w.ship.trauma + 0.35f);
         if (phase == 2) { // the honorable duel: whoever still follows him is stood down
             w.popups.push(new Popups.Spec().text("STAND DOWN. THIS ONE IS MINE.").img("bala")

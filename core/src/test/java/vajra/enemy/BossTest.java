@@ -157,6 +157,32 @@ class BossTest {
     }
 
     @Test
+    void theMayaAstraIsCastThreeTimesOnceOneByOneOnceAllAtOnceThenAsDoors() {
+        World w = arena();
+        Enemy b = bossIn(w);
+        b.update(1 / 60f, w, 0f);
+        b.hp = b.maxHp * 0.8f;                                          // under 85%: the first casting
+        b.update(1 / 60f, w, 0f);
+        assertTrue(w.maya.active);
+        assertEquals(vajra.world.Maya.ONE_BY_ONE, w.maya.mode, "the first: piece by piece");
+        b.hp = b.maxHp * 0.6f;                                          // under 2/3: the duel, the second casting
+        b.update(1 / 60f, w, 0f);
+        assertEquals(vajra.world.Maya.ALL_AT_ONCE, w.maya.mode, "the second: every piece at once");
+        b.hp = b.maxHp * 0.3f;                                          // under 1/3: the berserk, the third
+        b.update(1 / 60f, w, 0f);
+        assertEquals(vajra.world.Maya.DOORS, w.maya.mode, "the third: doors");
+        assertEquals(vajra.world.Maya.DOOR_COUNT, w.maya.doors);
+        for (int i = 0; i < w.maya.doors; i++) {
+            assertFalse(w.blockedPx(w.maya.doorX[i], w.maya.doorY[i]), "a door opens on open ground");
+            assertTrue(Math.abs(w.maya.doorY[i] - b.y) > 2000f, "and far from Bala: the way back is the fight");
+        }
+        float y0 = w.ship.y;
+        for (int i = 0; i < 60 * 22; i++) w.updateAstra(1 / 60f);       // nobody counts the doors on screen here: the nearest door takes the hull
+        assertFalse(w.maya.active);
+        assertTrue(Math.abs(w.ship.y - y0) > 300f || Math.abs(w.ship.x - 2600f) > 300f, "the hull was carried through a door");
+    }
+
+    @Test
     void blinkDropsElitePairAndReappearsNearby() {
         World w = arena();
         Enemy b = bossIn(w);

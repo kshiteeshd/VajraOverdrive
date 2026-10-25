@@ -184,6 +184,7 @@ public class Enemy {
     public boolean bossHidden;  // mid-blink: not drawn, not hit, not colliding
     public boolean bossInvuln;  // stagger beat between phases: hits are ignored
     public boolean bossTelegraph;
+    public int bossCasts;       // his Maya-astras cast so far (one a phase: world/Maya)
     public int bossPhase = 1;   // 1 commander / 2 duel / 3 berserk
     public int bossPattern;     // 0 volley / 1 spiral / 2 mortar / 3 shock
     // MEMORY (step 1 of the wave plan): what each pattern costs him and deals to the hull.
