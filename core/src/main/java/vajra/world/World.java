@@ -434,6 +434,25 @@ public class World {
         return false;
     }
 
+    /** Rock the eye sees as WALL at this point: a drawn tile of any map (a mirage tile counts: it is drawn like rock), never a boulder. Plants and torches take root only in this. */
+    public boolean wallDrawnPx(float x, float y) {
+        for (TileMap m : maps) {
+            int tx = (int) Math.floor((x - m.ox) / TileMap.TILE), ty = (int) Math.floor((y - m.oy) / TileMap.TILE);
+            if (m.raw(tx, ty) != TileMap.EMPTY) return true;
+        }
+        return false;
+    }
+
+    /** Drop every plant and torch whose root is no longer in drawn wall: a flower or a flame must never hang in the air (the seal that opens, rock that is swept away). */
+    public void pruneRooted() {
+        java.util.ArrayList<float[]> keep = new java.util.ArrayList<>();
+        for (float[] p : plants) if (wallDrawnPx(p[6], p[7])) keep.add(p);
+        plants = keep.toArray(new float[0][]);
+        keep.clear();
+        for (float[] t : torches) if (wallDrawnPx(t[3], t[4])) keep.add(t);
+        torches = keep.toArray(new float[0][]);
+    }
+
     /** Lift the boulder belt out of the world (the test area wants only the wall tiles). */
     public void clearBoulders() {
         for (int i = 0; i < boulders.length; i++) boulders[i] = new float[] {-9999f, -9999f, 0f, 0f};
@@ -2191,6 +2210,7 @@ public class World {
         dropLoot(b);                                                           // and the piece, which comes to the hull of itself
         for (int c = sealC0; c <= sealC1; c++) sealMap.set(c, sealRow, TileMap.EMPTY);
         wallVersion++;                                                          // the baked wall chunks must be redone
+        pruneRooted();                                                          // what grew from the seal falls with it
         addEffect(Effect.ring(axisX, sealMap.oy + (sealRow + 1) * TileMap.TILE, 260, 1f, 0.84f, 0.3f));
         unveilStage = stage;                                                   // the way beyond was hidden in cloud: it parts, and the camera is shown it
         unveilT = 0f;

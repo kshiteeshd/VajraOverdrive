@@ -131,7 +131,7 @@ final class WorldGen {
                     for (int i = 0; i < 4 && dir < 0; i++) {
                         int c = (rot + i) & 3; // 0 rock below, 1 above, 2 left, 3 right
                         float cx = c == 2 ? -1 : c == 3 ? 1 : 0, cy = c == 0 ? -1 : c == 1 ? 1 : 0;
-                        if (w.blockedPx(px + cx * d, py + cy * d)) {
+                        if (w.wallDrawnPx(px + cx * d, py + cy * d)) {                  // wall only: a boulder is not a face to grow from
                             dir = c;
                             nx = cx;
                             ny = cy;
@@ -155,7 +155,7 @@ final class WorldGen {
                 float ux = -ny * PLANT_GAP * sgn, uy = nx * PLANT_GAP * sgn; // along the face
                 for (int m = 1; m <= run; m++) {
                     float fx = rx + ux * m, fy = ry + uy * m;
-                    if (!w.blockedPx(fx, fy) || !faceRunsOn(fx, fy, nx, ny)) break;
+                    if (!w.wallDrawnPx(fx, fy) || !faceRunsOn(fx, fy, nx, ny)) break;
                     float mx = fx + nx * 4, my = fy + ny * 4;
                     if (!growsClear(mx, my, nx, ny) || !clearOfLandmarks(mx, my)) break;
                     if (clumped(pl, pl.size(), mx, my)) break;
@@ -164,6 +164,7 @@ final class WorldGen {
             }
         }
         w.plants = pl.toArray(new float[0][]);
+        w.pruneRooted();                                                       // and nothing hangs in the air: every root is in drawn wall
         // THE SEAL: a per-kind kill quota sized off the full roster, so it is always obtainable
         int[] placed = new int[Enemy.Kind.values().length];
         for (Enemy e : w.enemies) placed[e.kind.ordinal()]++;
@@ -184,6 +185,7 @@ final class WorldGen {
         w.sealC1s[0] = w.sealC1;
         placeAtalaChests();
         if (w.campaign) new VitalaGen(w, this).build();                        // and Vitala goes on the roof
+        w.pruneRooted();                                                       // Vitala's carving may have taken a root: nothing hangs in the air
     }
 
     /** A person at a post: off the roster (w.voices), awake to hover, named for the Chatter
@@ -560,7 +562,7 @@ final class WorldGen {
         float[][] dirs = { { 0, -1, 0 }, { -1, 0, -90 }, { 1, 0, 90 }, { 0, 1, 180 } };
         for (float[] d : dirs)
             for (float r = 8; r <= 160; r += 8)
-            if (w.blockedPx(cx + d[0] * r, cy + d[1] * r)) {
+            if (w.wallDrawnPx(cx + d[0] * r, cy + d[1] * r)) {
                 out.add(new float[] { cx + d[0] * (r - 4), cy + d[1] * (r - 4), d[2],
                         cx + d[0] * r, cy + d[1] * r });
                 return;
@@ -591,7 +593,7 @@ final class WorldGen {
 
     /** The neighbour tile is solid at this row, or a little deeper — stepped edges count. */
     private boolean solidAt(float x, float y, float nx, float ny) {
-        return w.blockedPx(x, y) || w.blockedPx(x + nx * 8, y + ny * 8);
+        return w.wallDrawnPx(x, y) || w.wallDrawnPx(x + nx * 8, y + ny * 8);
     }
 
     /** Plants keep clear of gates, caches, shops, checkpoints, torches and the spawn meadow. */
