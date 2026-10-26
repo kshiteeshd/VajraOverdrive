@@ -63,8 +63,9 @@ class CheckpointTest {
         w.ship.hp = 1;
         w.ship.invuln = 0;
         w.ship.damage(999, w);
-        assertEquals(c.x, w.ship.x, 0.001f, "back at the checkpoint, not the entrance");
-        assertEquals(c.y, w.ship.y, 0.001f);
+        for (int i = 0; i < 60 * 5; i++) w.update(1 / 60f, NONE);
+        assertEquals(c.x, w.ship.x, 100f, "back at the checkpoint (give or take where the lamp's stone sets the hull), not the entrance");
+        assertEquals(c.y, w.ship.y, 100f);
         assertEquals(2, w.lives, "the death cost a life");
         assertEquals(w.ship.maxHp(), w.ship.hp, 0.001f, "full hull on respawn");
     }

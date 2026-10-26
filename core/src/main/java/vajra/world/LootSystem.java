@@ -10,7 +10,7 @@ public final class LootSystem {
     private static final int[] LOOT_COINS = { 2, 4, 6 };
     private static final int BOSS_LOOT_COINS = 25;
     private static final float[] LOOT_HEALTH = { 0.08f, 0.15f, 0.30f, 1f };
-    private static final float HEALTH_HEAL = 0.25f;
+    private static final float HEALTH_HEAL = 0.30f;
     private static final float[] LOOT_SHARD = { 0.06f, 0.14f, 0.28f };
 
     private float dropAngle; // fan cursor: each kill's burst is rotated so two deaths never twin
@@ -59,6 +59,7 @@ public final class LootSystem {
         p.vx = ux * d * Pickup.DRAG;
         p.vy = uy * d * Pickup.DRAG;
         p.phase = rng.nextFloat() * 6.2831853f;
+        p.seek = type == Pickup.PIECE;
         world.pickups.add(p);
     }
 
@@ -80,16 +81,20 @@ public final class LootSystem {
                         .color(c[0], c[1], c[2]).scale(1.25f).life(1.8f));
         } else if (p.type == Pickup.PIECE) {
             world.hangar.pieces[p.variant] = true;
-            world.popups.push(new Popups.Spec().text("THE VAJRA ANSWERS").img("vajra")
-                    .at(world.ship.x, world.ship.y + 40).color(1f, 215 / 255f, 0).scale(1.5f).life(2.4f));
+            world.pieceShowT = 0f;                                              // the piece is shown big, then goes to its place at the corner of the screen
+            world.pieceShowLoka = p.variant;
             world.addEffect(Effect.ring(p.x, p.y, 40, 1f, 0.84f, 0.3f));
             world.addEffect(Effect.ring(p.x, p.y, 24, 1f, 1f, 1f));
             for (boolean have : world.hangar.pieces) if (!have) return;
             world.vajraDone = true;
         } else {
-            world.ship.hp = Math.min(world.ship.maxHp(),
-                    world.ship.hp + world.ship.maxHp() * HEALTH_HEAL);
-            world.addEffect(Effect.ring(p.x, p.y, 16, 0.4f, 1f, 0.55f));
+            if (world.ship.hp < world.ship.maxHp()) {                          // a hull with room takes it now
+                world.ship.hp = Math.min(world.ship.maxHp(), world.ship.hp + world.ship.maxHp() * HEALTH_HEAL);
+            } else if (world.medkits < World.MEDKIT_MAX) {                     // a whole hull keeps it for later (key 1)
+                world.medkits++;
+            }
+            world.addEffect(Effect.ring(p.x, p.y, 26, 0.4f, 1f, 0.55f));
+            world.addEffect(Effect.ring(p.x, p.y, 14, 0.8f, 1f, 0.9f));
         }
     }
 }

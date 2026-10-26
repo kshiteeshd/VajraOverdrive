@@ -71,7 +71,11 @@ public class PickupImages {
                 break;
             case Pickup.HEALTH:
                 batch.setColor(1, 1, 1, 1);
-                batch.draw(healthReg, p.x - 16, p.y - 16 + bob, 32, 32);
+                float beat = 1f + 0.08f * (float) Math.sin(time * 5 + p.phase);
+                batch.setColor(0.45f, 1f, 0.6f, 0.30f);                                          // a soft green glow under it: a repair is the one drop worth a detour
+                batch.draw(healthReg, p.x - 38 * beat, p.y - 38 * beat + bob, 76 * beat, 76 * beat);
+                batch.setColor(1, 1, 1, 1);
+                batch.draw(healthReg, p.x - 28 * beat, p.y - 28 * beat + bob, 56 * beat, 56 * beat);   // (a drop is 56 px now, not 32)
                 break;
             default:
                 batch.setColor(1, 1, 1, 1);

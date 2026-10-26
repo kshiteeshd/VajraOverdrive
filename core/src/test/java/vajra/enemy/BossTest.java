@@ -183,6 +183,35 @@ class BossTest {
     }
 
     @Test
+    void theRulerYieldsTheSceneGoesBackAndForthThenHeLetsGoAndThePieceComesToTheHullAndTheCloudParts() {
+        World w = arena();
+        Enemy b = bossIn(w);
+        w.update(1 / 60f, vajra.ship.ShipControls.NONE);
+        assertEquals(0f, w.veilClear[0], 1e-4f, "the way beyond the gold gate lies in cloud");
+        assertFalse(w.veilOpen(0));
+        assertTrue(b.hurt(99999, w));
+        assertTrue(b.yielding && !b.dead);
+        // the scene: the narrator over him, then the ruler and the pilot turn about, and the camera goes with each
+        assertTrue(w.cues.contains(vajra.world.Cue.BALA_FALLS), "the story is told");
+        java.util.List<vajra.scene.Shot> scene = vajra.scene.Scenes.build(vajra.world.Cue.BALA_FALLS, w);
+        assertTrue(scene.size() >= 10, "a long scene: " + scene.size());
+        assertNull(scene.get(0).speaker, "the narrator first");
+        for (int i = 1; i <= 7; i++) assertEquals(i % 2 == 1 ? "BALA" : "INDRA", scene.get(i).speaker, "turn " + i);
+        for (int i = 1; i <= 6; i++) assertNotEquals(scene.get(i).x + "," + scene.get(i).y, scene.get(i + 1).x + "," + scene.get(i + 1).y, "the camera crosses between them");
+        // the scene is over: he lets go
+        vajra.scene.Scenes.finish(vajra.world.Cue.BALA_FALLS, w);
+        assertTrue(b.dead);
+        assertTrue(w.veilOpen(0) || w.stage > 0);
+        // the piece seeks the hull: no sweeping needed, however far
+        w.ship.x = 2600;
+        w.ship.y = 19000;
+        for (int i = 0; i < 60 * 8; i++) w.update(1 / 60f, vajra.ship.ShipControls.NONE);
+        assertTrue(w.hangar.pieces[0], "the first piece is the pilot's");
+        assertTrue(w.pieceShowT >= 0f || w.hangar.pieces[0], "and it is shown");
+        assertEquals(1f, w.veilClear[0], 1e-3f, "and the cloud has parted");
+    }
+
+    @Test
     void blinkDropsElitePairAndReappearsNearby() {
         World w = arena();
         Enemy b = bossIn(w);
@@ -230,9 +259,16 @@ class BossTest {
         f.commander = b;
         int coins = w.hangar.coins;
         assertTrue(b.hurt(99999, w), "the kill lands");
-        assertTrue(b.dead && w.bossDead, "Bala falls");
+        assertTrue(b.yielding && !b.dead && w.bossDead, "Bala does not die: he yields, and stands there");
+        assertFalse(b.hurt(10, w), "a ruler who yields is beyond harm");
         assertEquals(0f, w.victoryT, "the victory clock starts");
+        assertEquals(coins, w.hangar.coins, "the purse waits for the scene");
+        w.bossReleases();
+        assertTrue(b.dead, "he lets go");
         assertEquals(coins + vajra.world.Balance.purse(0), w.hangar.coins, "the kill purse");
+        boolean seeks = false;
+        for (vajra.world.Pickup p : w.pickups) if (p.type == vajra.world.Pickup.PIECE && p.seek) seeks = true;
+        assertTrue(seeks, "and the piece comes to the hull by itself");
         assertTrue(f.dismissed && f.commander == null, "the retinue stands down for good");
     }
 
@@ -269,7 +305,9 @@ class BossTest {
         Enemy b = bossIn(w);
         assertTrue(b.hurt(99999, w), "the kill lands");
         assertTrue(w.bossDead);
-        assertFalse(w.tileMapBoss.solidPx(2600, 20590), "the kill opens the gate");
+        assertTrue(w.tileMapBoss.solidPx(2600, 20590), "the gate waits for the scene");
+        w.bossReleases();
+        assertFalse(w.tileMapBoss.solidPx(2600, 20590), "and opens when he lets go");
     }
 
     @Test

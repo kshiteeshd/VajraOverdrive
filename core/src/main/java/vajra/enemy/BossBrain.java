@@ -198,7 +198,7 @@ public class BossBrain {
         castMaya(e, w);                                            // Bala's Maya-astra: the screen is a mirror, and it breaks
         w.ship.trauma = Math.min(1f, w.ship.trauma + 0.35f);
         if (phase == 2) { // the honorable duel: whoever still follows him is stood down
-            w.popups.push(new Popups.Spec().text("STAND DOWN. THIS ONE IS MINE.").img("bala")
+            w.popups.push(new Popups.Spec().text("STAND ASIDE. I WILL ANSWER HIM MYSELF.").img("bala")
                     .at(e.x, e.y + 70).color(1f, 0.78f, 0.2f).scale(1.4f).life(2.4f).rise(0));
             for (Enemy o : w.enemies) {
                 if (o.dead || o.commander != e) continue;
@@ -206,7 +206,7 @@ public class BossBrain {
                 o.commander = null;
             }
         } else {
-            w.popups.push(new Popups.Spec().text("THEN WE ALL BURN TOGETHER.").img("bala")
+            w.popups.push(new Popups.Spec().text("THEN LET ATALA BREAK WITH ME.").img("bala")
                     .at(e.x, e.y + 70).color(1f, 0.5f, 0.12f).scale(1.4f).life(2.4f).rise(0));
             e.bossBlink = 3f; // first blink three seconds into the berserk
         }

@@ -31,7 +31,7 @@ public final class RunSave {
         // the hull
         public float x, y, facing, hp, boost, shield;
         // the world's ledger
-        public int lives, loka, gaze, bounty, salvage, salvageTaken;
+        public int lives, loka, gaze, bounty, salvage, salvageTaken, medkits;
         public long points;
         public float clock;
         public boolean bossDead;
@@ -60,6 +60,7 @@ public final class RunSave {
         d.boost = w.ship.boostEnergy;
         d.shield = w.ship.shieldEnergy;
         d.lives = w.lives;
+        d.medkits = w.medkits;
         d.loka = w.lokaIndex;
         d.gaze = w.gazeStage;
         d.points = w.score.points;
@@ -142,6 +143,7 @@ public final class RunSave {
         w.lokaIndex = clamp(d.loka, 0, LokaTable.COUNT - 1);
         w.astraSel = clamp(d.astraSel, 0, Astra.KINDS - 1);
         w.lives = clamp(d.lives, 1, World.MAX_LIVES);
+        w.medkits = clamp(d.medkits, 0, World.MEDKIT_MAX);
         w.score.points = Math.max(0, Math.min(Score.MAX, d.points));
         w.clock = Math.max(0, d.clock);
         if (w.campaign && d.stage == 1 && w.stage == 0) {                       // Bala fell in the saved run: his door stays open, Bhairava is the quota

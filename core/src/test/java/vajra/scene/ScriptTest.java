@@ -68,7 +68,7 @@ class ScriptTest {
         w.ship.y = 1700;
         String all = String.join(" ", lines(w, Cue.ATALA_GATE));
         assertTrue(all.contains("BALA") && all.contains("INDRA") && all.contains("SWARGA"));
-        assertTrue(all.contains("WEAPONS FREE"), "and it ends the way the guards' job ends");
+        assertTrue(all.contains("THE ORDER STANDS. DRAW."), "and it ends the way the guards' job ends");
     }
 
     @Test

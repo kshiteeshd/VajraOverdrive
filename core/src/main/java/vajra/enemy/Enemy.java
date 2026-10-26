@@ -184,6 +184,8 @@ public class Enemy {
     public boolean bossHidden;  // mid-blink: not drawn, not hit, not colliding
     public boolean bossInvuln;  // stagger beat between phases: hits are ignored
     public boolean bossTelegraph;
+    /** A ruler struck to nothing does not die: he YIELDS - he stands where he fell, silent, beyond harm, while the scene is told, and then lets go of the piece (World.bossReleases). */
+    public boolean yielding;
     public int bossCasts;       // his Maya-astras cast so far (one a phase: world/Maya)
     public int bossPhase = 1;   // 1 commander / 2 duel / 3 berserk
     public int bossPattern;     // 0 volley / 1 spiral / 2 mortar / 3 shock
@@ -348,6 +350,7 @@ public class Enemy {
 
     public void update(float dt, World world, float t) {
         if (dead || parley) return;
+        if (yielding) { vx = 0; vy = 0; if (hitFlash > 0) hitFlash -= dt; return; }
         if (caught > 0f) { caught -= dt; if (hitFlash > 0) hitFlash -= dt; return; }   // the tornado has it: the flow moves it, its brain waits
         if (fireTimer > 0) fireTimer -= dt;
         if (hitFlash > 0) hitFlash -= dt;
@@ -569,7 +572,7 @@ public class Enemy {
 
     /** The same hit, with the roster id that fired it (0 = this seat). */
     public boolean hurt(float amount, World w, int owner) {
-        if (dead || submerged()) return false;         // (a body down at the floor, in rock or in smoke cannot be touched)
+        if (dead || yielding || submerged()) return false;         // (a body down at the floor, in rock or in smoke cannot be touched)
         if (voice) return false; // a person: nothing to reward, nothing to spend
         // A GHOST is the host's word about a foe, not a body. On a guest seat it must not be
         // hurt at all: the host owns every verdict, and a guest killing its own copy used to
@@ -599,6 +602,7 @@ public class Enemy {
             w.addEffect(Effect.spark(x, y, 1f, 0.9f, 0.6f));
             return false;
         }
+        if (boss) return yieldUp(w, owner);                              // (a ruler does not fall: he gives way)
         dead = true;
         if (kind == Kind.HATAKA) betray(w); // and once more on the way down
         int prev = w.shooter;
@@ -615,6 +619,27 @@ public class Enemy {
         return true;
     }
 
+
+    /** The ruler's last hit: he goes down on his knee where he stands. The kill is counted (and credited), the room shakes and throws light, and the story takes over; the piece is let go after it. */
+    private boolean yieldUp(World w, int owner) {
+        yielding = true;
+        hp = 1f;
+        bossInvuln = true;
+        bossTelegraph = false;
+        bossStream = 0;
+        bossHidden = false;
+        active = false;
+        vx = 0;
+        vy = 0;
+        int prev = w.shooter;
+        if (owner != 0) w.shooter = owner;
+        w.countKill(this);
+        w.shooter = prev;
+        w.addEffect(Effect.ring(x, y, 500, 1f, 0.84f, 0.35f));
+        for (int i = 0; i < 26; i++) w.debris(x, y, 260, 1f, 0.9f, 0.4f);
+        w.victory(this);
+        return true;
+    }
 
     /** HATAKA's betray burst: a close ring vented evenly, once at half hull and once at death
      *  — the weakest unit is the one you don't carelessly sweep with splash or a ram. */

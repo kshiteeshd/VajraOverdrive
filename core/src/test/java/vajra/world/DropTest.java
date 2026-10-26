@@ -122,7 +122,7 @@ class DropTest {
 
         w.ship.hp = w.ship.maxHp() * 0.5f;
         w.update(1 / 60f, NONE);
-        assertEquals(w.ship.maxHp() * 0.75f, w.ship.hp, 0.5f, "heals a quarter of the hull");
+        assertEquals(w.ship.maxHp() * 0.80f, w.ship.hp, 0.5f, "heals 30% of the hull");
         assertTrue(w.pickups.isEmpty());
 
         w.ship.hp = w.ship.maxHp() - 10; // close enough: never overheal
@@ -140,7 +140,33 @@ class DropTest {
         late.y = w.ship.y;
         w.pickups.add(late);
         w.update(1 / 60f, NONE);
-        assertEquals(1, w.pickups.size(), "a full hull leaves the drop floating");
+        assertEquals(0, w.pickups.size(), "a whole hull keeps the drop in the pouch");
+        assertEquals(1, w.medkits, "...as a stored repair");
+        w.medkits = World.MEDKIT_MAX;
+        Pickup more = new Pickup();
+        more.type = Pickup.HEALTH;
+        more.x = w.ship.x;
+        more.y = w.ship.y;
+        w.pickups.add(more);
+        w.update(1 / 60f, NONE);
+        assertEquals(1, w.pickups.size(), "a whole hull and a full pouch leave the drop floating");
+    }
+
+    @Test
+    void keyOneSpendsAStoredRepairForFortyPercentOfTheHull() {
+        World w = empty();
+        w.medkits = 2;
+        w.ship.hp = w.ship.maxHp();
+        assertFalse(w.useMedkit(), "a whole hull spends nothing");
+        assertEquals(2, w.medkits);
+        w.ship.hp = w.ship.maxHp() * 0.3f;
+        assertTrue(w.useMedkit());
+        assertEquals(w.ship.maxHp() * 0.7f, w.ship.hp, 0.5f);
+        assertEquals(1, w.medkits);
+        w.ship.hp = w.ship.maxHp() * 0.9f;
+        assertTrue(w.useMedkit());
+        assertEquals(w.ship.maxHp(), w.ship.hp, 0.5f, "never past a whole hull");
+        assertFalse(w.useMedkit(), "none left");
     }
 
     /** A stub that pins every roll: 0 makes every chance pass, 0.99 fails them all. */

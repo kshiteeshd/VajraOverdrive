@@ -23,6 +23,9 @@ public class Pickup {
     public float life = LIFE;
     // CO-OP: a ground-ghost. netId is the host's drop ledger; a guest's copy glides to it.
     public int netId;
+    /** A piece the ruler lets go: it comes to the hull on its own, faster the longer it has been coming (collected on touch). */
+    public boolean seek;
+    public float seekT;
     public float gx, gy;
     public boolean seen;
 

@@ -64,16 +64,16 @@ public final class Chatter {
         Codex.unlock(w, Codex.BEACON);
         Enemy scout = person(w, "SCOUT");
         if (scout == null || !scout.voiceMet) return;
-        w.say(scout, "THE BEACON BURNS.", "EVERY CAMP IS ON YOUR COMPASS.");
-        w.toast("THE BEACON BURNS", "THE WATCH SEES EVERY CAMP. +100c AND A LIFE.");
+        w.say(scout, "THE BEACON IS LIT.", "THE CAMPS OF ATALA ARE OPEN TO YOUR SIGHT.");
+        w.toast("THE BEACON IS LIT", "THE WATCH SEES EVERY CAMP OF ATALA. +100c AND A LIFE.");
         w.missions.openBounty();
     }
 
     /** THE RETEMPERING: Maya's six wrecks are home. The codex page is Missions' doing. */
     public static void salvageDone(World w) {
         Enemy maya = person(w, "MAYA");
-        if (maya != null && maya.voiceMet) w.say(maya, "THE HAMMER IS WARM.", "TAKE THE PURSE AND THE SHARD.");
-        w.toast("THE HAMMER IS WARM", "SIX WRECKS HOME. +200c AND A SHARD.");
+        if (maya != null && maya.voiceMet) w.say(maya, "THE HAMMER IS WARM AGAIN.", "TAKE THE PURSE, AND THE SHARD.");
+        w.toast("THE HAMMER IS WARM", "SIX WRECKS BROUGHT HOME. +200c AND A SHARD.");
     }
 
     /** THE RULER FALLS: the book takes the ruler, the letter and the road below. Maya's letter is

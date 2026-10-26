@@ -42,6 +42,15 @@ public class World {
     public boolean recorded;
     public Enemy boss;              // Bala: null until the kill quota lifts the seal, then in the pit
     public boolean bossDead;
+    /** The ruler who has yielded and is being spoken with: he lets go of the piece when the scene is over (bossReleases). */
+    public Enemy yielder;
+    /** The piece shown big on the screen after it is collected: seconds since, and which loka's; -1 when none. */
+    public float pieceShowT = -1f;
+    public int pieceShowLoka;
+    /** Stored repairs: a health drop that finds the hull whole is kept, and key 1 spends one. */
+    public int medkits;
+    public static final int MEDKIT_MAX = 5;
+    public static final float MEDKIT_HEAL = 0.40f;
     public boolean won;         // Bala fell: the run ends in victory (after the banner lap)
     public static final float VICTORY_LAP = 4f; // seconds the world still runs after the kill, banner up
 
@@ -508,6 +517,8 @@ public class World {
             return;
         }
         if (victoryT >= 0) victoryT += dt;
+        tickVeil(dt);
+        death.step(dt, this);
         shooter = 0; // this frame's hurts are the host's own unless a round claims otherwise
         int chain = score.combo;
         score.update(dt);
@@ -517,7 +528,7 @@ public class World {
         popups.update(dt);
         if (boss == null) enemyDirector.trySpawnBoss(); // the frame the quota fills, he is simply there
         gazeCheck();
-        ship.update(dt, input, this);
+        ship.update(dt, death.controlsDead() ? ShipControls.NONE : input, this);
         if (campaign) tickVitala(dt);
         hazards.update(this, dt);
         tickChests(dt);
@@ -562,6 +573,11 @@ public class World {
             // buried the band in coins and a health pop at a full hull floated until the end
             // of time. Everything fades out on its own now.
             p.life -= dt;
+            if (p.seek) {                                                       // the ruler's piece: it comes by itself, and nothing makes it wait
+                p.life = Pickup.LIFE;
+                if (seekPull(p, dt)) { loot.collect(this, p); pickups.remove(i); }
+                continue;
+            }
             if (p.life <= 0) { pickups.remove(i); continue; }
             // MAGNETISM: a faint tug toward the hull inside PULL_R, force scaled by the hangar's
             // magnet power. Coins, health, shards, pieces — everything gets it.
@@ -574,8 +590,9 @@ public class World {
             }
             p.update(dt);
             float dx = ship.x - p.x, dy = ship.y - p.y;
-            if (dx * dx + dy * dy > Pickup.COLLECT_R * Pickup.COLLECT_R) continue;
-            if (p.type == Pickup.HEALTH && ship.hp >= ship.maxHp()) continue; // full hull: it floats on
+            float cr = p.type == Pickup.HEALTH ? Pickup.COLLECT_R * 1.6f : Pickup.COLLECT_R;     // a repair is a bigger drop: it is taken from further off
+            if (dx * dx + dy * dy > cr * cr || death.hidden()) continue;                          // (a hull that is light takes nothing)
+            if (p.type == Pickup.HEALTH && ship.hp >= ship.maxHp() && medkits >= MEDKIT_MAX) continue; // a whole hull and a full pouch: it floats on
             loot.collect(this, p);
             pickups.remove(i);
         }
@@ -768,7 +785,8 @@ public class World {
             popups.push(new Popups.Spec().text("COMBO LOST").img("shanti").at(ship.x, ship.y + 30)
                     .color(1f, 0.35f, 0.3f).scale(1.2f).life(1f).intro(0));
         popups.update(dt);
-        ship.update(dt, input, this);
+        death.step(dt, this);
+        ship.update(dt, death.controlsDead() ? ShipControls.NONE : input, this);
         regionEntry();
         guestCheckpoints();
         for (Orb o : orbs) o.update(dt, this, orbRng); // the same drift the host's orbs take
@@ -802,13 +820,28 @@ public class World {
             }
             p.update(dt);
             float dx = ship.x - p.x, dy = ship.y - p.y;
-            if (dx * dx + dy * dy > Pickup.COLLECT_R * Pickup.COLLECT_R) continue;
-            if (p.type == Pickup.HEALTH && ship.hp >= ship.maxHp()) continue; // full hull: it floats on
+            float cr = p.type == Pickup.HEALTH ? Pickup.COLLECT_R * 1.6f : Pickup.COLLECT_R;     // a repair is a bigger drop: it is taken from further off
+            if (dx * dx + dy * dy > cr * cr) continue;
+            if (p.type == Pickup.HEALTH && ship.hp >= ship.maxHp() && medkits >= MEDKIT_MAX) continue; // a whole hull and a full pouch: it floats on
             loot.collect(this, p);
             takes.add(p.netId); // the hub retires that drop; the next swarm carries the absence
             pickups.remove(i);
         }
         docking.update(dt);
+    }
+
+    /** A seeking piece: it leaves where it lies, slowly at first, then at a speed nothing could dodge, and is taken the moment it touches the hull. True when it has arrived. */
+    private boolean seekPull(Pickup p, float dt) {
+        p.seekT += dt;
+        float dx = ship.x - p.x, dy = ship.y - p.y, d = (float) Math.sqrt(dx * dx + dy * dy);
+        if (d < 26f) return true;
+        float speed = Math.min(1500f, 90f + 900f * p.seekT * p.seekT);
+        float step = Math.min(d, speed * dt);
+        p.x += dx / d * step;
+        p.y += dy / d * step;
+        p.vx = p.vy = 0f;
+        if (((int) (p.seekT * 40f) & 1) == 0 && p.seekT > 0.2f) addEffect(Effect.spark(p.x, p.y, 1f, 0.88f, 0.4f));
+        return false;
     }
 
     /** The guest seat's checkpoints: the same stones the host anchors on (the world is the
@@ -1382,7 +1415,7 @@ public class World {
 
     /** Ready to START an invocation: something to loose, none running, no cooldown, the run alive. */
     public boolean astraReady() {
-        return astraCd <= 0 && !astraInvoking && !runEnded() && loadedAstra() >= 0;
+        return astraCd <= 0 && !astraInvoking && !runEnded() && !death.hidden() && loadedAstra() >= 0;
     }
 
     /** X: step the choice to the next astra that can be paid (wrapping). False when none can. */
@@ -1742,10 +1775,71 @@ public class World {
 
     /** The invocation builds, cubes in flight fly and retire. Rock is never consulted - that is the whole point of them. */
     public final Maya maya = new Maya();
+    /** The pilot's hull breaking up and being made whole at the lamp: a scene that runs inside the world's own clock (see DeathSeq). */
+    public final DeathSeq death = new DeathSeq();
+
+    private final float[] camBuf = new float[3];
+
+    // ---- the veil: the way to the next loka is hidden in cloud until its ruler has yielded; then the cloud parts ----
+    public int unveilStage = -1;
+    public float unveilT = -1f;
+    /** 0 = the cloud lies whole over the way beyond stage s's seal, 1 = gone. (-1 until the first step, which sets it to what the world already is.) */
+    public final float[] veilClear = {-1f, -1f};
+    public static final float UNVEIL_LEN = 7f;
+
+    /** The world y above which stage s's way lies hidden: the top of its seal. MAX_VALUE where there is no seal. */
+    public float veilY(int s) {
+        TileMap m = s >= 0 && s < sealMaps.length ? sealMaps[s] : null;
+        return m == null ? Float.MAX_VALUE : m.oy + (sealRows[s] + 1) * TileMap.TILE;
+    }
+
+    /** The way beyond stage s's seal is open: its ruler has yielded and let go (or the run is already past it). */
+    public boolean veilOpen(int s) { return stage > s || (stage == s && bossDead && yielder == null); }
+
+    private void tickVeil(float dt) {
+        for (int s = 0; s < 2; s++) {
+            boolean open = veilOpen(s);
+            if (veilClear[s] < 0f) veilClear[s] = open ? 1f : 0f;
+            else if (open) veilClear[s] = Math.min(1f, veilClear[s] + dt / UNVEIL_LEN);
+            else veilClear[s] = 0f;
+        }
+        if (unveilT >= 0f) { unveilT += dt; if (unveilT > 5f) unveilT = -1f; }
+        if (pieceShowT >= 0f) { pieceShowT += dt; if (pieceShowT > PIECE_SHOW) pieceShowT = -1f; }
+    }
+
+    /** How long the collected piece is shown big on the screen before it goes to its place in the corner. */
+    public static final float PIECE_SHOW = 5.4f;
+
+    /** Key 1: spend a stored repair. 40% of the hull; nothing happens with none stored or a whole hull. */
+    public boolean useMedkit() {
+        if (medkits <= 0 || ship.hp >= ship.maxHp() || runEnded()) return false;
+        medkits--;
+        ship.hp = Math.min(ship.maxHp(), ship.hp + ship.maxHp() * MEDKIT_HEAL);
+        addEffect(Effect.ring(ship.x, ship.y, 70, 0.4f, 1f, 0.55f));
+        addEffect(Effect.ring(ship.x, ship.y, 38, 0.85f, 1f, 0.9f));
+        for (int i = 0; i < 10; i++) debris(ship.x, ship.y, 120, 0.4f, 1f, 0.6f);
+        return true;
+    }
+
+    /** Where the camera is drawn to besides the hull, and how strongly (0..1): x, y, weight. Bala's eyes are the camera's while he forges his astra. */
+    public float[] camFocus() {
+        camBuf[2] = 0f;
+        float k = maya.focus();
+        if (k > 0f) { camBuf[0] = maya.x; camBuf[1] = maya.y; camBuf[2] = k; }
+        death.focus(camBuf);                                                   // the hull's death: the camera leaves the wreck and travels to the lamp
+        if (unveilT >= 0f && unveilStage >= 0) {                              // the cloud over the way to the next loka parts, and the camera is taken to see it
+            float in = Math.min(1f, unveilT / 1.0f), out = 1f - Math.max(0f, Math.min(1f, (unveilT - 3.2f) / 1.4f)), u = in * out;
+            u = u * u * (3f - 2f * u);
+            if (u > camBuf[2]) { camBuf[0] = axisX; camBuf[1] = veilY(unveilStage) + 260f; camBuf[2] = u; }
+        }
+        return camBuf;
+    }
 
     /** Bala begins a Maya-astra. The third (DOORS) also lays out its doors: spots in Atala, open ground, far from him, so each door is a place to fly back from. */
     public void startMaya(Enemy by, int mode) {
         maya.start(by, (long) (clock * 1000f) + 17L * by.bossCasts, mode);
+        say(by, mode == Maya.ONE_BY_ONE ? "THIS WORLD IS ONLY WHAT I PERMIT YOU TO SEE."
+                : mode == Maya.ALL_AT_ONCE ? "LOOK AGAIN. NOTHING YOU SEE IS TRUE." : "THERE IS NO DOOR YOU HAVE NOT BEEN LED TO.");
         if (mode != Maya.DOORS) return;
         java.util.Random r = new java.util.Random(maya.seed * 31L + 7L);
         float top = Math.max(2000f, PIT_Y - 2600f);
@@ -2053,10 +2147,11 @@ public class World {
         enemyDirector.orderRetinue(commander);
     }
 
-    /** Bala falls: the retinue stands down, the ring effect goes up, the purse changes hands,
-     *  and the gold gate across the north corridor opens to the next loka. */
+    /** The ruler yields (Enemy.yieldUp): he stays where he knelt, the story is told (the cue), the retinue stands down - and only when the scene is over does he let go of the piece
+     *  (bossReleases): the purse, the loot, the piece that comes to the hull, the door that opens on the next loka. */
     public void victory(Enemy b) {
         bossDead = true;
+        yielder = b;
         boolean last = stage >= lastStage();
         boolean bala = stage == 0;
         if (last) { // the first-loka world ends with its ruler, after the banner lap; the campaign goes on, up into Sutala's coming-soon hall
@@ -2066,7 +2161,7 @@ public class World {
         cue(bala ? Cue.BALA_FALLS : Cue.BHAIRAVA_FALLS);
         Codex.unlock(this, bala ? Codex.BALA : Codex.BHAIRAVA);
         score.add(Score.BOSS);
-        Popups.Spec slain = new Popups.Spec().text(LokaTable.at(lokaIndex).boss.toUpperCase() + " SLAIN");
+        Popups.Spec slain = new Popups.Spec().text(LokaTable.at(lokaIndex).boss.toUpperCase() + " YIELDS");
         if (bala) slain.img("bala");
         popups.push(slain.at(b.x, b.y + 40).color(1f, 215 / 255f, 0).scale(1.8f).life(2.2f));
         for (Enemy e : enemies)
@@ -2074,16 +2169,32 @@ public class World {
                 e.dismissed = true;
                 e.commander = null;
             }
-        hangar.coins += Balance.purse(stage);                                  // the ruler's purse: its share of the loka's budget
         hazards.ring = false;                                                  // the ash ring goes out with its herald
         if (bala) Chatter.wardenFalls(this); // the voices pay what a fall promised: Maya's letter
+        ship.trauma = Math.min(1f, ship.trauma + 0.5f);
+        addEffect(Effect.ring(b.x, b.y, 260, 1f, 1f, 1f));
+    }
+
+    /** The scene is over: he lets go. The body is gone in a ring of gold and the piece he held comes to the hull by itself; the purse changes hands, the gold gate across the north
+     *  corridor opens to the next loka, and the cloud that hid that way begins to part. (Safe to call twice.) */
+    public void bossReleases() {
+        Enemy b = yielder;
+        if (b == null) return;
+        yielder = null;
+        boolean last = stage >= lastStage();
+        b.yielding = false;
+        b.dead = true;
+        addEffect(Effect.ring(b.x, b.y, 500, 1f, 0.84f, 0.3f));
+        addEffect(Effect.ring(b.x, b.y, 260, 1f, 1f, 1f));
+        for (int i = 0; i < 40; i++) debris(b.x, b.y, 300, 1f, 0.88f, 0.4f);
+        hangar.coins += Balance.purse(stage);                                  // the ruler's purse: its share of the loka's budget
+        dropLoot(b);                                                           // and the piece, which comes to the hull of itself
         for (int c = sealC0; c <= sealC1; c++) sealMap.set(c, sealRow, TileMap.EMPTY);
         wallVersion++;                                                          // the baked wall chunks must be redone
         addEffect(Effect.ring(axisX, sealMap.oy + (sealRow + 1) * TileMap.TILE, 260, 1f, 0.84f, 0.3f));
-        addEffect(Effect.ring(b.x, b.y, 500, 1f, 0.84f, 0.3f));
-        addEffect(Effect.ring(b.x, b.y, 260, 1f, 1f, 1f));
-        ship.trauma = Math.min(1f, ship.trauma + 0.5f);
-        if (!last) beginStage(stage + 1);                                      // Bala's door is open: Vitala's ruler is next
+        unveilStage = stage;                                                   // the way beyond was hidden in cloud: it parts, and the camera is shown it
+        unveilT = 0f;
+        if (!last) beginStage(stage + 1);                                      // the door is open: the next ruler is waiting
     }
 
     /** Mid-berserk deployment: a gold elite pair at his old post, straight into his ring (cap 6). */

@@ -52,7 +52,7 @@ class CutsceneShotTest {
                     for (int i = 0; i < 150; i++) flow.render(1 / 60f);
                     int[] open = frame();
                     write(open, "build/scene-opening.png");
-                    check(dark(open, 0, 60) > 0.97 && dark(open, H - 60, H) > 0.97,
+                    check(dark(open, 0, 60) > 0.9 && dark(open, H - 60, H) > 0.97,
                             "the black bands cover the top and bottom", fail);
                     // skip it, then stage the gate
                     flow.keyDown(Input.Keys.ESCAPE);

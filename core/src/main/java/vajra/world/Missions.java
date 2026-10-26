@@ -39,7 +39,7 @@ public final class Missions {
         rogue.active = true;
         rogue.wakeRange = 3000;
         world.add(rogue);
-        world.toast("BOUNTY", "DAMBHA, A ROGUE OF THE WOOD, SPOILS THE SEAM. HIS PURSE IS YOURS.");
+        world.toast("BOUNTY", "DAMBHA, A ROGUE OF THE WOOD, FOULS THE SEAM OF MAYA VANA. HIS PURSE IS THE REWARD.");
     }
 
     /** Maya's ask opens the salvage row: the grove's wrecks, six of them, to her hammer. */
@@ -47,7 +47,7 @@ public final class Missions {
         if (salvage != NONE) return;
         salvage = OPEN;
         salvageTaken = 0;
-        world.toast("SALVAGE", "SIX WRECKS OF MAYA VANA, HOME TO HER HAMMER.");
+        world.toast("SALVAGE", "BRING SIX WRECKS OF MAYA VANA HOME TO HER HAMMER.");
     }
 
     /** Run every frame from World.update: the bounty pays the frame the rogue is spent;
@@ -57,7 +57,7 @@ public final class Missions {
             bounty = DONE;
             world.hangar.coins += 250;
             world.lives++;
-            world.toast("DAMBHA FALLS", "THE CARD IS PAID. +250c AND A LIFE.");
+            world.toast("DAMBHA FALLS", "THE BOUNTY IS PAID. +250c AND A LIFE.");
             Codex.unlock(world, Codex.ROGUE);
         }
         if (salvage != OPEN) return;

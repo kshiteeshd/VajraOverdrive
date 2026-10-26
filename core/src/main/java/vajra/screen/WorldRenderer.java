@@ -205,9 +205,11 @@ public final class WorldRenderer {
         if (raycast && open < 0.5f) terrain.draw(batch, camera, fly, 1, (ambient[0] + ambient[1] + ambient[2]) / 3f * 1.25f, haze, hazeAmt); // what rises above the hull
         Probe.lap(8);
         moteLayer(world, camera, l, b, viewW, viewH);
+        veil.draw(batch, world, camera, (ambient[0] + ambient[1] + ambient[2]) / 3f);   // the way to the next loka, in cloud until its ruler yields
         Probe.lap(9);
     }
 
+    private final CloudVeil veil = new CloudVeil();
     private final com.badlogic.gdx.graphics.Texture moteTex;
     private final MirageFx mirage;
     private final TileChunks chunks;
@@ -463,7 +465,7 @@ public final class WorldRenderer {
         hulls[1] = world.partner;
         for (int i = 0; i < world.extras.size(); i++) hulls[2 + i] = world.extras.get(i).ship;
         for (Ship h : hulls) {
-            if (h == null || h.hp <= 0) continue;
+            if (h == null || h.hp <= 0 || (h == world.ship && world.death.hidden())) continue;
             shapes.ellipse(h.x - 15 + 11, h.y - 8 - 18, 30, 16, 16);
         }
         shapes.end();
@@ -676,7 +678,7 @@ public final class WorldRenderer {
                 shapes.rect(bx + 2 * bw / 3f - 1, by, 2, bh);
             }
         }
-        if (!shipR.hasArt(world.ship)) shipR.drawHull(shapes, world.ship);
+        if (!shipR.hasArt(world.ship) && !world.death.hidden()) shipR.drawHull(shapes, world.ship);
         shapes.end();
     }
 
@@ -731,10 +733,10 @@ public final class WorldRenderer {
         ui.beginShapes(ShapeRenderer.ShapeType.Filled);
         // post-lights visibility pass: the hull (or, if art is missing, its fallback) must
         // stay bright on top of the dim frame alongside the sprite.
-        if (!shipR.hasArt(world.ship)) shipR.drawHull(shapes, world.ship);
+        if (!shipR.hasArt(world.ship) && !world.death.hidden()) shipR.drawHull(shapes, world.ship);
         // no decorative halo / rim circle around the hull (was obscuring the ship, and the
         // state ring it replaced): state now reads through the hull's dip and its flicker
-        shipR.drawCharge(shapes, world.ship);
+        if (!world.death.hidden()) shipR.drawCharge(shapes, world.ship);
         if (world.partner != null) { // co-op: the other hull reads the same way
             if (!shipR.hasArt(world.partner)) shipR.drawHull(shapes, world.partner);
             shipR.drawCharge(shapes, world.partner);
@@ -755,7 +757,7 @@ public final class WorldRenderer {
 
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
-        shipR.draw(batch, world.ship, world.time());
+        if (!world.death.hidden()) shipR.draw(batch, world.ship, world.time());      // (while the hull is light, there is no hull)
         for (int i = 0; i < world.shops.length; i++) // the berth's clamps close over a seated hull
             if (world.shopState[i] != World.UNDOCKED) (world.shops[i][1] >= vajra.world.Hataki.Y0 ? shopSignV : shopSign).drawClamps(batch, world.shops[i][0], world.shops[i][1], world.shopState[i], world.shopTimer[i]);
         if (world.partner != null) shipR.draw(batch, world.partner, world.time()); // co-op: the other hull
@@ -766,12 +768,35 @@ public final class WorldRenderer {
             else fx.draw(batch, e);
         }
         batch.end();
+        deathLight(world, camera);
+    }
+
+    /** THE HULL'S LIGHT (world/DeathSeq): the pieces of the hull drifting off where it fell, and the light that gathers at the lamp. Additive, small squares with a faint bloom each. */
+    private void deathLight(World world, OrthographicCamera camera) {
+        vajra.world.DeathSeq d = world.death;
+        if (!d.active || d.n == 0) return;
+        shapes.setProjectionMatrix(camera.combined);
+        ui.beginShapes(ShapeRenderer.ShapeType.Filled);
+        shapes.flush();
+        com.badlogic.gdx.Gdx.gl.glBlendFunc(com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA, com.badlogic.gdx.graphics.GL20.GL_ONE);
+        for (int i = 0; i < d.n; i++) {
+            float u = d.age[i] / d.life[i];
+            float a = d.mode[i] == 0 ? Math.min(1f, (1f - u) * 1.8f) : Math.min(1f, u * 4f) * (u > 0.9f ? (1f - u) * 10f : 1f);
+            float tw = 0.75f + 0.25f * (float) Math.sin(world.time() * 30f + i * 1.7f);
+            float s = d.size[i] * (d.mode[i] == 0 ? 0.55f + 0.45f * (1f - u) : 1f);
+            shapes.setColor(d.r[i], d.g[i], d.b[i], 0.16f * a * tw);
+            shapes.circle(d.x[i], d.y[i], s * 2.4f, 8);
+            shapes.setColor(Math.min(1f, d.r[i] + 0.4f), Math.min(1f, d.g[i] + 0.4f), Math.min(1f, d.b[i] + 0.4f), 0.95f * a * tw);
+            shapes.rect(d.x[i] - s / 2f, d.y[i] - s / 2f, s, s);
+        }
+        shapes.end();
+        com.badlogic.gdx.Gdx.gl.glBlendFunc(com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA, com.badlogic.gdx.graphics.GL20.GL_ONE_MINUS_SRC_ALPHA);
     }
 
     private void shieldLayer(World world, OrthographicCamera camera) {
         shapes.setProjectionMatrix(camera.combined);
         ui.beginShapes(ShapeRenderer.ShapeType.Line);
-        if (world.ship.shieldOn && world.ship.shieldEnergy > 0) {
+        if (world.ship.shieldOn && world.ship.shieldEnergy > 0 && !world.death.hidden()) {
             shapes.setColor(0.3f, 0.6f, 1, 0.3f + 0.4f * (world.ship.shieldEnergy / world.ship.shieldCap()));
             shapes.circle(world.ship.x, world.ship.y, 30 + 2 * (float) Math.sin(world.time() * 6));
         }
@@ -876,6 +901,7 @@ public final class WorldRenderer {
     }
 
     public void dispose() {
+        veil.dispose();
         chunks.dispose();
         mirage.dispose();
         moteTex.dispose();

@@ -14,12 +14,14 @@ import vajra.world.World;
  *
  *  <p>The rules of the page: lines are SHORT (a bubble holds one breath, the band holds two); every
  *  scene turns on something the audience is waiting for; the narrator speaks in the band, everyone
- *  else in a bubble coloured for who they are (see {@link Palette}).
+ *  else in a bubble coloured for who they are (see {@link Palette}). The register is that of the
+ *  epics: plain, grave, a little formal, with no jest in it. Nobody explains what the player can see;
+ *  a ruler speaks of the piece as of a voice he has obeyed too long.
  *
  *  <p>A cutscene is a plain list of Shots built from the world when it plays, so a subject is wherever
  *  it actually stands. Zoom below 1 magnifies (see GameScreen). */
 public final class Scenes {
-    static final float CLOSE = 0.5f, MID = 0.7f, WIDE = 0.85f;
+    static final float CLOSE = 0.5f, MID = 0.7f, WIDE = 0.85f, NEAR = 0.42f;
 
     private Scenes() {}
 
@@ -32,9 +34,9 @@ public final class Scenes {
         List<Shot> s = new ArrayList<>();
         switch (cue) {
             case OPENING:
-                s.add(narr(w, CLOSE, "THE THIRD STEP FELL ON SWARGA. WHEN IT LIFTED, THE VAJRAYUDHA WAS GONE."));
-                s.add(narr(w, CLOSE, "TRIVIKRAMA BROKE IT IN SEVEN, AND HID ONE PIECE IN EACH LOKA BELOW."));
-                s.add(think(w, CLOSE, "DADHICHI GAVE HIS BONES FOR THAT BOLT.", "I AM INDRA. I AM TAKING IT BACK."));
+                s.add(narr(w, CLOSE, "WHEN TRIVIKRAMA'S THIRD STEP LIFTED FROM SWARGA, THE VAJRAYUDHA WAS GONE."));
+                s.add(narr(w, CLOSE, "HE HAD BROKEN IT INTO SEVEN, AND LAID ONE PIECE IN EACH LOKA BELOW."));
+                s.add(think(w, CLOSE, "THE SAGE DADHICHI GAVE HIS BONES TO MAKE THAT BOLT.", "I AM INDRA. WHAT WAS GIVEN IN SACRIFICE WILL BE RETURNED."));
                 break;
             case ATALA_GATE:
                 gateParley(w, s);
@@ -49,55 +51,55 @@ public final class Scenes {
                 voiceKaliya(w, s);
                 break;
             case BALA_WAKES:
-                if (w.boss != null) s.add(ruler(w, w.boss, CLOSE, "STAND DOWN. THIS ONE IS MINE."));
-                s.add(think(w, CLOSE, "I CAN HEAR IT HUM IN HIS HAND."));
+                if (w.boss != null) s.add(ruler(w, w.boss, CLOSE, "LET THEM STAND ASIDE.", "I WILL ANSWER THIS ONE MYSELF."));
+                s.add(think(w, CLOSE, "THE PIECE IS HUMMING IN HIS HAND.", "IT KNOWS ME."));
                 break;
             case GAZE_NOTICED:
                 if (w.stage == 1) {
-                    s.add(pit(w, MID, 2.0f, "FAR ABOVE, IN BHAIRAVA'S HAND, THE SECOND PIECE GROWS WARM.",
-                            "IT TELLS HIM EVERY TIME VITALA BURNS."));
-                    s.add(think(w, CLOSE, "THE GOLD IS WARM TOO. THE PIECE IS LISTENING.").pan(2.0f));
+                    s.add(pit(w, MID, 2.0f, "FAR AHEAD, THE SECOND PIECE GROWS WARM IN BHAIRAVA'S HAND.",
+                            "IT TELLS HIM EACH TIME VITALA BURNS."));
+                    s.add(think(w, CLOSE, "THE GOLD IS WARM TO MY HAND TOO.", "THE PIECE IS LISTENING.").pan(2.0f));
                     break;
                 }
-                s.add(pit(w, MID, 2.0f, "FAR ABOVE, IN BALA'S HAND, A PIECE OF THE VAJRA GROWS WARM.",
-                        "IT TELLS HIM EVERY TIME ATALA BLEEDS."));
-                s.add(think(w, CLOSE, "I FEEL IT. IT FEELS ME.").pan(2.0f));
+                s.add(pit(w, MID, 2.0f, "FAR AHEAD, THE PIECE GROWS WARM IN BALA'S HAND.",
+                        "IT TELLS HIM EACH TIME ATALA LOSES A SOLDIER."));
+                s.add(think(w, CLOSE, "IT HAS FELT ME COMING.", "I CAN FEEL IT, TOO.").pan(2.0f));
                 break;
             case GAZE_WATCHING:
                 if (w.stage == 1) {
-                    s.add(pit(w, MID, 2.0f, "THE FORGES GO QUIET, ONE BY ONE."));
+                    s.add(pit(w, MID, 2.0f, "THE FORGES FALL SILENT, ONE BY ONE."));
                     s.add(new Shot(w.pitX, frame(w.pitY, MID), MID, "BHAIRAVA", false,
-                            "SOMEONE IS PUTTING OUT MY FIRES.",
-                            "THE PIECE SAYS IT IS ALL MINE. LET THEM BURN.")
+                            "A HAND IS QUENCHING MY FIRES.",
+                            "THE PIECE SAYS ALL THAT BURNS IS MINE. LET THE INTRUDER BURN.")
                             .speakerAt(w.pitX, w.pitY).tint(Palette.RULER[0], Palette.RULER[1], Palette.RULER[2]));
-                    s.add(think(w, CLOSE, "HE WILL BE WAITING IN THE ASH.").pan(2.0f));
+                    s.add(think(w, CLOSE, "HE WILL WAIT FOR ME IN THE ASH.").pan(2.0f));
                     break;
                 }
-                s.add(pit(w, MID, 2.0f, "THE LOWER BANDS GO QUIET."));
+                s.add(pit(w, MID, 2.0f, "THE LOWER BANDS GROW QUIET."));
                 float[] gold = Palette.RULER;
                 s.add(new Shot(World.PIT_X, frame(World.PIT_Y, MID), MID, "BALA", false,
-                        "SOMEONE IS EMPTYING MY HOUSE.",
-                        "THE PIECE SAYS IT IS ALL MINE. LET THEM COME.")
+                        "A STRANGER WALKS MY HALLS, AND MY HALLS GROW EMPTY.",
+                        "THE PIECE SAYS ATALA IS MINE. LET HIM COME.")
                         .speakerAt(World.PIT_X, World.PIT_Y).tint(gold[0], gold[1], gold[2]));
                 s.add(think(w, CLOSE, "HE KNOWS I AM COMING.").pan(2.0f));
                 break;
             case GAZE_ROUSED:
                 if (w.stage == 1) {
                     if (w.boss != null)
-                        s.add(ruler(w, w.boss, MID, "ENOUGH. ASH REMEMBERS EVERY ONE.",
-                                "THE LAST DOOR IS OPEN. COME AND BE BURNED.").pan(2.0f));
-                    s.add(think(w, CLOSE, "HARA. I AM COMING FOR IT.").pan(2.0f));
+                        s.add(ruler(w, w.boss, MID, "ENOUGH. THE ASH REMEMBERS EACH ONE OF THEM.",
+                                "THE LAST GATE STANDS OPEN. COME, AND BE CONSUMED.").pan(2.0f));
+                    s.add(think(w, CLOSE, "HARA, FORGIVE ME. I HAVE COME FOR THE PIECE.").pan(2.0f));
                     break;
                 }
                 if (w.boss != null)
-                    s.add(ruler(w, w.boss, MID, "ENOUGH. I FELT EVERY ONE OF THEM GO.",
-                            "THE LAST DOOR IS OPEN. I AM STANDING IN IT.").pan(2.0f));
-                s.add(think(w, CLOSE, "SON OF MAYA. I AM COMING FOR IT.").pan(2.0f));
+                    s.add(ruler(w, w.boss, MID, "ENOUGH. I FELT EACH OF THEM FALL.",
+                            "THE LAST GATE IS OPEN, AND I STAND IN IT.").pan(2.0f));
+                s.add(think(w, CLOSE, "SON OF MAYA. I HAVE COME FOR THE PIECE.").pan(2.0f));
                 break;
             case VITALA_ENTER:
-                s.add(narr(w, CLOSE, "BALA'S DOOR OPENS ON VITALA: BLACK STONE, AND A RIVER OF LIQUID GOLD."));
-                s.add(narr(w, CLOSE, "THE HATAKI. FIRE DRINKS IT AND SPITS HATAKA GOLD. HARA AND GAURI KEEP THIS LOKA."));
-                s.add(think(w, CLOSE, "THE SECOND PIECE IS IN BHAIRAVA'S HAND.", "THE RIVER IS CARRYING ME UP TO HIM."));
+                s.add(narr(w, CLOSE, "BALA'S GATE OPENS ON VITALA: BLACK STONE, AND A RIVER OF LIQUID GOLD."));
+                s.add(narr(w, CLOSE, "THIS IS THE HATAKI. FIRE DRINKS IT AND BECOMES HATAKA GOLD. HARA AND GAURI KEEP THIS LOKA."));
+                s.add(think(w, CLOSE, "THE SECOND PIECE IS IN BHAIRAVA'S HAND.", "THE RIVER WILL CARRY ME UP TO HIM."));
                 break;
             case VOICE_SELLER:
                 voiceSeller(w, s);
@@ -106,23 +108,34 @@ public final class Scenes {
                 voiceMaid(w, s);
                 break;
             case BHAIRAVA_WAKES:
-                if (w.boss != null) s.add(ruler(w, w.boss, CLOSE, "STAND DOWN. THE FIRE IS ASKING."));
+                if (w.boss != null) s.add(ruler(w, w.boss, CLOSE, "STAND BACK.", "THE FIRE HAS A QUESTION FOR HIM."));
                 s.add(think(w, CLOSE, "THE THIRD EYE IS OPENING."));
                 break;
             case BHAIRAVA_FALLS:
-                if (w.boss != null)
-                    s.add(ruler(w, w.boss, CLOSE, "TAKE IT. IT NEVER KEPT ME WARM.", "IT ONLY MADE ME THE FIRE'S DOOR."));
-                s.add(think(w, CLOSE, "TWO PIECES. FIVE TO GO."));
-                s.add(narr(w, CLOSE, "THE SECOND PIECE ANSWERS. BEYOND THE GOLD DOOR, SUTALA'S WATERS WAIT."));
+                yieldScene(w, s, new String[][] {
+                        {"THE THIRD EYE CLOSED. BHAIRAVA KNELT IN HIS OWN ASH,", "AND THE FIRES AROUND HIM SANK LOW."},
+                        {"THE FIRE HAS ASKED ITS QUESTION.", "YOU HAVE ANSWERED IT."},
+                        {"I CAME FOR WHAT YOU HOLD.", "NOT FOR YOUR FLAME."},
+                        {"IT NEVER WARMED ME.", "IT MADE ME ONLY THE DOOR THAT FIRE WALKS THROUGH."},
+                        {"THEN LET IT GO."},
+                        {"I RELEASE IT.", "TELL GAURI HER LAMPS MAY BE LIT AGAIN."},
+                        {"I WILL TELL HER."},
+                }, "TWO PIECES. FIVE REMAIN.",
+                        new String[] {"THE SECOND PIECE ANSWERS THE HAND THAT SEEKS IT.", "BEYOND THE GOLD GATE, THE WATERS OF SUTALA WAIT."}, null);
                 break;
             case BALA_FALLS:
-                if (w.boss != null)
-                    s.add(ruler(w, w.boss, CLOSE, "TAKE IT. IT NEVER MADE ME A KING.", "IT ONLY MADE ME A DOOR."));
-                s.add(think(w, CLOSE, "ONE PIECE. SIX TO GO."));
-                if (mayaMet(w))
-                    s.add(narr(w, CLOSE, "A LETTER, CARRIED UP FROM MAYA VANA: HE HELD THE DOOR TOO LONG.",
-                            "GO DEEPER, INDRA. THE HAMMER WAITS IN MY FORGE."));
-                s.add(narr(w, CLOSE, "THE FIRST PIECE ANSWERS. BEYOND IT, VITALA BURNS GOLD."));
+                yieldScene(w, s, new String[][] {
+                        {"THE LAST STROKE FELL. BALA DID NOT FALL WITH IT.", "HE KNELT, AND THE MANDALA OF HIS ILLUSIONS WENT DARK."},
+                        {"...IT WAS NEVER MINE."},
+                        {"NO. IT WAS NEVER YOURS."},
+                        {"FOR AN AGE IT TOLD ME THAT ATALA WAS MY HOUSE.", "I NEVER ASKED WHOSE VOICE IT WAS."},
+                        {"IT HAS ONE VOICE ONLY: THE HOLDER'S OWN WISH.", "YOU HAVE BEEN LISTENING TO YOURSELF."},
+                        {"THEN I HAVE BEEN A KING OF NOTHING."},
+                        {"YOU HAVE BEEN A DOOR. OPEN."},
+                        {"TAKE IT. MAY IT BE LIGHT IN YOUR HAND,", "AS IT NEVER WAS IN MINE."},
+                }, "ONE PIECE. SIX REMAIN.",
+                        new String[] {"THE FIRST PIECE ANSWERS THE HAND THAT SEEKS IT.", "BEYOND THE GOLD GATE, VITALA BURNS."},
+                        mayaMet(w) ? new String[] {"A LETTER COMES UP FROM MAYA VANA:", "\"HE HELD THE DOOR TOO LONG. GO DEEPER, INDRA. THE HAMMER IS WAITING.\""} : null);
                 break;
         }
         return s;
@@ -132,11 +145,31 @@ public final class Scenes {
      *  staged because a shared race has no pause to give). */
     public static void finish(Cue cue, World w) {
         if (cue == Cue.ATALA_GATE) releaseGuards(w);
+        if (cue == Cue.BALA_FALLS || cue == Cue.BHAIRAVA_FALLS) w.bossReleases();   // the scene is over, however it ended: he lets go
     }
 
     private static boolean mayaMet(World w) {
         Enemy m = Chatter.person(w, "MAYA");
         return m != null && m.voiceMet;
+    }
+
+    // --- a ruler yields: the camera goes back and forth between the ruler and the pilot ----------
+
+    /** THE RULER YIELDS. `talk` is the scene in order: the first entry is the narrator over the fallen ruler; after it the lines go ruler, pilot, ruler, pilot... (the pilot's lines are
+     *  the odd positions after the narration - entries 2, 4, 6...), the last pair shot nearer. The camera belongs to whoever speaks: it crosses to the ruler where he kneels and back to the hull
+     *  with every turn of the talk. Then the pilot's own thought, and the narrator's closing lines (and a letter, if one has come). */
+    private static void yieldScene(World w, List<Shot> s, String[][] talk, String thought, String[] closing, String[] letter) {
+        Enemy r = w.yielder != null ? w.yielder : w.boss;
+        if (r != null) s.add(narrAt(r, MID, talk[0]));
+        for (int i = 1; i < talk.length; i++) {
+            boolean ruler = i % 2 == 1;                                       // the ruler speaks first, then the pilot, turn and turn about
+            float zoom = i >= talk.length - 2 ? NEAR : CLOSE;                 // and the last exchange is closer
+            if (ruler && r != null) s.add(ruler(w, r, zoom, talk[i]).pan(1.1f));
+            else s.add(indraSays(w, zoom, talk[i]).pan(1.1f));
+        }
+        s.add(think(w, CLOSE, thought).pan(1.0f));
+        if (letter != null) s.add(narr(w, CLOSE, letter));
+        s.add(narr(w, CLOSE, closing));
     }
 
     // --- the grand gate: the first entry to a new loka ------------------------------------
@@ -158,17 +191,17 @@ public final class Scenes {
         Enemy[] g = gateGuards(w);
         float cx = w.ship.x, cy = frame(w.ship.y + 110, WIDE); // one framing for the whole talk
         s.add(new Shot(cx, cy, WIDE, null, false,
-                "ATALA. THE FIRST DOOR BELOW THE EARTH. FOUR OF BALA'S GUARD DROP FROM THE ARCH.")
+                "ATALA, THE FIRST LOKA BELOW THE EARTH. FOUR OF BALA'S GUARD STEP FROM THE ARCH.")
                 .walk(g, ringX(w, g.length), ringY(w, g.length)));
         if (g.length < 4) return; // a thinned gate has nobody left to ask
-        s.add(soldier(g[0], "SENTRY", cx, cy, "HOLD. WHO COMES TO BALA'S DOOR?"));
-        s.add(indra(w, cx, cy, "INDRA, OF SWARGA."));
-        s.add(soldier(g[2], "ESCORT", cx, cy, "INDRA. THEN WHERE IS YOUR BOLT?"));
-        s.add(indra(w, cx, cy, "BROKEN. PART OF IT LIES BELOW YOU."));
+        s.add(soldier(g[0], "SENTRY", cx, cy, "HALT. WHO COMES TO THE GATE OF BALA?"));
+        s.add(indra(w, cx, cy, "INDRA, LORD OF SWARGA."));
+        s.add(soldier(g[2], "ESCORT", cx, cy, "INDRA. THEN WHERE IS YOUR VAJRA?"));
+        s.add(indra(w, cx, cy, "BROKEN.", "ONE PIECE OF IT LIES IN THIS LOKA."));
         s.add(soldier(g[1], "SENTRY", cx, cy, "WHAT BALA HOLDS, BALA KEEPS."));
-        s.add(soldier(g[3], "ESCORT", cx, cy, "THE PIECE SAYS ATALA IS HIS."));
-        s.add(indra(w, cx, cy, "THEN THE PIECE LIES."));
-        s.add(soldier(g[0], "SENTRY", cx, cy, "WEAPONS FREE."));
+        s.add(soldier(g[3], "ESCORT", cx, cy, "THE PIECE HAS TOLD HIM THAT ATALA IS HIS."));
+        s.add(indra(w, cx, cy, "THE PIECE SPEAKS NO TRUTH.", "IT ONLY ANSWERS THE WISH OF THE ONE WHO HOLDS IT."));
+        s.add(soldier(g[0], "SENTRY", cx, cy, "THEN THE ORDER STANDS. DRAW."));
     }
 
     private static float[] ringX(World w, int n) {
@@ -201,52 +234,52 @@ public final class Scenes {
         Enemy v = Chatter.person(w, "SCOUT");
         if (v == null) return;
         float cx = (v.x + w.ship.x) / 2, cy = frame((v.y + w.ship.y) / 2, WIDE);
-        s.add(person(v, "THE SCOUT", cx, cy, "INDRA?", "UPARICHARA'S WATCH. YOU GAVE OUR KING HIS WINGS."));
+        s.add(person(v, "THE SCOUT", cx, cy, "INDRA. I SERVE THE WATCH OF KING UPARICHARA,", "WHOSE CHARIOT WAS YOUR GIFT."));
         s.add(indra(w, cx, cy, "WHAT DOES THE WATCH SEE?"));
-        s.add(person(v, "THE SCOUT", cx, cy, "THE KING'S SEAL IS BROKEN. MY BEACON IS UP THE GATE.",
-                "RAISE IT. YOU WILL SEE EVERY CAMP."));
-        s.add(indra(w, cx, cy, "I WILL RAISE IT."));
+        s.add(person(v, "THE SCOUT", cx, cy, "THE KING'S SEAL IS BROKEN. MY BEACON STANDS ABOVE THE THIRD GATE.",
+                "KINDLE IT, AND EVERY CAMP OF ATALA SHOWS ON YOUR COMPASS."));
+        s.add(indra(w, cx, cy, "I WILL KINDLE IT."));
     }
 
     private static void voiceMaya(World w, List<Shot> s) {
         Enemy v = Chatter.person(w, "MAYA");
         if (v == null) return;
         float cx = (v.x + w.ship.x) / 2, cy = frame((v.y + w.ship.y) / 2, WIDE);
-        s.add(person(v, "THE NINTH MAYA", cx, cy, "I AM THE NINTH MAYA. I PUT THE HAMMER DOWN."));
-        s.add(indra(w, cx, cy, "THE MAKER'S LINE."));
-        s.add(person(v, "THE NINTH MAYA", cx, cy, "MY SON HOLDS THE DOOR. HE HOLDS YOUR BOLT.",
-                "SIX WRECKS OF MY WOODS. BRING THEM HOME."));
-        s.add(person(v, "THE NINTH MAYA", cx, cy, "I WILL TEMPER YOU."));
+        s.add(person(v, "THE NINTH MAYA", cx, cy, "I AM THE NINTH OF THE MAKER'S LINE.", "I PUT DOWN THE HAMMER LONG AGO."));
+        s.add(indra(w, cx, cy, "THE LINE OF MAYA, ARCHITECT OF THE ASURAS."));
+        s.add(person(v, "THE NINTH MAYA", cx, cy, "MY SON HOLDS THE GATE OF ATALA, AND WITH IT A PIECE OF YOUR BOLT.",
+                "SIX WRECKS OF MY WOODS LIE SCATTERED. BRING THEM HOME."));
+        s.add(person(v, "THE NINTH MAYA", cx, cy, "WHEN THEY ARE HOME, I WILL TEMPER YOU."));
     }
 
     private static void voiceKaliya(World w, List<Shot> s) {
         Enemy v = Chatter.person(w, "KALIYA");
         if (v == null) return;
         float cx = (v.x + w.ship.x) / 2, cy = frame((v.y + w.ship.y) / 2, WIDE);
-        s.add(person(v, "KALIYA", cx, cy, "KALIYA. TIDE-PILOT. THE WATER ROAD IS OPEN."));
-        s.add(indra(w, cx, cy, "A NAGA, THIS FAR FROM MAHATALA?"));
+        s.add(person(v, "KALIYA", cx, cy, "I AM KALIYA, PILOT OF THE WATER ROAD.", "THE TIDE IS OPEN TO YOU."));
+        s.add(indra(w, cx, cy, "A NAGA, SO FAR FROM MAHATALA?"));
         s.add(person(v, "KALIYA", cx, cy, "GARUDA'S SHADOW DROVE MY KIN UP THE ROAD.",
-                "SAY MY NAME TO TAKSHAKA, BELOW."));
+                "CARRY MY NAME TO TAKSHAKA, WHO WAITS BELOW."));
     }
 
     private static void voiceSeller(World w, List<Shot> s) {
         Enemy v = Chatter.person(w, "SELLER");
         if (v == null) return;
         float cx = (v.x + w.ship.x) / 2, cy = frame((v.y + w.ship.y) / 2, WIDE);
-        s.add(person(v, "THE GOLD-SELLER", cx, cy, "A BHUTA OF HARA'S COURT. I WEIGH HATAKA GOLD."));
-        s.add(indra(w, cx, cy, "WHAT DOES A GHOST WANT WITH GOLD?"));
-        s.add(person(v, "THE GOLD-SELLER", cx, cy, "NOTHING. I ONLY KNOW WHERE IT LIES.",
-                "EVERY VAULT IN THE WALLS IS ON MY SCALE."));
-        s.add(person(v, "THE GOLD-SELLER", cx, cy, "LOOK TO YOUR COMPASS. IT WILL POINT."));
+        s.add(person(v, "THE GOLD-SELLER", cx, cy, "I AM A BHUTA OF HARA'S COURT.", "I WEIGH THE GOLD OF HATAKA."));
+        s.add(indra(w, cx, cy, "WHAT USE HAS A SPIRIT FOR GOLD?"));
+        s.add(person(v, "THE GOLD-SELLER", cx, cy, "NONE. I ONLY KNOW WHERE IT LIES.",
+                "EVERY VAULT IN THESE WALLS IS ON MY SCALE."));
+        s.add(person(v, "THE GOLD-SELLER", cx, cy, "WATCH YOUR COMPASS. IT WILL POINT THE WAY."));
     }
 
     private static void voiceMaid(World w, List<Shot> s) {
         Enemy v = Chatter.person(w, "MAID");
         if (v == null) return;
         float cx = (v.x + w.ship.x) / 2, cy = frame((v.y + w.ship.y) / 2, WIDE);
-        s.add(person(v, "GAURI'S MAID", cx, cy, "I KEEP HER LAMPS. LIGHT ONE, AND THE FIRE HOLDS ITS BREATH."));
-        s.add(indra(w, cx, cy, "HOW LONG?"));
-        s.add(person(v, "GAURI'S MAID", cx, cy, "SIX BREATHS. ENOUGH TO CROSS A VENT.",
+        s.add(person(v, "GAURI'S MAID", cx, cy, "I TEND THE LAMPS OF GAURI.", "LIGHT ONE, AND THE FIRE HOLDS ITS BREATH."));
+        s.add(indra(w, cx, cy, "FOR HOW LONG?"));
+        s.add(person(v, "GAURI'S MAID", cx, cy, "SIX BREATHS: ENOUGH TO CROSS A VENT.",
                 "HER WELLS MEND WHAT THE FIRE BREAKS."));
     }
 
@@ -264,10 +297,22 @@ public final class Scenes {
         return new Shot(w.ship.x, frame(w.ship.y, zoom), zoom, null, false, lines);
     }
 
+    /** The narrator, framed on someone else (the ruler where he knelt). */
+    private static Shot narrAt(Enemy who, float zoom, String... lines) {
+        return new Shot(who.x, frame(who.y, zoom), zoom, null, false, lines).follow(who).pan(1.4f);
+    }
+
     /** Indra thinking aloud, alone in the frame. */
     private static Shot think(World w, float zoom, String... lines) {
         float[] c = Palette.INDRA;
         return new Shot(w.ship.x, frame(w.ship.y, zoom), zoom, "INDRA", true, lines)
+                .speakerAt(w.ship.x, w.ship.y).tint(c[0], c[1], c[2]);
+    }
+
+    /** Indra speaking aloud to someone, the camera on him. */
+    private static Shot indraSays(World w, float zoom, String... lines) {
+        float[] c = Palette.INDRA;
+        return new Shot(w.ship.x, frame(w.ship.y, zoom), zoom, "INDRA", false, lines)
                 .speakerAt(w.ship.x, w.ship.y).tint(c[0], c[1], c[2]);
     }
 

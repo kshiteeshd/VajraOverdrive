@@ -64,6 +64,14 @@ public final class Maya {
     /** The mandala's charge, 0..1 (it is drawn only while the glass is cracking). */
     public float form() { return Math.min(1f, t / FORM); }
 
+    /** How much the camera is held on the one who forges it, 0..1: it goes to him in half a second, stays while the mandala forms, and comes back to the hull over the next second. */
+    public float focus() {
+        if (!active || boss == null) return 0f;
+        float in = clamp(t / 0.5f), out = 1f - clamp((t - (FORM + 0.3f)) / 1.0f);
+        float k = in * out;
+        return k * k * (3f - 2f * k);
+    }
+
     /** How far the cracks have run, 0..1. */
     public float crack() { return clamp((t - CRACK_AT) / CRACK_LEN); }
 

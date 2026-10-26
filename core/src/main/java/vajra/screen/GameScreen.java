@@ -48,6 +48,7 @@ public class GameScreen implements FlowState, ShipControls {
     private final OrthographicCamera camera;
     private final FitViewport viewport;
     private ShatterFx shatter;
+    private VajraPanel vajraPanel;
     private final Vector3 mouseV = new Vector3();
     private World world;
     private final Director director;
@@ -186,8 +187,12 @@ public class GameScreen implements FlowState, ShipControls {
             world.selectShip(world.hangar.cycleShip(world.hangar.shipIndex, 1));
             return true;
         }
-        if (keycode >= Input.Keys.NUM_1 && keycode <= Input.Keys.NUM_7) {
-            world.selectShip(keycode - Input.Keys.NUM_1); // a hull you do not own is a no-op
+        if (keycode == Input.Keys.NUM_1) { // a stored repair: 40% of the hull, spent on the spot
+            world.useMedkit();
+            return true;
+        }
+        if (keycode >= Input.Keys.NUM_2 && keycode <= Input.Keys.NUM_7) {
+            world.selectShip(keycode - Input.Keys.NUM_1); // 2-7 are hulls 2-7; the first hull is Z's, and a hull you do not own is a no-op
             return true;
         }
         // THE WEAPON KEY: V, or B while a session owns V for push-to-talk. A tap steps (V next, B previous), a hold
@@ -377,10 +382,15 @@ public class GameScreen implements FlowState, ShipControls {
                 Math.max(viewH / 2, Math.min(world.height - viewH / 2, world.ship.y)),
                 0
         );
+        float[] cf = world.camFocus();
+        if (cf[2] > 0.001f) {                                      // the camera is drawn to someone else for a while
+            camera.position.x += (Math.max(viewW / 2, Math.min(world.width - viewW / 2, cf[0])) - camera.position.x) * cf[2];
+            camera.position.y += (Math.max(viewH / 2, Math.min(world.height - viewH / 2, cf[1])) - camera.position.y) * cf[2];
+        }
         float s2 = world.ship.trauma * world.ship.trauma * vajra.profile.Profiles.active().settings.shake;
         camera.position.x += (world.fxRng.nextFloat() * 2 - 1) * 16 * s2;
         camera.position.y += (world.fxRng.nextFloat() * 2 - 1) * 16 * s2;
-        if (vajra.net.Net.session == null && !director.active() && !shop.isOpen() && !runEnded()) {
+        if (vajra.net.Net.session == null && !director.active() && !shop.isOpen() && !runEnded() && !world.death.active && !world.maya.active) {
             autosaveT += delta; // CONTINUE stays close to where the pilot is, even if the window is killed
             if (autosaveT >= AUTOSAVE) {
                 autosaveT = 0;
@@ -434,9 +444,11 @@ public class GameScreen implements FlowState, ShipControls {
         if (director.active()) director.render(batch);
         else {
             hud.render(batch, world, worldR.ships(), shop.isOpen() ? shopUi : null);
+            if (vajraPanel == null) vajraPanel = new VajraPanel(ui);
+            if (!shop.isOpen()) vajraPanel.render(batch, world, Gdx.graphics.getDeltaTime());   // the piece shown big, then the 1/7 panel in the corner
             if (wheelOpen) wheel.render(batch, world, wheelHover);
             if (!shop.isOpen()) talk.render(batch, world, camera);
-            if (coach.lesson() >= 0 && !shop.isOpen() && !runEnded())
+            if (coach.lesson() >= 0 && !shop.isOpen() && !runEnded() && world.pieceShowT < 0f)
                 CoachPrompt.render(ui, batch, coach.lesson(), world.clock);
         }
         if (world.maya.active) { if (shatter == null) shatter = new ShatterFx(); shatter.render(world, camera, viewport); }   // Bala's broken mirror: the whole frame, in pieces
@@ -569,6 +581,7 @@ public class GameScreen implements FlowState, ShipControls {
     @Override
     public void dispose() {
         if (shatter != null) shatter.dispose();
+        if (vajraPanel != null) vajraPanel.dispose();
         if (vajra.net.Net.session == null) vajra.profile.Profiles.saveRun(world); // closed mid-flight: parked
         if (vajra.net.Net.active()) vajra.net.Net.session.listen(null); // no planes to a dead world
         wheel.dispose();

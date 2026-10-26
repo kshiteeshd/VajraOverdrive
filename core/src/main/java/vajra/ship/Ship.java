@@ -216,6 +216,15 @@ public class Ship {
             w.lives = Math.max(0, w.lives - 1);
             hp = maxHp();
             float[] a = w.respawnAnchor(); // most recent checkpoint, else the region entrance
+            if (this == w.ship) {          // the pilot's own hull: it breaks up where it fell, the camera goes to the lamp, and the hull is made whole there (DeathSeq)
+                w.death.begin(x, y, facing, a[0], a[1]);
+                w.addEffect(Effect.ring(x, y, 220, 0.6f, 0.85f, 1f));
+                w.addEffect(Effect.ring(x, y, 90, 1f, 1f, 1f));
+                vx = 0;
+                vy = 0;
+                invuln = 5f;
+                return;
+            }
             x = a[0];
             y = a[1];
             vx = 0;

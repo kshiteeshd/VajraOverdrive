@@ -285,6 +285,48 @@ class ShipTest {
         s.hp = 1;
         s.damage(999, w);
         assertEquals(s.maxHp(), s.hp, 0.001f, "respawn with full hull");
+        assertTrue(w.death.active && w.death.hidden(), "the hull breaks up first: it is not drawn, it is not there");
+        for (int i = 0; i < 60 * 5; i++) w.update(1 / 60f, ShipControls.NONE);
+        assertFalse(w.death.active, "and the scene is over");
         assertEquals(120f, s.y, 1f, "respawn at the region's entrance");
+    }
+
+    @Test
+    void theDeathSceneBreaksTheHullUpHoldsTheControlsMovesTheCameraAndMakesTheHullWholeAtTheLamp() {
+        World w = new World();
+        Ship s = w.ship;
+        s.x = 2000;
+        s.y = 6000;
+        s.hp = 1;
+        s.invuln = 0;
+        s.damage(999, w);
+        assertEquals(2000f, s.x, 0.01f, "it breaks up where it fell");
+        assertTrue(w.death.n > 100, "into light: " + w.death.n + " pieces");
+        ShipControls hardRight = new ShipControls() {
+            public float thrustY() { return 0; }
+            public float thrustX() { return 1; }
+            public float rotate() { return 0; }
+            public boolean fire() { return true; }
+            public boolean boost() { return false; }
+            public boolean shield() { return false; }
+            public boolean mouseAim() { return false; }
+            public float aimX() { return 0; }
+            public float aimY() { return 0; }
+        };
+        for (int i = 0; i < 60; i++) w.update(1 / 60f, hardRight);
+        assertEquals(2000f, s.x, 1f, "the controls are dead while the hull is light");
+        assertTrue(w.bullets.isEmpty(), "nothing is fired");
+        float[] f = w.camFocus();
+        assertEquals(0f, f[2], 1e-4f, "the camera still holds the wreck (the hull's own place) in the first second");
+        float lampY = w.death.toY;
+        for (int i = 0; i < 60 * 2; i++) w.update(1 / 60f, hardRight);
+        f = w.camFocus();
+        assertTrue(f[2] > 0.5f, "then the camera leaves it");
+        assertTrue(f[1] < 6000f && f[1] >= lampY - 1f, "and travels toward the lamp: " + f[1] + " from 6000 to " + lampY);
+        for (int i = 0; i < 60 * 2; i++) w.update(1 / 60f, ShipControls.NONE);
+        assertFalse(w.death.hidden(), "the hull is whole again");
+        assertEquals(w.death.toX, s.x, 5f, "at the lamp");
+        assertEquals(lampY, s.y, 5f);
+        assertTrue(s.iFrames > 0.5f, "with a moment's grace");
     }
 }

@@ -61,9 +61,10 @@ public final class Lessons {
                 lines("EACH BAND HOLDS ONE. FLY THROUGH IT TO BIND IT.",
                         "A LOST LIFE WAKES YOU AT THE LAST ONE BOUND."),
                 "THE FIRST ONE IN SIGHT");
-        add(PICKUPS, "SURVIVAL", "COINS, SHARDS, REPAIR", keys(),
+        add(PICKUPS, "SURVIVAL", "COINS, SHARDS, REPAIR", keys("1"),
                 lines("EVERYTHING THAT FALLS FROM A KILL IS YOURS IF YOU FLY INTO IT.",
-                        "COINS BUY. SHARDS FUEL THE ASTRAS. A HEALTH DROP MENDS THE HULL."),
+                        "COINS BUY. SHARDS FUEL THE ASTRAS. A REPAIR MENDS THE HULL; A WHOLE HULL KEEPS IT, UP TO FIVE.",
+                        "PRESS 1 TO SPEND A KEPT REPAIR."),
                 "THE FIRST KILL");
 
         add(HANGAR, "WORLD", "THE HANGAR", keys("TAB", "/", "ENTER"),
@@ -72,8 +73,8 @@ public final class Lessons {
                         "ENTER ON THE PATTERN IN YOUR GUNS TEMPERS IT: RANK II HITS HARDER, RANK III ADDS AN ABILITY.",
                         "AN UNBOUGHT HULL OR TIER IS A LOCK - ITS LOOK IS YOURS ONCE YOU PAY. ESC LEAVES."),
                 "THE FIRST SHOP BAY");
-        add(HULLS, "WORLD", "HULLS", keys("1", "-", "7"),
-                lines("A NUMBER FITS THAT HULL - IF YOU OWN IT THIS RUN.",
+        add(HULLS, "WORLD", "HULLS", keys("2", "-", "7"),
+                lines("2 TO 7 FIT THAT HULL - IF YOU OWN IT THIS RUN.",
                         "Z CYCLES TO THE NEXT HULL YOU OWN."),
                 "THE FIRST HULL BOUGHT");
         add(GATES, "WORLD", "GATES AND BANDS", keys(),

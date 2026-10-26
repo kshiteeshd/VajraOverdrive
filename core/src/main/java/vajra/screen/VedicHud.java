@@ -84,6 +84,7 @@ final class VedicHud {
         tube(w);
         medallion(w);
         lives(w);
+        repairs(w);
         eyeA += ((w.currentRegionIndex() >= 1 && w.gazeStage >= 1 ? 1f : 0f) - eyeA) * Math.min(1f, dt * 3f);
         if (eyeA > 0.02f) eye(w, dt);
         minimap(w);
@@ -163,6 +164,23 @@ final class VedicHud {
         arc(cx, cy, r - 4.5f, 0, 360, 36, 1f);
         gold(1f);
         dia(cx, cy + r, 2.6f);                                      // the jewel in the northern gap
+    }
+
+    // ---- stored repairs: a row of small crosses at the end of the tube, lit for each one kept (key 1 spends one) -----
+
+    private static final float REP_X = TUBE_X0 + TUBE_L + 34, REP_PITCH = 15;
+
+    private void repairs(World w) {
+        float y = TUBE_CY;
+        boolean need = w.medkits > 0 && w.ship.hp < w.ship.maxHp() * 0.5f;
+        float beat = need ? 0.65f + 0.35f * (float) Math.sin(w.clock * 8f) : 1f;               // low hull and one in the pouch: they call to be used
+        for (int i = 0; i < World.MEDKIT_MAX; i++) {
+            float x = REP_X + i * REP_PITCH;
+            if (i < w.medkits) s().setColor(JADE[0], JADE[1], JADE[2], 0.95f * beat);
+            else s().setColor(1, 1, 1, 0.16f);
+            s().rect(x - 4.5f, y - 1.4f, 9f, 2.8f);
+            s().rect(x - 1.4f, y - 4.5f, 2.8f, 9f);
+        }
     }
 
     // ---- lives: small rings, whole while they stand, dashed once spent -------------------------
@@ -574,6 +592,11 @@ final class VedicHud {
         int slots = MathUtils.clamp(Math.max(3, w.lives), 3, World.MAX_LIVES);
         ui.hud.draw(batch, weaponStr, LIFE_X0 + (slots - 1) * LIFE_PITCH + LIFE_R + 14, LIFE_Y + 6);
         ui.hud.setColor(1, 1, 1, 1);
+
+        // the key of the stored repairs, before the crosses
+        ui.caption.setColor(GOLD[0], GOLD[1], GOLD[2], w.medkits > 0 ? 0.95f : 0.4f);
+        ui.caption.draw(batch, "1", REP_X - 22f, TUBE_CY + 4f);
+        ui.caption.setColor(1, 1, 1, 1);
 
         // the gaze's name and word, just above the eye
         if (eyeA > 0.3f) {

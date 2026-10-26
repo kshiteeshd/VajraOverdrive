@@ -248,6 +248,7 @@ class VitalaMechanicsTest {
         int c = (w.sealC0 + w.sealC1) / 2;
         assertTrue(w.sealMap.get(c, w.sealRow) != TileMap.EMPTY, "the north door is sealed in gold");
         w.victory(b);
+        w.bossReleases();
         assertEquals(TileMap.EMPTY, w.sealMap.get(c, w.sealRow), "the kill lifts it");
         assertFalse(w.won, "the campaign does not end here");
         assertFalse(w.hazards.ring, "the ash ring goes out with its herald");
@@ -269,6 +270,7 @@ class VitalaMechanicsTest {
         TileMap door = a.sealMap;
         int row = a.sealRow;
         a.victory(bala);
+        a.bossReleases();
         assertEquals(TileMap.EMPTY, door.get(c, row), "his fall opens the gold door at the top of Atala");
         assertEquals(1, a.stage, "and Bhairava is the stage now");
         assertTrue(a.boss == null && !a.won && !a.runEnded(), "the run goes on, up into Vitala");
