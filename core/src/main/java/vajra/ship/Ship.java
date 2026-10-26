@@ -217,6 +217,7 @@ public class Ship {
             hp = maxHp();
             float[] a = w.respawnAnchor(); // most recent checkpoint, else the region entrance
             if (this == w.ship) {          // the pilot's own hull: it breaks up where it fell, the camera goes to the lamp, and the hull is made whole there (DeathSeq)
+                w.astraCancel();           // a mantra half-said dies with the hull
                 w.death.begin(x, y, facing, a[0], a[1]);
                 w.addEffect(Effect.ring(x, y, 220, 0.6f, 0.85f, 1f));
                 w.addEffect(Effect.ring(x, y, 90, 1f, 1f, 1f));

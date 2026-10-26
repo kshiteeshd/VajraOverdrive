@@ -1,61 +1,142 @@
 # The script
 
-Every spoken line of the game, as it plays. The source of truth is `scene/Scenes.java` (scenes),
-`world/Chatter.java` (what a person says after their first meeting), `world/Missions.java` (what the
-HUD says when a job turns) and `world/Codex.java` (the book). `ScriptTest` pins the rules: lines are
-short, set in capitals, and the opening and the gate use the story's words.
+Every spoken line of the game, as it plays. The source of truth is `scene/Scenes.java` (scenes), `screen/StoryScript.java` (the pre-game panels), `world/Chatter.java` (what a person says after their first
+meeting), `world/Missions.java` (what the HUD says when a job turns), `world/Codex.java` (the book) and the rulers' own lines in `enemy/BossBrain.java` and `world/World.startMaya`. `ScriptTest` pins the rules: lines are short,
+set in capitals, and the opening and the gate use the story's words. The register is that of the epics: plain, grave, a little formal, no jest.
 
-**The story the lines tell.** The pilot is **Indra**, king of the gods, come down from **Swarga**.
-**Trivikrama**'s third step broke the **Vajrayudha** - the bolt made of the sage **Dadhichi**'s bones -
-into seven pieces and hid one in each loka below. The ruler of each loka holds a piece, and a piece tells
-its holder that the world around him is his. Nobody is a villain; they are loyal to a lie the metal tells.
+**The story the lines tell.** The pilot is **Indra**, king of the gods, come down from **Swarga**. **Trivikrama**'s third step broke the **Vajrayudha** - the bolt made of the sage **Dadhichi**'s bones - into seven pieces
+and hid one in each loka below. The ruler of each loka holds a piece, and a piece tells its holder that the world around him is his. Nobody is a villain; they are loyal to a lie the metal tells. A ruler is never killed: he
+yields, speaks with the pilot, and lets the piece go.
 
-Colours: **N** the narrator (in the bottom band, no box), **I** Indra (lavender), **S** soldiers (ivory),
-**P** the people of the loka (sky blue), **R** the ruler (gold).
+Colours: **N** the narrator (bottom band, no box), **INDRA** (lavender), soldiers (ivory), the people of the loka (sky blue), the ruler (gold). In the yielding scenes the camera crosses between the ruler and the pilot with each line.
 
-## The opening
-- N: THE THIRD STEP FELL ON SWARGA. WHEN IT LIFTED, THE VAJRAYUDHA WAS GONE.
-- N: TRIVIKRAMA BROKE IT IN SEVEN, AND HID ONE PIECE IN EACH LOKA BELOW.
-- I: DADHICHI GAVE HIS BONES FOR THAT BOLT. / I AM INDRA. I AM TAKING IT BACK.
+## Said in the fight
+- BALA, entering his second phase: STAND ASIDE. I WILL ANSWER HIM MYSELF.
+- BALA, entering his third: THEN LET ATALA BREAK WITH ME.
+- BALA, casting the Maya-astra (first, second, third): THIS WORLD IS ONLY WHAT I PERMIT YOU TO SEE. / LOOK AGAIN. NOTHING YOU SEE IS TRUE. / THERE IS NO DOOR YOU HAVE NOT BEEN LED TO.
 
-## The grand gate (once, on the first entry to a new loka)
-- N: ATALA. THE FIRST DOOR BELOW THE EARTH. FOUR OF BALA'S GUARD DROP FROM THE ARCH.
-- S (sentry): HOLD. WHO COMES TO BALA'S DOOR?
-- I: INDRA, OF SWARGA.
-- S (escort): INDRA. THEN WHERE IS YOUR BOLT?
-- I: BROKEN. PART OF IT LIES BELOW YOU.
-- S (sentry): WHAT BALA HOLDS, BALA KEEPS.
-- S (escort): THE PIECE SAYS ATALA IS HIS.
-- I: THEN THE PIECE LIES.
-- S (sentry): WEAPONS FREE.
+## OPENING
+- N: WHEN TRIVIKRAMA'S THIRD STEP LIFTED FROM SWARGA, THE VAJRAYUDHA WAS GONE.
+- N: HE HAD BROKEN IT INTO SEVEN, AND LAID ONE PIECE IN EACH LOKA BELOW.
+- INDRA: THE SAGE DADHICHI GAVE HIS BONES TO MAKE THAT BOLT.
+- INDRA: I AM INDRA. WHAT WAS GIVEN IN SACRIFICE WILL BE RETURNED.
 
-## The people
-**The Scout** - P: INDRA? / UPARICHARA'S WATCH. YOU GAVE OUR KING HIS WINGS. - I: WHAT DOES THE WATCH SEE?
-- P: THE KING'S SEAL IS BROKEN. MY BEACON IS UP THE GATE. / RAISE IT. YOU WILL SEE EVERY CAMP. - I: I WILL RAISE IT.
-- (beacon raised) P: THE BEACON BURNS. / EVERY CAMP IS ON YOUR COMPASS. - toast: THE BEACON BURNS.
+## ATALA_GATE
+- N: ATALA, THE FIRST LOKA BELOW THE EARTH. FOUR OF BALA'S GUARD STEP FROM THE ARCH.
+- SENTRY: HALT. WHO COMES TO THE GATE OF BALA?
+- INDRA: INDRA, LORD OF SWARGA.
+- ESCORT: INDRA. THEN WHERE IS YOUR VAJRA?
+- INDRA: BROKEN.
+- INDRA: ONE PIECE OF IT LIES IN THIS LOKA.
+- SENTRY: WHAT BALA HOLDS, BALA KEEPS.
+- ESCORT: THE PIECE HAS TOLD HIM THAT ATALA IS HIS.
+- INDRA: THE PIECE SPEAKS NO TRUTH.
+- INDRA: IT ONLY ANSWERS THE WISH OF THE ONE WHO HOLDS IT.
+- SENTRY: THEN THE ORDER STANDS. DRAW.
 
-**The Ninth Maya** - P: I AM THE NINTH MAYA. I PUT THE HAMMER DOWN. - I: THE MAKER'S LINE.
-- P: MY SON HOLDS THE DOOR. HE HOLDS YOUR BOLT. / SIX WRECKS OF MY WOODS. BRING THEM HOME. - P: I WILL TEMPER YOU.
-- (six wrecks home) P: THE HAMMER IS WARM. / TAKE THE PURSE AND THE SHARD. - toast: THE HAMMER IS WARM.
+## BALA_WAKES
+- BALA: LET THEM STAND ASIDE.
+- BALA: I WILL ANSWER THIS ONE MYSELF.
+- INDRA: THE PIECE IS HUMMING IN HIS HAND.
+- INDRA: IT KNOWS ME.
 
-**Kaliya** - P: KALIYA. TIDE-PILOT. THE WATER ROAD IS OPEN. - I: A NAGA, THIS FAR FROM MAHATALA?
-- P: GARUDA'S SHADOW DROVE MY KIN UP THE ROAD. / SAY MY NAME TO TAKSHAKA, BELOW.
+## VOICE_SCOUT
+- THE SCOUT: INDRA. I SERVE THE WATCH OF KING UPARICHARA,
+- THE SCOUT: WHOSE CHARIOT WAS YOUR GIFT.
+- INDRA: WHAT DOES THE WATCH SEE?
+- THE SCOUT: THE KING'S SEAL IS BROKEN. MY BEACON STANDS ABOVE THE THIRD GATE.
+- THE SCOUT: KINDLE IT, AND EVERY CAMP OF ATALA SHOWS ON YOUR COMPASS.
+- INDRA: I WILL KINDLE IT.
 
-## The ruler's gaze (Bala)
-**25% - noticed.** N: FAR ABOVE, IN BALA'S HAND, A PIECE OF THE VAJRA GROWS WARM. / IT TELLS HIM EVERY TIME ATALA BLEEDS. - I: I FEEL IT. IT FEELS ME.
+## VOICE_MAYA
+- THE NINTH MAYA: I AM THE NINTH OF THE MAKER'S LINE.
+- THE NINTH MAYA: I PUT DOWN THE HAMMER LONG AGO.
+- INDRA: THE LINE OF MAYA, ARCHITECT OF THE ASURAS.
+- THE NINTH MAYA: MY SON HOLDS THE GATE OF ATALA, AND WITH IT A PIECE OF YOUR BOLT.
+- THE NINTH MAYA: SIX WRECKS OF MY WOODS LIE SCATTERED. BRING THEM HOME.
+- THE NINTH MAYA: WHEN THEY ARE HOME, I WILL TEMPER YOU.
 
-**60% - watching.** N: THE LOWER BANDS GO QUIET. - R: SOMEONE IS EMPTYING MY HOUSE. / THE PIECE SAYS IT IS ALL MINE. LET THEM COME. - I: HE KNOWS I AM COMING.
+## VOICE_KALIYA
+- KALIYA: I AM KALIYA, PILOT OF THE WATER ROAD.
+- KALIYA: THE TIDE IS OPEN TO YOU.
+- INDRA: A NAGA, SO FAR FROM MAHATALA?
+- KALIYA: GARUDA'S SHADOW DROVE MY KIN UP THE ROAD.
+- KALIYA: CARRY MY NAME TO TAKSHAKA, WHO WAITS BELOW.
 
-**100% - roused.** R: ENOUGH. I FELT EVERY ONE OF THEM GO. / THE LAST DOOR IS OPEN. I AM STANDING IN IT. - I: SON OF MAYA. I AM COMING FOR IT.
+## GAZE_NOTICED
+- N: FAR AHEAD, THE PIECE GROWS WARM IN BALA'S HAND.
+- N: IT TELLS HIM EACH TIME ATALA LOSES A SOLDIER.
+- INDRA: IT HAS FELT ME COMING.
+- INDRA: I CAN FEEL IT, TOO.
 
-**He wakes (the crossing).** R: STAND DOWN. THIS ONE IS MINE. - I: I CAN HEAR IT HUM IN HIS HAND.
+## GAZE_WATCHING
+- N: THE LOWER BANDS GROW QUIET.
+- BALA: A STRANGER WALKS MY HALLS, AND MY HALLS GROW EMPTY.
+- BALA: THE PIECE SAYS ATALA IS MINE. LET HIM COME.
+- INDRA: HE KNOWS I AM COMING.
 
-**He falls.** R: TAKE IT. IT NEVER MADE ME A KING. / IT ONLY MADE ME A DOOR. - I: ONE PIECE. SIX TO GO.
-- (if Maya was met) N: A LETTER, CARRIED UP FROM MAYA VANA: HE HELD THE DOOR TOO LONG. / GO DEEPER, INDRA. THE HAMMER WAITS IN MY FORGE.
-- N: THE FIRST PIECE ANSWERS. BELOW, VITALA BURNS GOLD.
+## GAZE_ROUSED
+- BALA: ENOUGH. I FELT EACH OF THEM FALL.
+- BALA: THE LAST GATE IS OPEN, AND I STAND IN IT.
+- INDRA: SON OF MAYA. I HAVE COME FOR THE PIECE.
 
-## Why these lines
-Every scene turns on something the audience is waiting for: *who* is Indra to these guards (they have heard
-the name), *what* did Bala hear (the piece told him), *where* next (Vitala, Mahatala, Takshaka). Lines name
-things only this story has - Dadhichi's bones, Uparichara's chariot, the Maker's line, Garuda's shadow,
-Takshaka - so none of it could be pasted into another game.
+## BALA_FALLS
+- N: THE LAST STROKE FELL. BALA DID NOT FALL WITH IT.
+- N: HE KNELT, AND THE MANDALA OF HIS ILLUSIONS WENT DARK.
+- BALA: ...IT WAS NEVER MINE.
+- INDRA: NO. IT WAS NEVER YOURS.
+- BALA: FOR AN AGE IT TOLD ME THAT ATALA WAS MY HOUSE.
+- BALA: I NEVER ASKED WHOSE VOICE IT WAS.
+- INDRA: IT HAS ONE VOICE ONLY: THE HOLDER'S OWN WISH.
+- INDRA: YOU HAVE BEEN LISTENING TO YOURSELF.
+- BALA: THEN I HAVE BEEN A KING OF NOTHING.
+- INDRA: YOU HAVE BEEN A DOOR.
+- INDRA: A DOOR EXISTS TO BE OPENED.
+- BALA: TAKE IT. MAY IT BE LIGHT IN YOUR HAND,
+- BALA: AS IT NEVER WAS IN MINE.
+- INDRA: ONE PIECE. SIX REMAIN.
+- N: A LETTER COMES UP FROM MAYA VANA:
+- N: "HE HELD THE DOOR TOO LONG. GO DEEPER, INDRA. THE HAMMER IS WAITING."
+- N: THE FIRST PIECE ANSWERS THE HAND THAT SEEKS IT.
+- N: BEYOND THE GOLD GATE, VITALA BURNS.
+
+## VITALA_ENTER
+- N: BALA'S GATE OPENS ON VITALA: BLACK STONE, AND A RIVER OF LIQUID GOLD.
+- N: THIS IS THE HATAKI. FIRE DRINKS IT AND BECOMES HATAKA GOLD. HARA AND GAURI KEEP THIS LOKA.
+- INDRA: THE SECOND PIECE IS IN BHAIRAVA'S HAND.
+- INDRA: THE RIVER WILL CARRY ME UP TO HIM.
+
+## VOICE_SELLER
+- THE GOLD-SELLER: I AM A BHUTA OF HARA'S COURT.
+- THE GOLD-SELLER: I WEIGH THE GOLD OF HATAKA.
+- INDRA: WHAT USE HAS A SPIRIT FOR GOLD?
+- THE GOLD-SELLER: NONE. I ONLY KNOW WHERE IT LIES.
+- THE GOLD-SELLER: EVERY VAULT IN THESE WALLS IS ON MY SCALE.
+- THE GOLD-SELLER: WATCH YOUR COMPASS. IT WILL POINT THE WAY.
+
+## VOICE_MAID
+- GAURI'S MAID: I TEND THE LAMPS OF GAURI.
+- GAURI'S MAID: LIGHT ONE, AND THE FIRE HOLDS ITS BREATH.
+- INDRA: FOR HOW LONG?
+- GAURI'S MAID: SIX BREATHS: ENOUGH TO CROSS A VENT.
+- GAURI'S MAID: HER WELLS MEND WHAT THE FIRE BREAKS.
+
+## BHAIRAVA_WAKES
+- INDRA: THE THIRD EYE IS OPENING.
+
+## BHAIRAVA_FALLS
+- N: THE THIRD EYE CLOSED. BHAIRAVA KNELT IN HIS OWN ASH,
+- N: AND THE FIRES AROUND HIM SANK LOW.
+- BHAIRAVA: THE FIRE HAS ASKED ITS QUESTION.
+- BHAIRAVA: YOU HAVE ANSWERED IT.
+- INDRA: I CAME FOR WHAT YOU HOLD.
+- INDRA: NOT FOR YOUR FLAME.
+- BHAIRAVA: IT NEVER WARMED ME.
+- BHAIRAVA: IT MADE ME ONLY THE DOOR THAT FIRE WALKS THROUGH.
+- INDRA: THEN LET IT GO.
+- BHAIRAVA: I RELEASE IT.
+- BHAIRAVA: TELL GAURI HER LAMPS MAY BE LIT AGAIN.
+- INDRA: I WILL TELL HER.
+- INDRA (thought): TWO PIECES. FIVE REMAIN.
+- N: THE SECOND PIECE ANSWERS THE HAND THAT SEEKS IT.
+- N: BEYOND THE GOLD GATE, THE WATERS OF SUTALA WAIT.

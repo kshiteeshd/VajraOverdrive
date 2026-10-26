@@ -390,7 +390,7 @@ public class GameScreen implements FlowState, ShipControls {
         float s2 = world.ship.trauma * world.ship.trauma * vajra.profile.Profiles.active().settings.shake;
         camera.position.x += (world.fxRng.nextFloat() * 2 - 1) * 16 * s2;
         camera.position.y += (world.fxRng.nextFloat() * 2 - 1) * 16 * s2;
-        if (vajra.net.Net.session == null && !director.active() && !shop.isOpen() && !runEnded() && !world.death.active && !world.maya.active) {
+        if (vajra.net.Net.session == null && !director.active() && !shop.isOpen() && !runEnded() && !world.death.active && !world.maya.active && world.yielder == null) {
             autosaveT += delta; // CONTINUE stays close to where the pilot is, even if the window is killed
             if (autosaveT >= AUTOSAVE) {
                 autosaveT = 0;

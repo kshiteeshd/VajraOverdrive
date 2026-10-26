@@ -1494,7 +1494,7 @@ public class World {
 
     /** LET GO (F goes up): loose it, or let the mantra falter if it was not held long enough. True when it flew. */
     public boolean astraLoose() {
-        if (!astraInvoking) return false;
+        if (!astraInvoking || death.hidden()) return false;
         astraInvoking = false;
         ship.winding = false;
         float charge = astraCharge;
@@ -2171,6 +2171,8 @@ public class World {
     public void victory(Enemy b) {
         bossDead = true;
         yielder = b;
+        maya.active = false;                                                   // his astra ends with his yielding: no glass over the scene, and no door left to carry the hull away from him
+        maya.boss = null;
         boolean last = stage >= lastStage();
         boolean bala = stage == 0;
         if (last) { // the first-loka world ends with its ruler, after the banner lap; the campaign goes on, up into Sutala's coming-soon hall

@@ -131,7 +131,7 @@ public final class Scenes {
                         {"FOR AN AGE IT TOLD ME THAT ATALA WAS MY HOUSE.", "I NEVER ASKED WHOSE VOICE IT WAS."},
                         {"IT HAS ONE VOICE ONLY: THE HOLDER'S OWN WISH.", "YOU HAVE BEEN LISTENING TO YOURSELF."},
                         {"THEN I HAVE BEEN A KING OF NOTHING."},
-                        {"YOU HAVE BEEN A DOOR. OPEN."},
+                        {"YOU HAVE BEEN A DOOR.", "A DOOR EXISTS TO BE OPENED."},
                         {"TAKE IT. MAY IT BE LIGHT IN YOUR HAND,", "AS IT NEVER WAS IN MINE."},
                 }, "ONE PIECE. SIX REMAIN.",
                         new String[] {"THE FIRST PIECE ANSWERS THE HAND THAT SEEKS IT.", "BEYOND THE GOLD GATE, VITALA BURNS."},

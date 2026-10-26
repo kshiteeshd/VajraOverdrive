@@ -104,6 +104,7 @@ public final class RunSave {
         d.astraSel = w.astraSel;
         d.weaponRank = h.weaponRank.clone();
         d.pieces = h.pieces.clone();
+        for (Pickup p : w.pickups) if (p.type == Pickup.PIECE && p.variant >= 0 && p.variant < d.pieces.length) d.pieces[p.variant] = true;   // a piece in flight to the hull is already the pilot's: a save in that second must not lose it
         d.weaponOwned = h.weaponOwned.clone();
         d.owned = new boolean[h.owned.length * 3];
         for (int i = 0; i < h.owned.length; i++)
