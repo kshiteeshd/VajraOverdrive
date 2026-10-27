@@ -79,6 +79,29 @@ public final class EnemyDirector {
             leader.backups--;
             world.addEffect(Effect.ring(leader.x, leader.y, 70, 1f, 0.84f, 0.3f));       // the call goes out
             int placed = 0;
+            if (leader.vitala) {                                                       // Vitala has no floor to rise from: the reserves FLY IN, from behind the leader, already in the air
+                vajra.ship.Ship hull = world.nearestHull(leader.x, leader.y);
+                float bx = leader.x - hull.x, by = leader.y - hull.y, bd = Math.max(1f, (float) Math.hypot(bx, by));
+                bx /= bd;
+                by /= bd;
+                for (float side : new float[] {-1f, 1f}) {
+                    float nx = leader.x + bx * 360f - by * side * 110f, ny = leader.y + by * 360f + bx * side * 110f;
+                    if (!world.openFor(nx, ny, 14f)) { nx = leader.x - by * side * 130f; ny = leader.y + bx * side * 130f; if (!world.openFor(nx, ny, 14f)) continue; }
+                    Enemy r = new Enemy(leader.kind, nx, ny);
+                    r.rank = 0;
+                    r.active = true;
+                    r.wakeRange = 1500f;
+                    r.commander = leader;
+                    r.dmgScale = leader.dmgScale;
+                    r.hp = r.maxHp = leader.maxHp * 0.55f;
+                    world.add(r);
+                    world.addEffect(Effect.flash(nx, ny, leader.x, leader.y, 1f, 0.7f, 0.2f));        // a streak of ember from where it came in
+                    world.addEffect(Effect.ring(nx, ny, 36, 1f, 0.55f, 0.15f));
+                    placed++;
+                }
+                if (placed == 0) leader.backups++;
+                continue;
+            }
             for (float dx : new float[] {-76f, 76f}) {
                 float nx = leader.x + dx, ny = leader.y - 34f;
                 if (!world.openFor(nx, ny, 14f)) continue;

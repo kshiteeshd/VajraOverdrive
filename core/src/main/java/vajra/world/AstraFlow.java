@@ -17,7 +17,7 @@ import vajra.weapon.Bullet;
  *  same particles for the picture. Rendering is {@code screen/FlowFx} and {@code screen/AstraFx}. */
 public final class AstraFlow {
     public static final int CAP = 700;
-    public static final int NONE = 0, AGNI = 1, VAYU = 2, LIGHTNING = 3, BOULDER = 4, LOTUS = 5;
+    public static final int NONE = 0, AGNI = 1, VAYU = 2, LIGHTNING = 3, BOULDER = 4, LOTUS = 5, WATER = 6;
 
     // ---- Agni ----------------------------------------------------------------------------------------------------------------------------
     public static final int STREAMS = 18;
@@ -260,6 +260,114 @@ public final class AstraFlow {
         if (t > FIRE_SECONDS && bolts.isEmpty() && zaps.isEmpty() && sparks.isEmpty() && zapped.isEmpty()) cancel();
     }
 
+
+    // ---- JALA: the flood ----
+    /** The flood rises over WATER_RISE seconds, stands, ebbs from WATER_EBB, and is gone at T_WATER. Every foe the water holds is carried (outward on the surge, round in the swirl, back on the ebb),
+     *  soaked, and drowned: a common foe in about three seconds, a leader or an elite more slowly, a ruler hardly at all; what the current throws against rock is hurt by the rock besides. */
+    public static final float T_WATER = 5.4f, WATER_RISE = 1.5f, WATER_EBB = 4.2f;
+    private static final float DROWN_COMMON = 0.30f, DROWN_RANK = 0.14f, DROWN_ELITE = 0.10f, DROWN_BOSS = 0.012f, SLAM = 0.07f, MEND = 0.03f, MEND_MAX = 0.20f;
+    private float healedFrac, crestAcc;
+
+    /** JALA: a tide of water goes out from the hull and washes the foes about it away (docs/ASTRA_NEXT_PLAN.md). */
+    public void startWater(Ship from, int seatId, float damageMult, float pow, long seed) {
+        reset(from, seatId, damageMult, pow, seed);
+        kind = WATER;
+        radius = 520f + 200f * Math.max(0f, Math.min(1f, pow));
+        healedFrac = 0f;
+    }
+
+    /** The surface's radius now: it surges out, stands, and draws back. */
+    public float waterRadius() {
+        float u = Math.min(1f, t / WATER_RISE), rise = 1f - (1f - u) * (1f - u);
+        float ebb = t > WATER_EBB ? Math.max(0f, 1f - (t - WATER_EBB) / (T_WATER - WATER_EBB)) : 1f;
+        return radius * rise * (0.12f + 0.88f * ebb);
+    }
+
+    private void stepWater(World w, float dt) {
+        float cx = ship.x, cy = ship.y, R = waterRadius();
+        boolean rising = t < WATER_RISE, ebbing = t >= WATER_EBB;
+        spawnAcc += t >= T_WATER ? 0f : dt * (rising ? 560f : ebbing ? 70f : 260f);
+        while (spawnAcc >= 1f) {                                           // the body of the water: lumps born at the heart, carried out on the surge
+            spawnAcc -= 1f;
+            float th = rng.nextFloat() * 6.2831853f;
+            int p = spawn(cx, cy, 0f, R * (0.05f + 0.55f * rng.nextFloat()), 1.0f + 0.9f * rng.nextFloat(), 0.8f + 0.7f * rng.nextFloat(), 0, 7, 9, 0, th);
+            if (p >= 0 && rng.nextInt(5) == 0) { row[p] = 2; size[p] *= 0.7f; }
+        }
+        float frontAcc = t >= T_WATER ? 0f : dt * (rising ? 160f : 40f);
+        crestAcc += frontAcc;
+        while (crestAcc >= 1f && R > 40f) {                                  // foam and curling crests along the front, spray flung from it
+            crestAcc -= 1f;
+            float th = rng.nextFloat() * 6.2831853f;
+            int kindRow = rng.nextInt(3);
+            int p = spawn(cx, cy, th, R * (0.93f + 0.1f * rng.nextFloat()), kindRow == 0 ? 0.55f : 0.45f, kindRow == 0 ? 1.6f : 1.0f, kindRow == 0 ? 3 : kindRow == 1 ? 1 : 2, 7, 10, 0, th);
+            if (p >= 0 && kindRow == 2) spd[p] = R * 1.0f;
+        }
+        for (int i = 0; i < n; i++) {
+            age[i] += dt;
+            if (mode[i] == 11) {                                           // spray thrown off a foe the water has broken: out and settling
+                float sp = 260f * (1f - Math.min(1f, age[i] / life[i]));
+                px[i] += (float) Math.cos(aux[i]) * sp * dt;
+                py[i] += (float) Math.sin(aux[i]) * sp * dt;
+                continue;
+            }
+            if (mode[i] != 9 && mode[i] != 10) continue;
+            float r = spd[i], th = aux[i];
+            if (mode[i] == 9) {
+                float outward = rising ? 150f + 520f * (1f - Math.min(1f, r / (radius * 1.05f))) : ebbing ? -(90f + 160f * (r / radius)) : 28f + 70f * (1f - Math.min(1f, r / radius));
+                r += outward * dt;
+                th += (0.8f + 0.7f * (1f - Math.min(1f, r / radius))) * dt;
+                if (r < 0f) age[i] = life[i];
+            } else {
+                r += (rising ? 60f : 10f) * dt;
+                th += 0.0f;
+            }
+            spd[i] = r;
+            aux[i] = th;
+            px[i] = cx + r * (float) Math.cos(th);
+            py[i] = cy + r * (float) Math.sin(th);
+            if (mode[i] == 10) ph[i] = th;
+        }
+        if (w.clientSeat) return;
+        float R2 = R * R;
+        for (Enemy e : w.enemies) {
+            if (e.wetT > 0f) e.wetT = Math.max(0f, e.wetT - dt * 0.4f);   // (dried slowly again by the world's tick when the flood is gone)
+            if (!eligible(e)) continue;
+            float dx = e.x - cx, dy = e.y - cy, d2 = dx * dx + dy * dy, reach = R + e.w * 0.3f;
+            if (d2 > reach * reach) { e.wetIn = 0f; continue; }
+            float d = (float) Math.sqrt(Math.max(1f, d2)), ux = dx / d, uy = dy / d;
+            e.wetT = 1.4f;
+            e.wetIn += dt;
+            e.burnT = 0f;                                                   // the water puts fire out
+            if (!e.boss) {
+                float m = mass(e), sm = (float) Math.sqrt(m), edge = Math.max(0f, 1f - d / (R * 0.9f)), out = (rising ? 330f * edge : ebbing ? -110f : 40f * edge - 25f) / sm, swirl = 140f / (float) Math.pow(m, 0.3);   // (the surge dies away toward the surface: the water carries a foe, it does not throw it out of itself)
+                float nx = e.x + (ux * out - uy * swirl) * dt, ny = e.y + (uy * out + ux * swirl) * dt;
+                carry(w, e, nx, ny);
+                if (Math.hypot(e.x - nx, e.y - ny) > 2.5f && e.slamCd <= 0f) {   // the current has thrown it against rock
+                    e.slamCd = 0.6f;
+                    e.hurtPiercing(SLAM * e.maxHp * Math.min(1.4f, dm), w, seat);
+                    for (int k = 0; k < 6; k++) spawn(e.x, e.y, 0f, 0f, 0.5f, 0.8f, 2, 7, 11, 0, rng.nextFloat() * 6.2831853f);
+                }
+            }
+            if (e.slamCd > 0f) e.slamCd -= dt;
+            float pct = e.boss ? DROWN_BOSS : e.elite ? DROWN_ELITE : e.rank >= 1 ? DROWN_RANK : DROWN_COMMON, ramp = 0.55f + 0.9f * Math.min(1f, e.wetIn / 2f);
+            boolean killed = e.hurtPiercing(pct * e.maxHp * Math.min(1.4f, dm) * ramp * dt, w, seat);
+            if (killed) {                                                   // each foe the flood takes mends the pilot a little, to a limit
+                for (int k = 0; k < 8; k++) spawn(e.x, e.y, 0f, 0f, 0.6f, 1f, 2, 7, 11, 0, rng.nextFloat() * 6.2831853f);
+                w.addEffect(Effect.ring(e.x, e.y, 46f, 0.45f, 0.75f, 1f));
+                if (healedFrac < MEND_MAX) { ship.hp = Math.min(ship.maxHp(), ship.hp + MEND * ship.maxHp()); healedFrac += MEND; }
+            }
+        }
+        for (Bullet b : w.bullets) {                                        // water takes the heat and the speed out of every round that flies into it
+            if (!b.hostile || b.dead) continue;
+            float dx = b.x - cx, dy = b.y - cy;
+            if (dx * dx + dy * dy > R2) continue;
+            float k = (float) Math.exp(-2.6f * dt);
+            b.vx *= k;
+            b.vy *= k;
+            b.damage *= 1f - 0.5f * dt;
+        }
+    }
+
     /** PRITHVI: boulders form out of the mandala and are hurled (docs/ASTRA_NEXT_PLAN.md section 3). The mandala stays while it lasts. */
     public void startBoulders(Ship from, int seatId, float damageMult, float pow, long seed) {
         reset(from, seatId, damageMult, pow, seed);
@@ -317,9 +425,9 @@ public final class AstraFlow {
         t += dt;
         for (int i = bursts.size() - 1; i >= 0; i--) if ((bursts.get(i).t += dt) > bursts.get(i).life) bursts.remove(i);
         if (kind == AGNI) stepAgni(w, dt); else if (kind == VAYU) stepVayu(w, dt); else if (kind == LIGHTNING) stepLightning(w, dt);
-        else if (kind == BOULDER) stepBoulders(w, dt); else if (kind == LOTUS) { stepLotus(w, dt); return; }
+        else if (kind == BOULDER) stepBoulders(w, dt); else if (kind == WATER) stepWater(w, dt); else if (kind == LOTUS) { stepLotus(w, dt); return; }
         for (int i = n - 1; i >= 0; i--) if (age[i] >= life[i]) remove(i);
-        float end = kind == AGNI ? 3.1f : kind == BOULDER ? T_ROCK + 0.3f : T_END;
+        float end = kind == AGNI ? 3.1f : kind == BOULDER ? T_ROCK + 0.3f : kind == WATER ? T_WATER + 0.3f : T_END;
         if (t > end && n == 0 && (kind != AGNI || t > 3.5f)) cancel();
     }
 

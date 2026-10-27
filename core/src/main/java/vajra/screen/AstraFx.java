@@ -23,10 +23,12 @@ final class AstraFx {
 
     /** All of it, inside an open Filled shape pass in world space. */
     static void draw(ShapeRenderer s, World w, float l, float b, float viewW, float viewH) {
-        if (w.astra.isEmpty() && !w.winding() && w.gazeT <= 0f && !w.flow.active() && !w.maya.active) return;
+        if (w.astra.isEmpty() && !w.winding() && w.gazeT <= 0f && !w.flow.active() && !w.maya.active && !w.ash.active) return;
         s.flush();
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE);          // additive: light, not paint
         float t = w.clock;
+        if (w.flow.kind == vajra.world.AstraFlow.WATER && w.flow.ship != null) water(s, w, t);
+        if (w.ash.active) Mandala.drawAsh(s, w.ash.x, w.ash.y, w.ash.r * 0.62f, w.ash.k(), t);   // the grey mandala at the heart of Bhairava's smoke
         if (w.winding()) yantra(s, w, t);
         if (w.maya.active && w.maya.tiltTime() < 0.3f) { s.flush(); Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);                  // paint, not light: blood reads on any ground, so it is drawn over a darkening
                 s.setColor(0.03f, 0f, 0.02f, 0.45f * w.maya.form()); s.circle(w.maya.x, w.maya.y, Mandala.balaRadius(w.maya.form()) * 1.22f, 56);
@@ -302,6 +304,36 @@ final class AstraFx {
             s.setColor(1f, 1f, 1f, 0.8f);
             for (int side = -1; side <= 1; side += 2)                        // the vane's edge
                 s.rectLine(x - dx * 94f + nx * 5f * side, y - dy * 94f + ny * 5f * side, x - dx * 66f + nx * 7f * side, y - dy * 66f + ny * 7f * side, 0.6f);
+        }
+    }
+
+    /** JALA's flood seen from above as light: the surface's edge, a rim of foam that heaves, and ripples that run out from the hull. */
+    private static void water(ShapeRenderer s, World w, float t) {
+        vajra.world.AstraFlow f = w.flow;
+        float R = f.waterRadius(), cx = f.ship.x, cy = f.ship.y, life = Math.min(1f, (vajra.world.AstraFlow.T_WATER - f.t) / 0.9f);
+        if (R < 20f || life <= 0f) return;
+        for (int d = 0; d < 5; d++) {                                         // the surface: layers of deep blue, darker toward the heart
+            s.setColor(0.10f + 0.04f * d, 0.34f + 0.05f * d, 0.62f + 0.04f * d, 0.085f * life);
+            s.circle(cx, cy, R * (1f - 0.17f * d), 64);
+        }
+        int n = 120;
+        for (int pass = 0; pass < 2; pass++) {
+            float px = 0f, py = 0f;
+            for (int i = 0; i <= n; i++) {
+                float a = i * MathUtils.PI2 / n, r = R + (pass == 0 ? 7f : 3f) * MathUtils.sin(a * 9f + t * 5f + pass) + 4f * MathUtils.sin(a * 5f - t * 3f);
+                float x = cx + r * MathUtils.cos(a), y = cy + r * MathUtils.sin(a);
+                if (i > 0) {
+                    if (pass == 0) { s.setColor(0.45f, 0.78f, 1f, 0.22f * life); s.rectLine(px, py, x, y, 14f); }
+                    else { s.setColor(0.92f, 0.98f, 1f, 0.75f * life); s.rectLine(px, py, x, y, 2.2f); }
+                }
+                px = x;
+                py = y;
+            }
+        }
+        for (int k = 0; k < 3; k++) {                                       // ripples running out from the hull
+            float ph = (t * 0.7f + k / 3f) % 1f, r = R * ph;
+            s.setColor(0.7f, 0.9f, 1f, 0.28f * (1f - ph) * life);
+            ring(s, cx, cy, r, 72, 2.2f);
         }
     }
 

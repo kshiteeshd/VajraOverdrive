@@ -108,17 +108,24 @@ public final class Scenes {
                 voiceMaid(w, s);
                 break;
             case BHAIRAVA_WAKES:
-                if (w.boss != null) s.add(ruler(w, w.boss, CLOSE, "STAND BACK.", "THE FIRE HAS A QUESTION FOR HIM."));
+                if (w.boss != null) {
+                    s.add(narrAt(w.boss, MID, "THE ALTAR OF VITALA. THE ASH HERE HAS BEEN FALLING FOR AN AGE."));
+                    s.add(ruler(w, w.boss, CLOSE, "A LIVING MAN AT THE CREMATION GROUND.", "THAT IS NEW.").pan(1.2f));
+                    s.add(indraSays(w, CLOSE, "I AM INDRA. I HAVE COME FOR THE PIECE OF THE VAJRA YOU HOLD.").pan(1.1f));
+                    s.add(ruler(w, w.boss, CLOSE, "THE FIRE TOLD ME NO ONE WOULD COME.", "IT TOLD ME THAT WHOEVER CAME WOULD BURN.").pan(1.1f));
+                    s.add(indraSays(w, CLOSE, "THEN THE FIRE HAS LIED TO YOU.").pan(1.1f));
+                    s.add(ruler(w, w.boss, NEAR, "THEN LET US SEE WHICH OF US IT HAS LIED TO.").pan(1.1f));
+                }
                 s.add(think(w, CLOSE, "THE THIRD EYE IS OPENING."));
                 break;
             case BHAIRAVA_FALLS:
                 yieldScene(w, s, new String[][] {
-                        {"THE THIRD EYE CLOSED. BHAIRAVA KNELT IN HIS OWN ASH,", "AND THE FIRES AROUND HIM SANK LOW."},
-                        {"THE FIRE HAS ASKED ITS QUESTION.", "YOU HAVE ANSWERED IT."},
-                        {"I CAME FOR WHAT YOU HOLD.", "NOT FOR YOUR FLAME."},
-                        {"IT NEVER WARMED ME.", "IT MADE ME ONLY THE DOOR THAT FIRE WALKS THROUGH."},
-                        {"THEN LET IT GO."},
-                        {"I RELEASE IT.", "TELL GAURI HER LAMPS MAY BE LIT AGAIN."},
+                        {"THE THIRD EYE CLOSED. BHAIRAVA KNELT IN HIS OWN ASH,", "AND THE SMOKE FELL STILL ABOUT HIM."},
+                        {"A THOUSAND PILGRIMS CAME TO THIS GROUND.", "I CANNOT RECALL ONE NAME."},
+                        {"THE PIECE TOLD YOU THAT ALL THAT BURNS WAS YOURS."},
+                        {"I BELIEVED IT. IT NEVER ONCE WARMED ME."},
+                        {"BHAIRAVA: KEEPER OF THE GROUND WHERE THE DEAD ARE LET GO."},
+                        {"THEN LET ME LET GO.", "TELL GAURI HER LAMPS MAY BE LIT AGAIN."},
                         {"I WILL TELL HER."},
                 }, "TWO PIECES. FIVE REMAIN.",
                         new String[] {"THE SECOND PIECE ANSWERS THE HAND THAT SEEKS IT.", "BEYOND THE GOLD GATE, THE WATERS OF SUTALA WAIT."}, null);

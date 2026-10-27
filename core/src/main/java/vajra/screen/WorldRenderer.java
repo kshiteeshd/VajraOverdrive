@@ -210,6 +210,7 @@ public final class WorldRenderer {
     }
 
     private final CloudVeil veil = new CloudVeil();
+    private final AshFx ashFx = new AshFx();
     private final com.badlogic.gdx.graphics.Texture moteTex;
     private final MirageFx mirage;
     private final TileChunks chunks;
@@ -570,6 +571,7 @@ public final class WorldRenderer {
             for (TileMap m : world.tileMaps()) tiles.drawDark(batch, m, l, b, l + viewW, b + viewH, 3f, -4f, 0.55f); // the side face: a wall is thick
             for (TileMap m : world.tileMaps()) tiles.draw(batch, m, l, b, l + viewW, b + viewH);
         }
+        ashFx.draw(batch, world, l, b, viewW, viewH);                                          // Bhairava's smoke lies on the floor: under every hull and round, so nothing in it is hidden
         for (int i = 0; i < world.torches.length; i++) { // wall-mounted props, behind everything
             float[] t = world.torches[i];
             if (t[0] + 40 > l && t[0] - 40 < l + viewW && t[1] + 40 > b && t[1] - 40 < b + viewH)
@@ -901,6 +903,7 @@ public final class WorldRenderer {
     }
 
     public void dispose() {
+        ashFx.dispose();
         veil.dispose();
         chunks.dispose();
         mirage.dispose();

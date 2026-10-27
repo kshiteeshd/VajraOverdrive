@@ -39,6 +39,15 @@ public final class BhairavaBrain {
         float frac = e.hp / e.maxHp;
         e.bossPhase = frac > 0.66f ? 1 : frac > 0.33f ? 2 : 3;
         e.clockT += dt;
+        e.cloudCd -= dt;
+        if (e.bossPhase != e.lastPhase) {                  // a new phase has its word, and the smoke comes soon
+            if (e.lastPhase != 0) {
+                w.say(e, e.bossPhase == 2 ? new String[] {"A THOUSAND PILGRIMS CAME TO THIS GROUND.", "EACH BEGGED ME IN A DIFFERENT TONGUE."}
+                        : new String[] {"THE ASH RISES. LET IT TAKE YOUR NAME FIRST."});
+            }
+            e.lastPhase = e.bossPhase;
+            if (e.bossPhase >= 2) e.cloudCd = Math.min(Math.max(e.cloudCd, 0f), 5f);
+        }
         // the ash ring: outside it the floor burns
         w.hazards.ring = true;
         w.hazards.ringX = w.pitX;
@@ -68,6 +77,18 @@ public final class BhairavaBrain {
                 e.vT2 -= dt;
                 if (e.vT2 <= 0f) { e.vT2 = 0.08f; w.hazards.patch(e.x, e.y, 36f, 7f); }
                 if (e.vT <= 0f) rest(e);
+                break;
+            case 7:                                            // the ash gathers: he stands still while the smoke is called, then it spreads over the hall
+                gx = 0f;
+                gy = 0f;
+                e.vT -= dt;
+                if (((int) (e.vT * 10f) & 1) == 0) w.addEffect(Effect.ring(e.x, e.y, 60f + 220f * (1f - e.vT / 1.3f), 0.7f, 0.72f, 0.78f));
+                if (e.vT <= 0f) {
+                    w.ash.start(w.pitX, w.pitY, e.bossPhase == 3 ? 780f : 700f, e.bossPhase == 3 ? 11f : 9f);
+                    w.say(e, CLOUD_LINES[e.vN2 % CLOUD_LINES.length]);
+                    e.cloudCd = e.bossPhase == 3 ? 17f : 25f;
+                    rest(e);
+                }
                 break;
             case 3:                                            // ember fan: two volleys
                 e.vT -= dt;
@@ -115,7 +136,14 @@ public final class BhairavaBrain {
     }
 
     /** The next act, from the phase: stoking charges and fans; kindling adds the rain and the court; the flood adds the eye. */
+    private static final String[][] CLOUD_LINES = {{"BREATHE. THE ASH WILL TEACH YOU PATIENCE."}, {"THE SMOKE REMEMBERS EVERY ONE WHO WALKED IT."}, {"SLOW, NOW. THE FIRE IS NOT IN A HURRY."}};
+
     private static void choose(Enemy e, World w, Ship hull, float ux, float uy) {
+        if (e.bossPhase >= 2 && e.cloudCd <= 0f && !w.ash.active) {          // the ash cloud: a long tell, then the smoke fills the hall and holds every hull slow
+            e.vState = 7;
+            e.vT = 1.3f;
+            return;
+        }
         int n = e.vN2++;
         int ph = e.bossPhase;
         int pick = ph == 1 ? n % 2 : ph == 2 ? n % 3 : n % 4;       // 0 charge, 1 fan, 2 rain, 3 eye

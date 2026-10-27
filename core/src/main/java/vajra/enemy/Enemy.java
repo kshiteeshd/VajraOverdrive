@@ -186,6 +186,13 @@ public class Enemy {
     public boolean bossTelegraph;
     /** A ruler struck to nothing does not die: he YIELDS - he stands where he fell, silent, beyond harm, while the scene is told, and then lets go of the piece (World.bossReleases). */
     public boolean yielding;
+    /** Vitala's units sidestep a round that is coming at them: how long until the next dodge, and the sidestep still running (decays). */
+    public float dodgeCd, dodgeVx, dodgeVy;
+    /** Bhairava: seconds until his next ash cloud, and the phase he last spoke in. */
+    public float cloudCd;
+    /** Seconds of soaking left on it (Jala's flood: it is drawn blue and streaming), and how long it has been in the water this time (the drowning ramps up). */
+    public float wetT, wetIn, slamCd;
+    public int lastPhase;
     public int bossCasts;       // his Maya-astras cast so far (one a phase: world/Maya)
     public int bossPhase = 1;   // 1 commander / 2 duel / 3 berserk
     public int bossPattern;     // 0 volley / 1 spiral / 2 mortar / 3 shock

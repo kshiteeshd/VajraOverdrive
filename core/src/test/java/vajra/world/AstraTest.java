@@ -14,6 +14,7 @@ class AstraTest {
     /** A world with the ship at (2600, 2700) facing north and `n` living foes 300 px ahead, in view. */
     private static World arena(int n) {
         World w = new World();
+        w.cubeVolleys = true;                                            // these are the tests of the cube system: Jala looses its old cube volley here
         w.enemies.clear();
         w.ship.x = 2600;
         w.ship.y = 2700;

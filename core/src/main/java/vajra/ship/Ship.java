@@ -43,6 +43,8 @@ public class Ship {
     /** Seconds the boost has been held, 0 while it is not: the sheet's boost clip closes in over its first moments. */
     public float boostT;
     public float iFrames, invuln;
+    /** A multiplier on how fast the hull can go (1 = free): the world sets it each step - Bhairava's ash holds it to AshCloud.MUD, and it cannot boost in it. */
+    public float mud = 1f;
     private float exhaustT, smokeT; // particle cadence: exhaust while pushing, smoke when dying
     public float dip;               // 0..1 hull press-down: hit / shield, no halo needed
     public float dipT;
@@ -101,7 +103,7 @@ public class Ship {
         thrustY = ty;
         if (tx != 0 || ty != 0) thrustHold += dt;
         else thrustHold = 0;
-        boosting = in.boost() && boostEnergy > 0 && (tx != 0 || ty != 0);
+        boosting = in.boost() && boostEnergy > 0 && (tx != 0 || ty != 0) && mud >= 1f;
         boostT = boosting ? boostT + dt : 0f;
         boostEnergy += boosting ? -BOOST_DRAIN * (heated ? HEAT_DRAIN : 1f) * dt : BOOST_REGEN * dt;
         boostEnergy = Math.max(0, Math.min(100, boostEnergy));
@@ -126,13 +128,13 @@ public class Ship {
         float leanWant = Math.max(-1f, Math.min(1f, tx));
         lean += (leanWant - lean) * ease;
 
-        float a = accel() * (boosting ? boostMult() : 1f);
+        float a = accel() * mud * (boosting ? boostMult() : 1f);
         {
             // drag before thrust, with the rate tuned to the stat itself (accel/maxSpeed):
             // coasting converges exactly on maxSpeed(), so the SPD figure and the speed
             // upgrades are real numbers instead of decoration
-            float ms = maxSpeed();
-            float fr = accel() / ms;
+            float ms = maxSpeed() * mud;
+            float fr = accel() * mud / ms;
             vx -= vx * fr * dt;
             vy -= vy * fr * dt;
             vx += moveX * a * dt; // screen up and world up are the same direction: y-up

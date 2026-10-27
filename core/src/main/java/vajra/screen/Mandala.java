@@ -872,4 +872,51 @@ final class Mandala {
             }
         }
     }
+
+    // ---- BHAIRAVA's ash mandala -------------------------------------------------------------------------------------------------------
+
+    private static final float[] ASH_LIGHT = {0.84f, 0.86f, 0.92f}, ASH_DIM = {0.58f, 0.60f, 0.68f};
+
+    /** THE ASH MANDALA, grey and glowing, at the heart of Bhairava's smoke: simple from afar (a ring, a flower of twelve petals, a star), intricate near (a ring of ticks, a dashed ring turning the
+     *  other way, twelve lesser petals between the great ones, an eight-pointed star drawn point to the third point with a small ring on every vertex, and a heart of three rings). Lines only,
+     *  with a faint bloom under them. `R` its radius, `a` how present it is (0..1). */
+    static void drawAsh(ShapeRenderer s, float cx, float cy, float R, float a, float t) {
+        if (a <= 0.01f) return;
+        THIN = true;
+        LIGHT = 1f;
+        for (int i = 0; i < 5; i++) {                                              // the glow: a few wide faint discs, grey
+            s.setColor(ASH_LIGHT[0], ASH_LIGHT[1], ASH_LIGHT[2], 0.05f * a);
+            s.circle(cx, cy, R * (1.22f - 0.13f * i), 56);
+        }
+        col(s, ASH_LIGHT, 1f * a);
+        ring(s, cx, cy, R, R, 1f, t * 0.05f, 112, 3.2f, 0f, t, 0);
+        col(s, ASH_DIM, 0.7f * a);
+        ring(s, cx, cy, R * 0.935f, R, 1f, -t * 0.09f, 96, 1.8f, 0f, t, 2);
+        for (int i = 0; i < 72; i++) {                                              // ticks between the rings
+            float ang = i * TAU / 72f + t * 0.03f, r0 = R * (i % 6 == 0 ? 0.90f : 0.95f);
+            col(s, ASH_LIGHT, (i % 6 == 0 ? 0.8f : 0.45f) * a);
+            s.rectLine(cx + r0 * MathUtils.cos(ang), cy + r0 * MathUtils.sin(ang), cx + R * 0.99f * MathUtils.cos(ang), cy + R * 0.99f * MathUtils.sin(ang), i % 6 == 0 ? 2.2f : 1.3f);
+        }
+        float spin = t * 0.07f;
+        for (int i = 0; i < 12; i++) {                                              // twelve great petals
+            col(s, ASH_LIGHT, 0.7f * a);
+            petal(s, cx, cy, spin + i * TAU / 12f, R * 0.46f, R * 0.88f, 0.21f, 1f, 2.2f, 0f, t, R);
+            col(s, ASH_DIM, 0.55f * a);                                                // and a lesser one between each pair
+            petal(s, cx, cy, spin + (i + 0.5f) * TAU / 12f, R * 0.46f, R * 0.70f, 0.14f, 1f, 1.5f, 0f, t, R);
+        }
+        col(s, ASH_DIM, 0.7f * a);
+        ring(s, cx, cy, R * 0.44f, R, 1f, 0f, 72, 2f, 0f, t, 0);
+        float sr = R * 0.40f, rot = -t * 0.11f;                                    // an eight-pointed star, each point to the third from it, turning against the petals
+        for (int i = 0; i < 8; i++) {
+            float a0 = rot + i * TAU / 8f, a1 = rot + (i + 3) * TAU / 8f;
+            col(s, ASH_LIGHT, 0.7f * a);
+            s.rectLine(cx + sr * MathUtils.cos(a0), cy + sr * MathUtils.sin(a0), cx + sr * MathUtils.cos(a1), cy + sr * MathUtils.sin(a1), 2.0f);
+            col(s, ASH_LIGHT, 0.85f * a);
+            ring(s, cx + sr * MathUtils.cos(a0), cy + sr * MathUtils.sin(a0), R * 0.035f, R, 1f, 0f, 14, 1.8f, 0f, t, 0);
+        }
+        col(s, ASH_LIGHT, 0.95f * a);
+        ring(s, cx, cy, R * 0.17f, R, 1f, t * 0.2f, 40, 2.2f, 0f, t, 0);
+        ring(s, cx, cy, R * 0.095f, R, 1f, -t * 0.3f, 28, 1.8f, 0f, t, 3);
+        ring(s, cx, cy, R * 0.035f, R, 1f, 0f, 14, 2f, 0f, t, 0);
+    }
 }

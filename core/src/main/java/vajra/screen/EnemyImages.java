@@ -148,6 +148,7 @@ public class EnemyImages {
                 oy = (float) Math.cos(time * 151f + e.y) * 3.5f;
                 if (((int) (time * 28f) & 1) == 0) batch.setColor(0.62f, 0.78f, 1f, 1f); else batch.setColor(1f, 1f, 1f, 1f);
             }
+            if (e.wetT > 0f && e.shockT <= 0f) batch.setColor(0.6f, 0.82f, 1f, 1f);                     // a soaked hull is blue-dark and heavy
             batch.draw(sh[c[0]][c[1]], e.x - s / 2 + ox, e.y - s / 2 + oy, s, s);
             batch.setColor(1, 1, 1, 1);
             return;

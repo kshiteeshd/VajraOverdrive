@@ -165,6 +165,9 @@ public final class VitalaBrain {
             }
         }
         float[] b = bend(e, w, gx, gy);
+        dodge(e, w, dt);
+        b[0] += e.dodgeVx;
+        b[1] += e.dodgeVy;
         float k = Math.min(1f, TURN * dt);
         if (e.vState == 2 && e.kind == Enemy.Kind.VAKRA) k = 1f;            // a dart run is not steered, it is thrown
         e.vx += (b[0] - e.vx) * k;
@@ -172,6 +175,49 @@ public final class VitalaBrain {
     }
 
     private static final float[] G = new float[2], S = new float[2], B = new float[2];
+
+    // ---- dodging: a quick unit sidesteps a round that is coming at it --------------------------------------------------------------
+
+    /** How hard each kind can throw itself aside, px/s (Tamra, armoured and slow, does not try). */
+    private static float dodgePower(Enemy.Kind k) {
+        switch (k) {
+            case VAKRA: return 520f;
+            case AURIS: return 460f;
+            case LANCE: return 400f;
+            case HATAKA: return 340f;
+            case MAYAVI: return 240f;
+            default: return 0f;
+        }
+    }
+
+    /** A round of the pilot's that will pass through a unit's own width within 300 px makes it sidestep (a leader or an elite nearly always, the rank and file now and then,
+     *  never twice in 0.45 s, and not in the middle of a dart run or in smoke). The sidestep is added to its flight and dies away. */
+    private static void dodge(Enemy e, World w, float dt) {
+        float k = (float) Math.exp(-5.5f * dt);
+        e.dodgeVx *= k;
+        e.dodgeVy *= k;
+        float power = dodgePower(e.kind);
+        if (power <= 0f || e.dodgeCd > 0f && (e.dodgeCd -= dt) > 0f) return;
+        if (e.routed || e.smoked || e.vState == 2 || e.inRock) return;
+        float skill = e.rank >= 1 || e.elite ? 0.9f : 0.5f, half = Math.max(10f, e.w * 0.5f);
+        int look = Math.min(w.bullets.size(), 120);
+        for (int i = 0; i < look; i++) {
+            vajra.weapon.Bullet b = w.bullets.get(i);
+            if (b.hostile || b.dead) continue;
+            float sp = (float) Math.hypot(b.vx, b.vy);
+            if (sp < 1f) continue;
+            float ux = b.vx / sp, uy = b.vy / sp, rx = e.x - b.x, ry = e.y - b.y, along = rx * ux + ry * uy;
+            if (along < 0f || along > 300f) continue;
+            float cross = ux * ry - uy * rx;
+            if (Math.abs(cross) > half + b.radius + 12f) continue;
+            e.dodgeCd = 0.45f;
+            if (w.fxRng.nextFloat() > skill) return;                            // it did not see it in time
+            float side = cross >= 0f ? 1f : -1f;
+            e.dodgeVx = -uy * side * power * (e.elite ? 1.2f : 1f);
+            e.dodgeVy = ux * side * power * (e.elite ? 1.2f : 1f);
+            return;
+        }
+    }
 
     // ---- the leader's clock: the formation it flies, the trail its column follows -------------------------------------------------
 

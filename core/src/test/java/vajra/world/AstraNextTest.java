@@ -270,4 +270,72 @@ class AstraNextTest {
         hub.astraFor(1, Astra.AKASHA, 1f, new int[0]);
         assertEquals(AstraFlow.LIGHTNING, hub.flow.kind);
     }
+
+    // ---- JALA ------------------------------------------------------------------------------------------------------------------------
+
+    @Test
+    void theFloodCarriesSoaksAndDrownsFoesInReachAndLeavesTheRestAndSpareARuler() {
+        World w = arena();
+        Enemy near = foe(w, 2600 + 220, 2700, 400), far = foe(w, 2600 + 1500, 2700, 400), leader = foe(w, 2600 - 250, 2700, 400);
+        leader.rank = 1;
+        Enemy ruler = foe(w, 2600, 2700 + 300, 5000);
+        ruler.boss = true;
+        w.ship.hp = w.ship.maxHp() * 0.5f;
+        w.flow.startWater(w.ship, 0, 1f, 1f, 3L);
+        float x0 = near.x;
+        run(w, 1.0f);
+        assertTrue(near.wetT > 0f && near.caught > 0f, "the water holds it: soaked, its brain waiting");
+        assertTrue(Math.abs(near.x - x0) > 30f, "and carries it (it has moved " + Math.abs(near.x - x0) + ")");
+        run(w, 3.5f);
+        assertTrue(near.dead, "a common foe drowns");
+        assertTrue(!leader.dead || leader.hp < 400f, "a leader is hurt more slowly");
+        assertEquals(400f, far.hp, 0.001f, "a foe beyond the flood is not touched");
+        assertTrue(ruler.hp > 4000f, "a ruler is hardly touched: " + ruler.hp);
+        assertTrue(w.ship.hp > w.ship.maxHp() * 0.5f, "each foe it takes mends the pilot a little");
+        run(w, 2f);
+        assertFalse(w.flow.active(), "and it is gone");
+    }
+
+    @Test
+    void theFloodSlowsAndSoftensTheRoundsThatFlyIntoIt() {
+        World w = arena();
+        w.flow.startWater(w.ship, 0, 1f, 1f, 3L);
+        run(w, 1.8f);
+        w.spawnEnemyBullet(w.ship.x + 200f, w.ship.y, (float) Math.PI, Bullet.HOSTILE, 1f);
+        Bullet b = w.bullets.get(w.bullets.size() - 1);
+        float v0 = (float) Math.hypot(b.vx, b.vy), d0 = b.damage;
+        run(w, 0.3f);
+        assertTrue(Math.hypot(b.vx, b.vy) < v0 * 0.7f, "water takes the speed out of it");
+        assertTrue(b.damage < d0, "and the sting");
+    }
+
+    @Test
+    void jalaReleaseIsTheFloodNotTheCubeVolley() {
+        World w = arena();
+        foe(w, 2600 + 150, 2700, 900);
+        w.hangar.shards[Astra.JALA] = 5;
+        w.astraSel = Astra.JALA;
+        w.astraBegin();
+        run(w, Astra.WIND_FULL);
+        assertTrue(w.astraLoose());
+        assertEquals(AstraFlow.WATER, w.flow.kind);
+        assertTrue(w.astra.isEmpty(), "no cubes");
+    }
+
+    // ---- BHAIRAVA'S ASH ----------------------------------------------------------------------------------------------------------------
+
+    @Test
+    void theAshCloudSlowsEveryHullInItAndStopsTheBoostAndLiftsWhenItThins() {
+        World w = arena();
+        w.ash.start(w.ship.x, w.ship.y, 700f, 9f);
+        for (int i = 0; i < 60 * 3; i++) w.update(DT, vajra.ship.ShipControls.NONE);
+        assertEquals(AshCloud.MUD, w.ship.mud, 1e-4f, "held slow in the smoke");
+        w.ship.x += 1500f;
+        w.update(DT, vajra.ship.ShipControls.NONE);
+        assertEquals(1f, w.ship.mud, 1e-4f, "free outside it");
+        w.ship.x -= 1500f;
+        for (int i = 0; i < 60 * 8; i++) w.update(DT, vajra.ship.ShipControls.NONE);
+        assertFalse(w.ash.active);
+        assertEquals(1f, w.ship.mud, 1e-4f, "and free when it has gone");
+    }
 }

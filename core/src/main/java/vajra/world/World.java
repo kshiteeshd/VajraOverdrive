@@ -320,6 +320,7 @@ public class World {
 
     /** Make stage s the current one: its ruler, its arena's door, its seal, its kill quota, a fresh gaze. */
     void beginStage(int s) {
+        ash.active = false;
         stage = s;
         boss = null;
         bossDead = false;
@@ -538,6 +539,8 @@ public class World {
         if (victoryT >= 0) victoryT += dt;
         tickVeil(dt);
         death.step(dt, this);
+        ash.step(dt);
+        ship.mud = ash.holds(ship.x, ship.y) ? AshCloud.MUD : 1f;
         shooter = 0; // this frame's hurts are the host's own unless a round claims otherwise
         int chain = score.combo;
         score.update(dt);
@@ -1412,6 +1415,7 @@ public class World {
         if (flow.kind == AstraFlow.AGNI && flow.t < 2.9f) v = Math.max(v, 1.9f);
         if (flow.kind == AstraFlow.LIGHTNING) v = Math.max(v, 1.6f);
         if (flow.kind == AstraFlow.BOULDER) v = Math.max(v, 1.7f);
+        if (flow.kind == AstraFlow.WATER) v = Math.max(v, 1.8f);
         if (flow.kind == AstraFlow.LOTUS) v = Math.max(v, 2.0f);
         if (flow.kind == AstraFlow.VAYU && flow.t < AstraFlow.T_END) v = Math.max(v, Math.max(1.5f, Math.min(2.0f, flow.radius / 330f)));
         if (gazeT > 0f) v = Math.max(v, 1.9f);
@@ -1536,6 +1540,16 @@ public class World {
             if (astraWire != null) astraWire.astra(kind, power, new int[0], 0);
             float[] lo = astraRgb();
             addEffect(Effect.ring(ship.x, ship.y, (180f + 90f * power) * grand, lo[0], lo[1], lo[2]));
+            astraLockCount = 0;
+            return true;
+        }
+        if (kind == Astra.JALA && !cubeVolleys) {                                      // the flood: water goes out from the hull and washes the foes away
+            dropHeldCubes();
+            flow.startWater(ship, 0, dm, power, (long) (clock * 1000f) * 31L + 9L);
+            boons(kind);
+            if (astraWire != null) astraWire.astra(kind, power, new int[0], 0);
+            float[] wt = astraRgb();
+            addEffect(Effect.ring(ship.x, ship.y, (170f + 80f * power) * grand, wt[0], wt[1], wt[2]));
             astraLockCount = 0;
             return true;
         }
@@ -1697,6 +1711,7 @@ public class World {
             return;
         }
         if (kind == Astra.AKASHA) { flow.startLightning(from, seat, dm, power, (long) (clock * 1000f) * 31L + seat); return; }
+        if (kind == Astra.JALA && !cubeVolleys) { flow.startWater(from, seat, dm, power, (long) (clock * 1000f) * 31L + seat); return; }
         if (kind == Astra.PRITHVI) { flow.startBoulders(from, seat, dm, power, (long) (clock * 1000f) * 31L + seat); return; }
         if (kind == Astra.BRAHMA) { flow.startLotus(from, seat, dm, power, (long) (clock * 1000f) * 31L + seat); return; }
         if (ids.length == 0) { // the guest loosed it with nothing locked: the same straight fan, from that hull
@@ -1794,8 +1809,12 @@ public class World {
 
     /** The invocation builds, cubes in flight fly and retire. Rock is never consulted - that is the whole point of them. */
     public final Maya maya = new Maya();
+    /** The old cube volley for Jala, kept for the tests of the cube system (no astra looses cubes any more): the game never sets it. */
+    public boolean cubeVolleys;
     /** The pilot's hull breaking up and being made whole at the lamp: a scene that runs inside the world's own clock (see DeathSeq). */
     public final DeathSeq death = new DeathSeq();
+    /** Bhairava's ash: the grey smoke that slows every hull in it (see AshCloud). */
+    public final AshCloud ash = new AshCloud();
 
     private final float[] camBuf = new float[3];
 

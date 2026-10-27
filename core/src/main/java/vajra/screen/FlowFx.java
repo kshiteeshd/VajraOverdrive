@@ -12,14 +12,14 @@ import vajra.world.World;
  *  effects/astra_wind.png (GUST, SWIRL, WISP, DEBRIS, FUNNEL, BLADE) and effects/astra_agni.png (HELD, BALL, BURST, BURN: the flame that rides a burning foe).
  *  A missing sheet draws nothing, never crashes. */
 final class FlowFx {
-    private static final int FIRE = 0, WIND = 1, AGNI = 2, EARTH = 3, LOTUS = 4, BOLT = 5, PETAL = 6;
+    private static final int FIRE = 0, WIND = 1, AGNI = 2, EARTH = 3, LOTUS = 4, BOLT = 5, PETAL = 6, WATER = 7;
     private final Texture[] tex = {ImageKit.texture("effects/astra_fireflow.png", true), ImageKit.texture("effects/astra_wind.png", true), ImageKit.texture("effects/astra_agni.png", true),
-            ImageKit.texture("effects/astra_earth.png", true), ImageKit.texture("effects/astra_lotus.png", true), ImageKit.texture("effects/astra_lightning.png", true), ImageKit.texture("effects/astra_petal.png", true)};
-    private final TextureRegion[][][] reg = new TextureRegion[7][][];
+            ImageKit.texture("effects/astra_earth.png", true), ImageKit.texture("effects/astra_lotus.png", true), ImageKit.texture("effects/astra_lightning.png", true), ImageKit.texture("effects/astra_petal.png", true), ImageKit.texture("effects/astra_water.png", true)};
+    private final TextureRegion[][][] reg = new TextureRegion[8][][];
 
     FlowFx() {
-        int[] rows = {5, 6, 4, 11, 6, 8, 6};
-        for (int s = 0; s < 7; s++) {
+        int[] rows = {5, 6, 4, 11, 6, 8, 6, 6};
+        for (int s = 0; s < 8; s++) {
             reg[s] = new TextureRegion[rows[s]][8];
             if (tex[s] == null) continue;
             for (int r = 0; r < rows[s]; r++)
@@ -46,12 +46,19 @@ final class FlowFx {
         for (int pass = 0; pass < 2; pass++) {                              // pass 0: light (fire, wind, petals); pass 1: SOLID rock, drawn with ordinary blending so it is stone, not glow
             if (pass == 1) b.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
             for (int i = 0; i < f.n; i++) {
-                if ((f.sheet[i] == 3) != (pass == 1)) continue;
+                if ((f.sheet[i] == 3 || f.sheet[i] == 7) != (pass == 1)) continue;
                 float x = f.px[i], y = f.py[i];
                 if (x < l - 120 || x > l + vw + 120 || y < bt - 120 || y > bt + vh + 120) continue;
                 float u = f.age[i] / f.life[i];
                 int fr = f.fr[i] + (int) (f.age[i] * 14f);
                 float deg = (float) Math.toDegrees(f.ph[i]);
+                if (f.sheet[i] == 7) {                                          // JALA: the flood - lumps of water, foam, curling crests, spray (ordinary blending, a little see-through)
+                    int m = f.mode[i], wf = (int) (f.age[i] * 11f) + f.fr[i];
+                    float al = (m == 9 ? 0.30f : 0.9f) * Math.min(1f, u * 6f) * Math.min(1f, (1f - u) * 2.5f);
+                    float sz = (m == 9 ? 104f : 42f) * f.size[i];
+                    sprite(b, WATER, f.row[i], wf, x, y, sz, f.row[i] == 3 ? deg : 0f, al);
+                    continue;
+                }
                 if (f.sheet[i] == 3) {                                          // PRITHVI: a boulder forming, a boulder, a chunk, a pebble
                     int m = f.mode[i], rot = ((int) (f.aux[i] * 8f / 6.2831853f) % 8 + 8) % 8;
                     if (m == 4) sprite(b, EARTH, 0, Math.min(7, (int) (f.age[i] / 0.25f * 8f)), x, y, 96f * f.size[i], 0f, 1f);
@@ -132,6 +139,10 @@ final class FlowFx {
                 b.setColor(1f, 1f, 1f, 0.35f);                              // and a pale core on top
                 b.draw(r, f.lx[i] - size * 0.3f, f.ly[i] - size * 0.3f, size * 0.3f, size * 0.3f, size * 0.6f, size * 0.6f, 1f, 1f, deg);
             }
+        }
+        for (vajra.enemy.Enemy e : w.enemies) {                             // a soaked foe wears the runnels
+            if (e.wetT <= 0f || e.dead || e.x < l - 80 || e.x > l + vw + 80 || e.y < bt - 80 || e.y > bt + vh + 80) continue;
+            sprite(b, WATER, 5, (int) (time * 10f) + e.netId, e.x, e.y, e.drawSize() * 1.25f, 0f, Math.min(1f, e.wetT) * 0.9f);
         }
         if (f.kind == AstraFlow.LIGHTNING && f.ship != null) lightning(b, f, time);
         for (AstraFlow.Blade bl : f.blades)                                 // a crescent of cutting wind where a foe was cut
