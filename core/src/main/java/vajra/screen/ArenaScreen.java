@@ -171,7 +171,7 @@ public final class ArenaScreen implements FlowState {
             ui.caption.setColor(Template.accentR, Template.accentG, Template.accentB, 0.9f);
             ui.caption.draw(batch, inList ? "ENTER  FLY IT" : "D  OPEN THE CATEGORY", PANEL_X + 28, PANEL_Y + 56);
             ui.caption.setColor(1, 1, 1, 0.5f);
-            ui.caption.draw(batch, "IN FLIGHT: F4 BAR  F5 GOD  F6 PATTERN  F7 RANK  F8 FOES  F9 CLEAR  F10 REFILL  F12 RESET", PANEL_X + 28, PANEL_Y + 34, PANEL_W - 56, Align.left, true);
+            ui.caption.draw(batch, "IN FLIGHT: F4 BAR  F5 GOD  F6 PATTERN  F7 RANK  F8 FOES  F9 CLEAR  F10 REFILL  F2 RESET", PANEL_X + 28, PANEL_Y + 34, PANEL_W - 56, Align.left, true);
             ui.caption.setColor(1, 1, 1, 1);
         }
         Template.keys(ui, batch, UiTheme.FOOT_Y, "W/S", "MOVE", "D", "OPEN", "A", "BACK", "ENTER", "FLY", "ESC", "LEAVE");

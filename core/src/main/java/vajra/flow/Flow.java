@@ -26,6 +26,15 @@ public class Flow implements Screen, InputProcessor {
     private final Map<Integer, Runnable> binds = new HashMap<>(); // keys that work on any state
     private vajra.screen.Ui ui; // optional: headless tests render nothing and leave it null
 
+    private java.util.function.Consumer<FlowState> onTop;      // told whenever a different state becomes the top
+    private java.util.function.IntConsumer keySound;          // a key pressed on a state that does not make its own sounds
+
+    public Flow onTop(java.util.function.Consumer<FlowState> f) { this.onTop = f; return this; }
+
+    public Flow keySound(java.util.function.IntConsumer f) { this.keySound = f; return this; }
+
+    private void announce() { if (onTop != null) onTop.accept(top()); }
+
     /** Hand the Flow the shared UI kit so it can keep that viewport current. */
     public Flow ui(vajra.screen.Ui ui) { this.ui = ui; return this; }
 
@@ -33,6 +42,7 @@ public class Flow implements Screen, InputProcessor {
     public void push(FlowState s) {
         stack.add(s);
         s.enter();
+        announce();
     }
 
     /** Close the top state: it is finished, so exit() then dispose(), exactly once. */
@@ -41,6 +51,7 @@ public class Flow implements Screen, InputProcessor {
         FlowState s = stack.remove(stack.size() - 1);
         s.exit();
         s.dispose();
+        announce();
     }
 
     /** Hard transition: clear the whole stack, then push (title -> play, play -> title). */
@@ -117,6 +128,7 @@ public class Flow implements Screen, InputProcessor {
             return true;
         }
         FlowState t = top();
+        if (t != null && keySound != null && !t.silentKeys()) keySound.accept(keycode);
         return t != null && t.keyDown(keycode);
     }
 

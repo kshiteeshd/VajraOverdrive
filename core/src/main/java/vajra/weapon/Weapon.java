@@ -54,6 +54,7 @@ public class Weapon {
     }
 
     private void fire(float aim, float power, Ship s, World w) {
+        w.snd(vajra.audio.Snd.FIRE, s.x, s.y, def.art.idx, power);
         float dmg = def.damage * power * s.damageMult();
         if (def.beam) {
             float a = w.assistAim(aim, def.aimAssist ? def.aimAssistDeg : 0);

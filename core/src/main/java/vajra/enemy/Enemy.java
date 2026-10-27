@@ -424,6 +424,7 @@ public class Enemy {
                 float dx = hull.x - homeX, dy = hull.y - homeY;
                 if (dx * dx + dy * dy >= wakeRange * wakeRange) return;
                 active = true;
+                world.snd(vajra.audio.Snd.FOE_WAKE, x, y, kind.ordinal(), 0f);
             }
         }
         if (standDown) { goHome(world, dt); return; }                   // (World.holdPosts says who stands down: a unit driven alone never does)
@@ -628,7 +629,7 @@ public class Enemy {
         if (ghost && w.clientSeat) return false;
         if (boss && (bossInvuln || bossHidden)) return false; // stagger beats and blinks eat hits
         parley = false; // struck first: the talking is over
-        if (armoured) amount *= armourFactor(w);
+        if (armoured) { amount *= armourFactor(w); w.snd(vajra.audio.Snd.FOE_HURT_ARMOUR, x, y, 0, 0f); }
         hp = Math.max(0, hp - amount);
         if (boss) bossTook[bossPattern] += amount; // MEMORY: what this pattern cost while it played
         hitFlash = 0.12f; // the hit strobe
@@ -652,6 +653,7 @@ public class Enemy {
         }
         if (boss) return yieldUp(w, owner);                              // (a ruler does not fall: he gives way)
         dead = true;
+        w.snd(vajra.audio.Snd.FOE_DIE, x, y, kind.ordinal(), 0f);
         if (kind == Kind.HATAKA) betray(w); // and once more on the way down
         int prev = w.shooter;
         if (owner != 0) w.shooter = owner; // a guest's volley, resolved here: the kill is theirs
@@ -692,6 +694,7 @@ public class Enemy {
     /** HATAKA's betray burst: a close ring vented evenly, once at half hull and once at death
      *  — the weakest unit is the one you don't carelessly sweep with splash or a ram. */
     private void betray(World w) {
+        w.snd(vajra.audio.Snd.BETRAY, x, y, 0, 0f);
         WeaponDef gun = GUN[Kind.HATAKA.ordinal()];
         for (int i = 0; i < BETRAY_COUNT; i++) {
             float a = (float) (Math.PI * 2 * i / BETRAY_COUNT) + fxAngle();

@@ -28,6 +28,14 @@ public class VajraGame extends Game {
         flow.bind(Input.Keys.F3, () -> vajra.screen.Probe.showFrame = !vajra.screen.Probe.showFrame);   // a frame-time readout (average and worst of the last second) in the corner
         flow.bind(Input.Keys.F11, this::toggleFullscreen);
         flow.bind(Input.Keys.F12, this::cycleWindowed);
+        flow.onTop(this::topChanged);
+        flow.keySound(k -> {                                                  // the menus' own keys: a tap to move, a bell to choose, a soft bell to go back
+            vajra.audio.AudioEngine a = vajra.audio.Audio.get();
+            if (k == Input.Keys.ENTER || k == Input.Keys.SPACE) a.ui("ui_select");
+            else if (k == Input.Keys.ESCAPE) a.ui("ui_back");
+            else if (k == Input.Keys.W || k == Input.Keys.S || k == Input.Keys.A || k == Input.Keys.D || k == Input.Keys.UP || k == Input.Keys.DOWN || k == Input.Keys.LEFT || k == Input.Keys.RIGHT
+                    || k == Input.Keys.Q || k == Input.Keys.E || k == Input.Keys.TAB) a.ui("ui_move");
+        });
         Gdx.input.setInputProcessor(flow); // every key, mouse and wheel event lands on the stack
         setScreen(flow);
         // FULLSCREEN ALWAYS: the game opens on the display's own mode, not the 1920x1080 window.
@@ -36,6 +44,25 @@ public class VajraGame extends Game {
         Gdx.graphics.setFullscreenMode(Gdx.graphics.getDisplayMode());
         vajra.screen.SettingsScreen.applyDisplay(vajra.profile.Profiles.active().settings);   // the pilot's own vsync, frame limit and dialogue speed
         flow.set(new SplashScreen(flow, ui, batch)); // then the main menu
+    }
+
+    /** What the ears do when a different screen comes to the top: the title has its own music, the menus another, a pause lowers the flight's. */
+    private void topChanged(vajra.flow.FlowState top) {
+        vajra.audio.AudioEngine a = vajra.audio.Audio.get();
+        if (top == null) return;
+        String n = top.getClass().getSimpleName();
+        if (n.equals("GameScreen")) { a.setPaused(false); return; }
+        if (n.equals("PauseScreen")) { a.setPaused(true); return; }
+        if (n.equals("SplashScreen")) return;
+        if (n.equals("HomeScreen") || n.equals("ComicScreen") || n.equals("LobbyScreen")) a.screen("title");
+        else a.screen("menu");
+        a.leaveGame();
+    }
+
+    @Override
+    public void render() {
+        super.render();
+        vajra.audio.Audio.get().updateScreens(Gdx.graphics.getDeltaTime());
     }
 
     /** F11: fullscreen on the current display, or back to the windowed size. */
@@ -53,6 +80,7 @@ public class VajraGame extends Game {
 
     @Override
     public void dispose() {
+        vajra.audio.Audio.dispose();
         Net.close(); // first: a quitting guest says BYE while its socket still lives
         if (flow != null) flow.dispose(); // pops (and disposes) every state on the stack
         if (ui != null) ui.dispose();

@@ -65,6 +65,7 @@ public final class LootSystem {
 
     /** Sweep it up: coins pay the purse, shards stock the hangar, pieces complete the blade. */
     public void collect(World world, Pickup p) {
+        world.snd(vajra.audio.Snd.PICKUP, p.x, p.y, p.type, p.variant);
         if (p.type == Pickup.COIN) {
             world.hangar.coins++;
             world.addEffect(Effect.ring(p.x, p.y, 12, 1f, 0.84f, 0.3f));

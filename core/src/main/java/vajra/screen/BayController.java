@@ -38,8 +38,8 @@ public final class BayController {
     public BayUi ui() { return ui; }
 
     public boolean keyDown(int k) {
-        if (k == Input.Keys.TAB) { ui.setRail(ui.rail() + 1); return true; }
-        if (k == Input.Keys.X) { world.hangar.sellShards(); return true; }
+        if (k == Input.Keys.TAB) { ui.setRail(ui.rail() + 1); vajra.audio.Audio.get().ui("ui_page"); return true; }
+        if (k == Input.Keys.X) { world.hangar.sellShards(); vajra.audio.Audio.get().ui("sell"); return true; }
         if (k >= Input.Keys.NUM_1 && k <= Input.Keys.NUM_7) {
             ui.setRail(BayUi.HULLS);
             ui.setHull(k - Input.Keys.NUM_1);
@@ -51,6 +51,7 @@ public final class BayController {
         int dy = (k == Input.Keys.S || k == Input.Keys.DOWN ? 1 : 0) - (k == Input.Keys.W || k == Input.Keys.UP ? 1 : 0);
         if (dx != 0 || dy != 0) {
             move(dx, dy);
+            vajra.audio.Audio.get().ui("ui_move");
             return true;
         }
         if (k == Input.Keys.ENTER || k == Input.Keys.SPACE) return act();
@@ -94,7 +95,7 @@ public final class BayController {
         int i = ui.hitIndex();
         switch (ui.hitRegion()) {
             case BayUi.RAIL: ui.setRail(i); return true;
-            case BayUi.SELL: world.hangar.sellShards(); return true;
+            case BayUi.SELL: world.hangar.sellShards(); vajra.audio.Audio.get().ui("sell"); return true;
             case BayUi.HULL:
                 if (ui.hull() == i && ui.tierFocus() < 0) return actHull(); // a second click acts
                 ui.setHull(i);
@@ -125,8 +126,9 @@ public final class BayController {
     private boolean actHull() {
         int i = ui.hull();
         if (!world.hangar.ownsShip(i)) {
-            if (world.hangar.buyShip(i, world.lokaIndex) <= 0) return true; // short, or the loka has not opened it
-        }
+            if (world.hangar.buyShip(i, world.lokaIndex) <= 0) { vajra.audio.Audio.get().ui("deny"); return true; } // short, or the loka has not opened it
+            vajra.audio.Audio.get().ui("buy");
+        } else vajra.audio.Audio.get().ui("fit");
         world.selectShip(i);
         if (ui.tierFocus() == 0) world.hangar.look[i] = 0;   // the x.1 card wears the first colourway
         return true;
@@ -143,28 +145,31 @@ public final class BayController {
             }
             return true;
         }
-        world.hangar.buy(d, t);
+        if (world.hangar.buy(d, t)) vajra.audio.Audio.get().ui("buy"); else vajra.audio.Audio.get().ui("deny");
         return true;
     }
 
     /** The wheel's one key: an unowned pattern is bought and fitted, an owned one is fitted, and the
      *  one already in the guns is tempered to its next rank. */
     private boolean actWeapon(int i) {
+        vajra.audio.AudioEngine au = vajra.audio.Audio.get();
         if (!world.hangar.weaponOwned[i]) {
-            if (world.hangar.buyWeapon(i)) world.selectWeapon(i);
+            if (world.hangar.buyWeapon(i)) { world.selectWeapon(i); au.ui("buy"); } else au.ui("deny");
             return true;
         }
         if (world.hangar.weaponIndex != i) {
             world.selectWeapon(i);
+            au.ui("fit");
             return true;
         }
-        if (world.hangar.buyRank(i)) world.selectWeapon(i); // refit: the guns now fire the tempered pattern
+        if (world.hangar.buyRank(i)) { world.selectWeapon(i); au.ui(world.hangar.weaponRank[i] >= WeaponDef.RANKS - 1 ? "temper3" : "temper"); } // refit: the guns now fire the tempered pattern
+        else au.ui("deny");
         return true;
     }
 
     /** An astra card: it becomes the one F invokes. */
     private boolean actAstra(int kind) {
-        if (kind >= 0 && kind < vajra.world.Astra.KINDS) world.astraSel = kind;
+        if (kind >= 0 && kind < vajra.world.Astra.KINDS) { world.astraSel = kind; vajra.audio.Audio.get().ui("fit"); }
         return true;
     }
 }

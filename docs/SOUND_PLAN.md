@@ -549,3 +549,20 @@ Everything in this plan is written so it works with any of the three.
 3. **Real Sanskrit:** the bija and Rudram chant are real; do you want a fuller Sanskrit text in the Brahmastra and boss pieces (needs a reviewer who reads Sanskrit)?
 4. **Tonal descent:** happy with one semitone per loka?
 5. **Phase 1 first:** may I start on the Atala score and the leitmotif sheet?
+
+---
+
+## 21. Implementation status (what exists now)
+
+**Route taken (section 19):** the scores are written in `tools/sound/music.py` (raga, tala, form, instrumentation, as notation in `tools/sound/raga.py`) and rendered by the instruments of `tools/sound/synth.py`, a deterministic additive / physical-model synth of the Indian palette with a temple reverb. It is *synthesised from the written scores*, not performed: it will not sound like a human bansuri player. The scores are the commission; replacing the render with recorded performers, or with a sample library, changes only the audio files (same names), not the code.
+
+| Part | State |
+|---|---|
+| Notation, tonics (Sa descends a semitone per loka), ragas, talas | done: `raga.py`, `music.py` |
+| **Music** | title, menu, the opening, **Atala** (Yaman / Teental: drone, drift, combat, crisis, threat and voice stems, one composition at three doubling layas), **Vitala** (Bhairav / Ektal), **Bala** (Marwa / Chautal, Jhaptal, Rupak), **Bhairava** (Bhairav / Dhamar), the lamp and bay (veena, both lokas), the seven pieces of the Vajra and the whole, death, respawn, the descent into Vitala, the two yields |
+| **Effects** (291) | the 36 weapons (two takes each), seven impact materials, the hull, the nine foe kinds (fire, die, wake), the seven astras (invoke, the chanted bija loop, loose, live), pickups, the lamp, the bay, the interface, the ruler's set pieces (Maya forge, the shattering mirror, the doors, the ash), two ambience beds, and 84 notes of sung speech (12 speakers x 7) |
+| **Engine** | `vajra.audio.AudioEngine` (buses under the pilot's volumes, the music stems kept in step, crossfaded by a pace that rises at once and falls after a hold), `Audio` (the shared instance), `Snd` / `SoundSink` (what the world reports); inert with no device |
+| **Wired** | world events (shots, hits, booms, foes, the hull, shield, pickups, the astra rite, cues, lamps, bays, medkit, chests, the piece and the seal), the flight's loops (engine, shield, mud, heartbeat, ash, astra live, ambience), the bay (buy, deny, fit, temper, sell), the menus' keys (move, choose, back), the tour, the wheel, the pause (lowers the music), sung dialogue for scenes and bubbles |
+| Tests | `AudioTest` (every sound the engine asks for exists on disk; the sung table; the world's events; the engine inert without a device); every file was also decoded by libGDX on a real device in a probe run |
+
+**Not yet:** music and ruler pieces for the lokas that do not exist as places yet (Sutala to Patala), the ending, the Brahmastra's long orchestral release and Pashupatastra's held silence beyond the astra effects above, the co-op sounds (K), the accessibility "reduce sharp sounds" switch, an ambience volume slider, and a human or sampled render of the scores. Run `python tools/sound/music.py` and `python tools/sound/sfx.py` to rebuild every file (needs numpy, scipy and ffmpeg).

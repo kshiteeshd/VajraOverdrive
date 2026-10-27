@@ -19,7 +19,7 @@ Settings has a TEST tab; **OPEN THE TEST ARENA** lists 159 scenarios in 13 categ
 | STRESS | sixty foes, a bullet storm, astras on a crowd |
 
 ## Keys in flight
-F4 hide/show the bar, F5 god mode, F6 next pattern (Shift: previous), F7 pattern rank, F8 spawn three of the next foe kind, F9 clear foes, F10 refill (hull, shield, lives, repairs, shards, coins), F12 reset the scenario, ESC back to the list. The usual keys (hull numbers, V/B, F astra) work as in a real run.
+F4 hide/show the bar, F5 god mode, F6 next pattern (Shift: previous), F7 pattern rank, F8 spawn three of the next foe kind, F9 clear foes, F10 refill (hull, shield, lives, repairs, shards, coins), F2 reset the scenario, ESC back to the list. The usual keys (hull numbers, V/B, F astra) work as in a real run.
 
 ## Where it lives
 `world/Arena.java` (the catalogue and the setups), `screen/ArenaScreen.java` (the menu), `GameScreen.arena(...)` (a never-saved flight), `Enemy.dummy` (the targets). `ArenaTest` builds and flies every scenario for two seconds.

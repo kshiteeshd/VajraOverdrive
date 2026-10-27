@@ -93,7 +93,7 @@ public class Bullet {
                 return;
             }
             // enemy fire is stopped by rock too: cover works both ways
-            if (hostile || !pierceWalls) expire(w);
+            if (hostile || !pierceWalls) { if (!hostile) w.snd(vajra.audio.Snd.ROCK, x, y, 0, 0f); expire(w); }
         }
     }
 
@@ -273,6 +273,7 @@ public class Bullet {
         if (hostile) return;
         w.shooter = owner < 0 ? 0 : owner; // an unstamped blast is this seat's own
         if (aoe > 0) {
+            w.snd(vajra.audio.Snd.BOOM, x, y, aoe >= 90f ? 1 : 0, 0f);
             w.areaDamage(x, y, aoe, damage);
             w.addEffect(Effect.ring(x, y, aoe, r, g, b));
         } else {

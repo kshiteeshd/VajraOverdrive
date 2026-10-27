@@ -113,6 +113,7 @@ public class GameScreen implements FlowState, ShipControls {
         this.viewport = new FitViewport(Ui.UI_W, Ui.UI_H, camera);
         this.shopUi = new BayUi(ui);
         this.world = loadWorld();
+        world.sink = vajra.audio.Audio.get();
         this.worldR = new WorldRenderer(batch, ui, world);
         WorldThumb.of(world);   // bake the minimap's land now, while loading, not in the first frame
         this.hud = new Hud(ui);
@@ -165,7 +166,7 @@ public class GameScreen implements FlowState, ShipControls {
     private boolean onKey(int keycode) {
         if (tour != null && tour.active()) {                            // the tour of the instruments: ENTER or SPACE on, ESC ends it
             if (keycode == Input.Keys.ESCAPE) tour.skip();
-            else if (keycode == Input.Keys.ENTER || keycode == Input.Keys.SPACE) tour.next();
+            else if (keycode == Input.Keys.ENTER || keycode == Input.Keys.SPACE) { tour.next(); vajra.audio.Audio.get().ui("ui_tour"); }
             return true;
         }
         if (director.active()) { // a cutscene owns every key: ESC leaves it, anything else reads on
@@ -287,7 +288,7 @@ public class GameScreen implements FlowState, ShipControls {
                 return true;
             case Input.Keys.F9: vajra.world.Arena.clear(world); arenaNote = "FOES CLEARED"; return true;
             case Input.Keys.F10: vajra.world.Arena.refill(world); arenaNote = "REFILLED"; return true;
-            case Input.Keys.F12: restart(); arenaNote = "SCENARIO RESET"; return true;
+            case Input.Keys.F2: restart(); arenaNote = "SCENARIO RESET"; return true;
             default: return false;
         }
     }
@@ -299,7 +300,7 @@ public class GameScreen implements FlowState, ShipControls {
         String line = "TEST ARENA  " + scenario.name + (godMode ? "   [GOD]" : "") + (arenaNote.isEmpty() ? "" : "   -   " + arenaNote);
         ui.caption.draw(batch, line, Ui.UI_W / 2f - ui.measure(ui.caption, line) / 2f, 40);
         ui.caption.setColor(1, 1, 1, 0.5f);
-        String keys = "F4 BAR  F5 GOD  F6 PATTERN  F7 RANK  F8 FOES  F9 CLEAR  F10 REFILL  F12 RESET  ESC BACK";
+        String keys = "F4 BAR  F5 GOD  F6 PATTERN  F7 RANK  F8 FOES  F9 CLEAR  F10 REFILL  F2 RESET  ESC BACK";
         ui.caption.draw(batch, keys, Ui.UI_W / 2f - ui.measure(ui.caption, keys) / 2f, 22);
         ui.caption.setColor(1, 1, 1, 1);
         batch.end();
@@ -346,6 +347,7 @@ public class GameScreen implements FlowState, ShipControls {
     /** Put `nw` in play (a restart): its bay controller, the thumb of its land. The renderer's land is the campaign world's, which every run shares. */
     private void swapWorld(World nw) {
         world = nw;
+        world.sink = vajra.audio.Audio.get();
         WorldThumb.of(world);
         shop = new BayController(world, shopUi);
         director.skip();
@@ -417,10 +419,12 @@ public class GameScreen implements FlowState, ShipControls {
             if (shop.isOpen() || runEnded() || director.active()) dropWheel();
             else {
                 wheelHold += delta;
-                if (!wheelOpen && wheelHold >= WeaponWheel.OPEN_AFTER) wheelOpen = true;
+                if (!wheelOpen && wheelHold >= WeaponWheel.OPEN_AFTER) { wheelOpen = true; vajra.audio.Audio.get().ui("ui_wheel_open"); }
                 if (wheelOpen) {
                     Vector2 m = ui.at(Gdx.input.getX(), Gdx.input.getY());
-                    wheelHover = WeaponWheel.pick(WeaponWheel.owned(world.hangar).length, m.x - WeaponWheel.CX, m.y - WeaponWheel.CY);
+                    int hv = WeaponWheel.pick(WeaponWheel.owned(world.hangar).length, m.x - WeaponWheel.CX, m.y - WeaponWheel.CY);
+                    if (hv != wheelHover && hv >= 0) vajra.audio.Audio.get().ui("ui_wheel_tick");
+                    wheelHover = hv;
                 }
             }
         }
@@ -447,7 +451,7 @@ public class GameScreen implements FlowState, ShipControls {
                     simAcc -= STEP;
                     steps++;
                 }
-                if (world.shopReady()) shop.open(); // docking just finished: the hangar comes up
+                if (world.shopReady()) { shop.open(); world.snd(vajra.audio.Snd.DOCK, world.ship.x, world.ship.y, 0, 0f); } // docking just finished: the hangar comes up
             }
         }
         // The session rides the run: hosts and guests pump the co-op planes on their world's
@@ -496,6 +500,8 @@ public class GameScreen implements FlowState, ShipControls {
             }
         }
         if (tour != null) tour.update(delta);
+        vajra.audio.Audio.get().update(world, delta, director.active(), shop.isOpen(), tour != null && tour.active());
+        singScene();
         stageCues(); // after the live camera is set, so a scene eases out of what was on screen
         director.steer(delta, camera, world); // a cutscene, if one plays, takes the camera
         camera.update();
@@ -504,6 +510,23 @@ public class GameScreen implements FlowState, ShipControls {
     /** Story cues the world raised become cutscenes, one at a time, when nothing else has the
      *  screen. A shared race has no pause to give, so its cues are simply dropped. */
     private static boolean hintsOn(vajra.profile.Profile p) { return p.settings.hints && vajra.Settings.tutorialAllowed; }
+
+    private String sung;   // the line of a scene being sung now (so each line is begun once)
+
+    /** A scene's words are sung (docs/SOUND_PLAN.md 1.6): when a new line begins to be typed, the speaker's instrument begins to sing it. */
+    private void singScene() {
+        vajra.scene.CutscenePlayer p = director.player();
+        if (p == null) { sung = null; return; }
+        vajra.scene.Shot sh = p.shot();
+        if (sh == null || p.text().isEmpty()) return;
+        String full = p.fullText();
+        if (full.equals(sung)) return;
+        sung = full;
+        vajra.audio.Audio.get().sing(sh.player ? "PILOT" : sh.speaker == null ? "INDRA" : sh.speaker, full, vajra.scene.CutscenePlayer.CPS * vajra.scene.CutscenePlayer.speed);
+    }
+
+    @Override
+    public boolean silentKeys() { return true; }
 
     private void stageCues() {
         if (vajra.net.Net.session != null) { // no pause to give: settle what a scene would have settled
@@ -521,8 +544,11 @@ public class GameScreen implements FlowState, ShipControls {
                 vajra.profile.Profiles.save();
             }
         }
+        vajra.audio.Audio.get().scene(cue, true);
+        sung = null;
         try {
             director.start(vajra.scene.Scenes.build(cue, world), camera, () -> {
+            vajra.audio.Audio.get().scene(cue, false);
             vajra.scene.Scenes.finish(cue, world);
             if (cue == vajra.world.Cue.OPENING && hintsOn(pilot)) {   // after the opening of every new game the HUD and the controls are taught
                 if (tour == null) tour = new HudTour(ui);
@@ -699,6 +725,7 @@ public class GameScreen implements FlowState, ShipControls {
 
     @Override
     public void dispose() {
+        vajra.audio.Audio.get().leaveGame();
         if (shatter != null) shatter.dispose();
         if (vajraPanel != null) vajraPanel.dispose();
         if (vajra.net.Net.session == null && scenario == null) vajra.profile.Profiles.saveRun(world); // closed mid-flight: parked

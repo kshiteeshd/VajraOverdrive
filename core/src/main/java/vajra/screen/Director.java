@@ -36,6 +36,9 @@ public final class Director {
 
     public boolean active() { return player != null; }
 
+    /** The scene being played, for the ears (the sung lines); null when none. */
+    public CutscenePlayer player() { return player; }
+
     /** `onDone` runs when the scene is over, however it ended. */
     public void start(List<Shot> shots, OrthographicCamera cam, Runnable onDone) {
         if (shots.isEmpty()) {

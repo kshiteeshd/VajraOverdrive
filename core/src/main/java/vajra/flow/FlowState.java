@@ -11,6 +11,9 @@ package vajra.flow;
  *  Lifecycle and resize default to no-ops and input defaults to "not handled" — override
  *  only what a given state needs. */
 public interface FlowState {
+    /** True for a state that makes its own sounds for its keys (a flight): the others get the menu's tick, bell and soft bell. */
+    default boolean silentKeys() { return false; }
+
     default void enter() {}
     default void exit() {}
 

@@ -146,6 +146,7 @@ public class World {
     /** A person says a few short lines over their hull while the world keeps moving. */
     public void say(Enemy who, String... lines) {
         speech.add(new Speech(who, lines));
+        if (sink != null && lines.length > 0) sink.say(who.boss ? (who.vitala ? "BHAIRAVA" : "BALA") : who.voiceName == null ? "VOICE" : who.voiceName, String.join(" ", lines));
     }
 
     /** A title and a line on the HUD, for a few seconds. */
@@ -472,6 +473,14 @@ public class World {
 
     public void cue(Cue c) {
         cues.add(c);
+        snd(vajra.audio.Snd.CUE, 0f, 0f, c.ordinal(), 0f);
+    }
+
+    /** The ears, if any: told what happened (never asked). */
+    public vajra.audio.SoundSink sink;
+
+    public void snd(int ev, float x, float y, int a, float b) {
+        if (sink != null) sink.event(ev, x, y, a, b);
     }
 
     public World() {
@@ -528,6 +537,7 @@ public class World {
 
     /** Closing the hangar parks that bay as SITTING, so it cannot reopen until you fly out. */
     public void closeDocked() {
+        snd(vajra.audio.Snd.BAY_CLOSE, ship.x, ship.y, 0, 0f);
         docking.closeDocked();
     }
 
@@ -721,6 +731,7 @@ public class World {
         if (c.open) return;
         c.open = true;
         c.openT = 0f;
+        snd(vajra.audio.Snd.CHEST, c.x, c.y, 0, 0f);
         Random rng = new Random(Float.floatToIntBits(c.x) * 31L + Float.floatToIntBits(c.y));
         int coins = Chest.coins(c.loka, rng), item = Chest.item(c.loka, rng);
         for (int i = 0; i < Math.min(coins, 14); i++) {                       // the purse bursts out, the rest goes straight in
@@ -798,6 +809,7 @@ public class World {
     private void collectCheckpoint(Checkpoint c) {
         if (c.collected || !c.touches(ship.x, ship.y)) return;
         c.collected = true;
+        snd(vajra.audio.Snd.LAMP, c.x, c.y, 0, 0f);
         if (c.y >= Hataki.Y0) quietT = 6f;  // a shrine of Vitala hushes the band: no current, no flame, for six seconds
         respawnCp = c;
         score.add(Score.CHECKPOINT);
@@ -1201,6 +1213,7 @@ public class World {
                 b.detonate(this);
                 return;
             }
+            snd(vajra.audio.Snd.HIT, b.x, b.y, b.def == null ? 0 : b.def.art.idx, 0f);
             e.hitVx = b.vx;
             e.hitVy = b.vy;
             boolean killed = e.hurt(b.damageTo(e), this);
@@ -1273,6 +1286,7 @@ public class World {
         if (e.contactCd <= 0) {
             e.contactCd = RAM_CD;
             shooter = seat;
+            snd(vajra.audio.Snd.RAM, e.x, e.y, 0, 0f);
             e.hurt(RAM, this);
         }
     }
@@ -1502,6 +1516,7 @@ public class World {
         if (!astraReady()) return false;
         astraKind = loadedAstra();
         astraInvoking = true;
+        snd(vajra.audio.Snd.ASTRA_INVOKE, ship.x, ship.y, astraKind, 0f);
         astraCharge = 0;
         astraLockCount = 0;
         ship.winding = true;
@@ -1516,6 +1531,7 @@ public class World {
     /** Give up the invocation without loosing it: nothing is spent. A death, a pause, a hangar, a scene. */
     public void astraCancel() {
         if (!astraInvoking) return;
+        snd(vajra.audio.Snd.ASTRA_CANCEL, ship.x, ship.y, 0, 0f);
         astraInvoking = false;
         astraCharge = 0;
         astraLockCount = 0;
@@ -1545,6 +1561,7 @@ public class World {
             return false;
         }
         astraCharge = 0;
+        snd(vajra.audio.Snd.ASTRA_LOOSE, ship.x, ship.y, kind, 0f);
         float power = Astra.power(charge), dm = Astra.damageMult(power);
         astraCd = Astra.COOLDOWN;
         hitStop = RELEASE_FREEZE * (0.35f + 0.65f * power);
@@ -1896,6 +1913,7 @@ public class World {
     public boolean useMedkit() {
         if (medkits <= 0 || ship.hp >= ship.maxHp() || runEnded()) return false;
         medkits--;
+        snd(vajra.audio.Snd.MEDKIT, ship.x, ship.y, 0, 0f);
         ship.hp = Math.min(ship.maxHp(), ship.hp + ship.maxHp() * MEDKIT_HEAL);
         addEffect(Effect.ring(ship.x, ship.y, 70, 0.4f, 1f, 0.55f));
         addEffect(Effect.ring(ship.x, ship.y, 38, 0.85f, 1f, 0.9f));
@@ -2158,6 +2176,9 @@ public class World {
      *  dmgScale is the loka's fire multiplier — a deeper band bites harder. */
     public void spawnEnemyBullet(float x, float y, float angle, WeaponDef def, float dmgScale) {
         if (bullets.size() >= 300) return;
+        int gun = -1;
+        for (int k = 0; k < Enemy.GUN.length; k++) if (Enemy.GUN[k] == def) gun = k;
+        snd(vajra.audio.Snd.FOE_FIRE, x, y, gun, 0f);
         Bullet b = bulletPool.obtain();
         b.init(x, y, angle, def, 1f, dmgScale, true);
         bullets.add(b);
@@ -2320,6 +2341,8 @@ public class World {
         for (int i = 0; i < 40; i++) debris(b.x, b.y, 300, 1f, 0.88f, 0.4f);
         hangar.coins += Balance.purse(stage);                                  // the ruler's purse: its share of the loka's budget
         dropLoot(b);                                                           // and the piece, which comes to the hull of itself
+        snd(vajra.audio.Snd.PIECE_LIFT, b.x, b.y, 0, 0f);
+        snd(vajra.audio.Snd.SEAL, axisX, b.y, 0, 0f);
         for (int c = sealC0; c <= sealC1; c++) sealMap.set(c, sealRow, TileMap.EMPTY);
         wallVersion++;                                                          // the baked wall chunks must be redone
         pruneRooted();                                                          // what grew from the seal falls with it

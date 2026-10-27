@@ -204,10 +204,12 @@ public class Ship {
             trauma = Math.min(1, trauma + 0.3f);
             dipT = DIP_TIME;
             w.addEffect(Effect.ring(x, y, 40, 0.5f, 0.8f, 1f)); // ripple across the bubble
+            if (this == w.ship) w.snd(vajra.audio.Snd.SHIELD_HIT, x, y, 0, amount);
             return;
         }
         float actual = amount * (1f - def.damageReduction); // tank hulls ignore a fraction
         hp -= actual;
+        if (this == w.ship) w.snd(hp <= 0 ? vajra.audio.Snd.DEATH : vajra.audio.Snd.HULL_HIT, x, y, 0, actual);
         invuln = HIT_GAP;
         hitT = 0; // every landing re-punches the forged hit clip from its first frame
         trauma = Math.min(1, trauma + 0.6f);
