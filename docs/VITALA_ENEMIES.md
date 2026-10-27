@@ -134,3 +134,7 @@ ring of coins that hop in a wave). They are in `assets/enemies/vitala/` next to 
 `tools/enemy_art/vitala.py` holds the designs (the kit, a second palette, a flame crown, a cinder death), `vitala_boss.py` the boss;
 `python tools/gen_enemy_sheets.py vitala` writes `assets/enemies/vitala/*.png`; `tools/enemy_art/vpreview.py` / `bpreview.py` make the contact
 sheets. `EnemyImages(loka)` loads the loka's folder, so Atala is untouched.
+
+## Tougher, and no flight (after playtest)
+- **Hull:** every Vitala unit (not the ruler) carries `Balance.VITALA_HULL` (x2.1) on top of its loka's 1.35 and its band's grade; a leader (rank 1) a further x1.3. A Vakra goes from about 90 to about 190 hull, a leader to about 250. Coins are unchanged (they follow the loka's table).
+- **No rout:** when a leader falls its followers close ranks under the nearest senior, or, with none left, are **enraged**: x1.35 speed, x1.3 damage, and they no longer hold to their post's engage range. (A ruler yielding still dismisses his retinue: that is the story's beat, not a flight.)

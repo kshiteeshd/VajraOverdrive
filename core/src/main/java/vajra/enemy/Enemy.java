@@ -217,6 +217,8 @@ public class Enemy {
     public boolean ghost, gone, seen;
     public float gx, gy;
     public boolean routed;
+    /** Vitala's answer to a fallen leader: not flight but fury (faster, harder-hitting, and it no longer holds to its post). */
+    public boolean enraged;
     public float routAge; // seconds since this unit started running
     public boolean betrayed; // HATAKA: the betray ring has already vented at half hull
     public boolean dead;

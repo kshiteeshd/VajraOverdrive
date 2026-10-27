@@ -1343,6 +1343,7 @@ public class World {
         int own = lokaAt(e.spawnY);                                               // the loka it STANDS in, not the deepest one the pilot has reached
         float ramp = e.boss ? 1f : Balance.ramp(own, regionIndexAt(e.spawnY));   // and the band grades it again: a loka teaches before it tests
         float hp = LokaTable.at(own).hpScale * ramp;
+        if (own == 1 && campaign && !e.boss && !e.voice) hp *= Balance.VITALA_HULL * (e.rank > 0 ? Balance.VITALA_LEADER : 1f);   // Vitala's units are tempered in the forge-lands
         e.hp = e.maxHp = e.maxHp * hp;
         e.dispHp = e.maxHp;
         e.dmgScale = LokaTable.at(own).dmgScale * Balance.rampFire(own, regionIndexAt(e.spawnY));

@@ -37,6 +37,8 @@ public final class VitalaBrain {
     public static final float LEASH = 480f, FOLLOWER_LEASH = 600f;
     /** A court takes the fight to the hull only while the hull is this near its post; beyond it, it holds its formation at the post. */
     public static final float ENGAGE = 900f;
+    /** A unit whose leader has fallen turns on the hull: this much faster and this much harder. */
+    public static final float ENRAGE_SPEED = 1.35f, ENRAGE_DAMAGE = 1.3f;
     private static final float TRAIL_DT = 0.15f, TURN = 5f, GAIN = 2.4f, ROUT_T = 2.5f, ROUT_SPEED = 190f;
 
     public static final WeaponDef EMBER = WeaponDef.mk("agneya ember").speed(340).damage(10).bulletSize(6).life(3.2f).colour(1f, 0.5f, 0.15f);
@@ -105,11 +107,16 @@ public final class VitalaBrain {
         float ux = dx / dist, uy = dy / dist;
         e.facing = (float) Math.atan2(dy, dx);
         e.clockT += dt;
-        if (e.commander != null && e.commander.dead && !e.routed) {
-            e.routed = true;
-            e.routAge = 0f;
+        if (e.commander != null && e.commander.dead && !e.routed) {          // the leader has fallen: Vitala's units do not run, they close ranks under another or turn on the hull
+            e.commander = findSenior(e, w);
+            if (e.commander == null && !e.enraged) {
+                e.enraged = true;
+                e.dmgScale *= ENRAGE_DAMAGE;
+                w.addEffect(Effect.ring(e.x, e.y, 70, 1f, 0.25f, 0.1f));
+                w.addEffect(Effect.ring(e.x, e.y, 36, 1f, 0.7f, 0.3f));
+            }
         }
-        float cruise = e.speed * (e.rank > 0 ? 1.15f : 1f) * (e.hp < e.maxHp * 0.3f ? 1.25f : 1f);
+        float cruise = e.speed * (e.rank > 0 ? 1.15f : 1f) * (e.hp < e.maxHp * 0.3f ? 1.25f : 1f) * (e.enraged ? ENRAGE_SPEED : 1f);
         if (e.kind == Enemy.Kind.BHAVI) cruise *= 0.85f;                    // Tamra is heavy
 
         float gx = 0f, gy = 0f;
@@ -306,7 +313,7 @@ public final class VitalaBrain {
     private static float[] stalk(Enemy e, World w, Ship hull, float dist, float ux, float uy, float cruise, float t) {
         float tx, ty;
         float engaged = (float) Math.hypot(hull.x - e.spawnX, hull.y - e.spawnY);
-        if (e.sentry || engaged > ENGAGE) {                                  // a post, or a hull still too far to be worth leaving it for
+        if (e.sentry || (engaged > ENGAGE && !e.enraged)) {                                  // a post, or a hull still too far to be worth leaving it for
             tx = e.homeX + 30f * (float) Math.sin(t * 0.7f + e.phase);
             ty = e.homeY + 22f * (float) Math.cos(t * 0.5f + e.phase);
         } else if (e.kind == Enemy.Kind.BHAVI) {                             // Tamra: in front of the shooters, then at the hull

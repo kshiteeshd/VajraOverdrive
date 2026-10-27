@@ -28,6 +28,8 @@ public final class Balance {
 
     /** Hull and fire multiplier at the first and last band of a loka, around 1.0 at its middle. */
     public static final float RAMP_LOW = 0.88f, RAMP_HIGH = 1.12f;
+    /** Vitala's own hull multiplier, on top of its loka's: its units are forge-tempered (the first loka that hurts), a leader more so. */
+    public static final float VITALA_HULL = 2.1f, VITALA_LEADER = 1.3f;
 
     /** Coins a thorough clear of loka `l` pays. */
     public static double gross(int l) {

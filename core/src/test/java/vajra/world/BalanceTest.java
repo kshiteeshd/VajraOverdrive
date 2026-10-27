@@ -61,7 +61,8 @@ class BalanceTest {
             n[l]++;
         }
         for (int l = 0; l < 2; l++) {
-            assertEquals(LokaTable.at(l).hpScale, hp[l] / n[l], LokaTable.at(l).hpScale * 0.05, LokaTable.at(l).name + " hull grade averages the loka's");
+            double want = LokaTable.at(l).hpScale * (l == 1 ? Balance.VITALA_HULL : 1.0);   // Vitala's units carry the forge's own multiplier on top
+            assertEquals(want, hp[l] / n[l], want * 0.05, LokaTable.at(l).name + " hull grade averages the loka's");
             assertEquals(LokaTable.at(l).dmgScale, fire[l] / n[l], LokaTable.at(l).dmgScale * 0.05, LokaTable.at(l).name + " fire grade averages the loka's");
         }
     }

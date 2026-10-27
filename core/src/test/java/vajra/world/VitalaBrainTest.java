@@ -153,7 +153,7 @@ class VitalaBrainTest {
     }
 
     @Test
-    void followersTakeTheLeadersFormationAndRoutWhenItFalls() {
+    void followersTakeTheLeadersFormationAndTurnOnTheHullWhenItFalls() {
         World w = arena();
         Enemy lead = place(w, Enemy.Kind.AURIS, 0, 500);
         lead.rank = 1;
@@ -171,7 +171,10 @@ class VitalaBrainTest {
         assertTrue(lead.form == VitalaBrain.formsOf(Enemy.Kind.AURIS)[0], "a leader opens in its kind's first formation");
         lead.dead = true;
         w.update(1 / 60f, VitalaMechanicsTest.idle());
-        for (Enemy x : f) assertTrue(x.routed, "a leader's fall routs the unit that followed it");
+        for (Enemy x : f) {
+            assertFalse(x.routed, "Vitala's units do not run");
+            assertTrue(x.enraged || (x.commander != null && !x.commander.dead), "a leader's fall enrages the unit that followed it, or it closes ranks under another");
+        }
     }
 
     @Test
