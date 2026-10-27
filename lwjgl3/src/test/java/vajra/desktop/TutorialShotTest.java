@@ -54,9 +54,9 @@ class TutorialShotTest {
                     for (int i = 0; i < 40; i++) flow.render(1 / 60f);
                     ok[0] = vajra.profile.Profiles.active().seen(vajra.profile.Profile.BEAT_TOUR);
                     float y0 = w.ship.y;
-                    for (int step = 0; step < 9; step++) {
+                    for (int step = 0; step < 10; step++) {
                         for (int i = 0; i < 30; i++) flow.render(1 / 60f);
-                        if (step == 0 || step == 3 || step == 4 || step == 6 || step == 8) shot("build/tour-" + step + ".png");
+                        if (step == 0 || step == 3 || step == 6 || step == 8 || step == 9) shot("build/tour-" + step + ".png");
                         flow.keyDown(Input.Keys.ENTER);
                     }
                     for (int i = 0; i < 20; i++) flow.render(1 / 60f);

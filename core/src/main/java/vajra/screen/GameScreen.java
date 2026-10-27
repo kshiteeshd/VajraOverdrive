@@ -440,11 +440,11 @@ public class GameScreen implements FlowState, ShipControls {
         }
         director.start(vajra.scene.Scenes.build(cue, world), camera, () -> {
             vajra.scene.Scenes.finish(cue, world);
-            if (cue == vajra.world.Cue.OPENING && hintsOn(pilot) && !pilot.seen(vajra.profile.Profile.BEAT_TOUR)) {   // after the opening, a new pilot is shown the instruments
-                pilot.see(vajra.profile.Profile.BEAT_TOUR);
-                vajra.profile.Profiles.save();
+            if (cue == vajra.world.Cue.OPENING && hintsOn(pilot)) {   // after the opening of every new game the keys are shown; a pilot's first time (or one who asked again) is shown the instruments first
+                boolean full = !pilot.seen(vajra.profile.Profile.BEAT_TOUR);
+                if (full) { pilot.see(vajra.profile.Profile.BEAT_TOUR); vajra.profile.Profiles.save(); }
                 if (tour == null) tour = new HudTour(ui);
-                tour.begin();
+                tour.begin(full);
             }
         });
     }
