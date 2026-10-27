@@ -147,6 +147,7 @@ public class Flow implements Screen, InputProcessor {
     @Override
     public boolean touchDown(int x, int y, int pointer, int button) {
         FlowState t = top();
+        if (t != null && keySound != null && !t.silentKeys()) keySound.accept(-1);
         return t != null && t.touchDown(x, y, pointer, button);
     }
 

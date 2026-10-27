@@ -31,10 +31,11 @@ public class VajraGame extends Game {
         flow.onTop(this::topChanged);
         flow.keySound(k -> {                                                  // the menus' own keys: a tap to move, a bell to choose, a soft bell to go back
             vajra.audio.AudioEngine a = vajra.audio.Audio.get();
-            if (k == Input.Keys.ENTER || k == Input.Keys.SPACE) a.ui("ui_select");
+            if (k == -1 || k == Input.Keys.ENTER || k == Input.Keys.SPACE) a.ui("ui_select");                 // a click or ENTER: on to the next
             else if (k == Input.Keys.ESCAPE) a.ui("ui_back");
-            else if (k == Input.Keys.W || k == Input.Keys.S || k == Input.Keys.A || k == Input.Keys.D || k == Input.Keys.UP || k == Input.Keys.DOWN || k == Input.Keys.LEFT || k == Input.Keys.RIGHT
-                    || k == Input.Keys.Q || k == Input.Keys.E || k == Input.Keys.TAB) a.ui("ui_move");
+            else if (k == Input.Keys.W || k == Input.Keys.S || k == Input.Keys.UP || k == Input.Keys.DOWN) a.ui("ui_move");   // along a list
+            else if (k == Input.Keys.A || k == Input.Keys.D || k == Input.Keys.LEFT || k == Input.Keys.RIGHT) a.ui("ui_adjust");   // a value
+            else if (k == Input.Keys.Q || k == Input.Keys.E || k == Input.Keys.TAB) a.ui("ui_tab");                       // a tab
         });
         Gdx.input.setInputProcessor(flow); // every key, mouse and wheel event lands on the stack
         setScreen(flow);
@@ -52,10 +53,8 @@ public class VajraGame extends Game {
         if (top == null) return;
         String n = top.getClass().getSimpleName();
         if (n.equals("GameScreen")) { a.setPaused(false); return; }
-        if (n.equals("PauseScreen")) { a.setPaused(true); return; }
         if (n.equals("SplashScreen")) return;
-        if (n.equals("HomeScreen") || n.equals("ComicScreen") || n.equals("LobbyScreen")) a.screen("title");
-        else a.screen("menu");
+        a.screen(n.equals("PauseScreen") ? "pause" : "title");          // the title, the settings and every menu share one music; the pause has its own
         a.leaveGame();
     }
 

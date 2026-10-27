@@ -36,8 +36,18 @@ TALAS = {
 }
 
 
-def bol_sound(bol, sa):
+def bol_sound(bol, sa, kit='tabla'):
     f = sa * 2.0
+    if kit == 'dholak':                                        # the folk drum and the clay pot: warmer, rounder, darker than the tabla
+        if bol in ('PK', 'dha'):
+            return S.dholak(sa * 1.0, 0.45)
+        if bol == 'dhin':
+            return S.dholak(sa * 1.2, 0.35)
+        if bol in ('tin', 'ta', 'na', 'tun'):
+            return S.ghatam(sa * 2.4, 0.3) * 0.9
+        if bol == 'ge':
+            return S.dholak(sa * 0.7, 0.4)
+        return S.ghatam(sa * 3.2, 0.12) * 0.6
     if bol == 'PK':
         return S.pakhawaj(sa * 0.55, 0.9)
     if bol in ('dha',):
@@ -59,7 +69,7 @@ def bol_sound(bol, sa):
     raise ValueError(bol)
 
 
-def pulse(mix, tala, sa, beat_s, cycles, start=0.0, gain=1.0, density=1.0, accent_sa=None):
+def pulse(mix, tala, sa, beat_s, cycles, start=0.0, gain=1.0, density=1.0, accent_sa=None, kit='tabla'):
     """The theka over `cycles` cycles; density < 1 thins it (only the first beat of each group and the sam)."""
     T = TALAS[tala]
     cache = {}
@@ -67,7 +77,7 @@ def pulse(mix, tala, sa, beat_s, cycles, start=0.0, gain=1.0, density=1.0, accen
         for b, bol in enumerate(T['bols']):
             t = start + (c * T['beats'] + b) * beat_s
             if bol not in cache:
-                cache[bol] = bol_sound(bol, sa)
+                cache[bol] = bol_sound(bol, sa, kit)
             sam = (b == 0)
             if density < 1.0 and not sam and (b % 4 != 0 and b != T['khali']):
                 continue
@@ -134,9 +144,11 @@ def echo(notes, shift_beats, octave=1):
 
 
 # ============================================================================================================================ the explore pieces
-def explore(name, sa, tala, cycles_text, raga_voice='a'):
+def explore(name, sa, tala, cycles_text, raga_voice='a', pal=None):
     """Render the six stems of a loka's explore music: drone, drift, combat, crisis, threat, voice.
-    One written composition (`cycles_text`, one string per cycle) is played at three layas that double: the same notes, twice and four times as fast."""
+    One written composition (`cycles_text`, one string per cycle) is played at three layas that double: the same notes, twice and four times as fast.
+    `pal` is the loka's palette: which instrument leads at each pace and what keeps the time, so each loka sounds like itself."""
+    pal = pal or {}
     T = TALAS[tala]
     B = T['beats']
     C = len(cycles_text)
@@ -144,69 +156,70 @@ def explore(name, sa, tala, cycles_text, raga_voice='a'):
     notes = parse(comp, sa)
     beats = B * C
     drift_beat = LOOP / beats
+    kit = pal.get('kit', 'tabla')
+    lead_d, lead_c, lead_x = pal.get('drift', S.bansuri), pal.get('combat', S.sarod), pal.get('crisis', S.sarod)
+    shadow = pal.get('shadow', S.sarangi)
+    wet = pal.get('wet', 0.3)
+    damp = pal.get('damp', 4500.0)
     stems = {}
 
-    # drone: tanpura only, with a low bowl that breathes
+    # the drone: the tanpura alone, one low bowl breathing under it
     m = S.Mix(LOOP)
     tanpura_bed(m, sa, LOOP)
-    m.add(S.bowl(sa, 12.0), 0.0, 0.18)
-    m.add(S.bowl(sa * 1.5, 12.0), 30.0, 0.1)
-    m.reverb(0.35, 3.0)
+    m.add(S.bowl(sa, 12.0), 0.0, 0.14)
+    m.add(S.bowl(sa * 1.5, 12.0), 30.0, 0.08)
+    m.reverb(0.3, 3.0, damp)
     stems['drone'] = m.loop_fold()
 
-    # DRIFT (vilambit): a bansuri breathes the composition with long glides; the veena answers it far off; one pakhawaj stroke on each sam
+    # DRIFT (vilambit): one voice, singing the composition, with the long glides of an alap; the time is only a low stroke on each sam
     m = S.Mix(LOOP)
-    play(m, [type(n)(n.f, n.start, n.dur, True if i % 2 == 0 else n.glide, n.gamaka, n.name, n.octave) for i, n in enumerate(notes)], drift_beat, S.bansuri, gain=0.7, pan=-0.1, breath=0.2)
-    play(m, echo(notes, 3.0, 2.0), drift_beat, S.veena, gain=0.22, pan=0.4, decay=2.4)
+    glide = [type(n)(n.f, n.start, n.dur, True if i % 2 == 0 else n.glide, n.gamaka, n.name, n.octave) for i, n in enumerate(notes)]
+    play(m, glide, drift_beat, lead_d, gain=0.85, pan=0.0, **pal.get('drift_kw', {}))
     for c in range(C):
-        m.add(S.pakhawaj(sa * 0.55, 1.2), c * B * drift_beat, 0.5)
-    m.reverb(0.4, 3.2)
+        m.add(pal.get('sam', lambda: S.pakhawaj(sa * 0.55, 1.2))(), c * B * drift_beat, 0.4)
+    m.reverb(wet + 0.05, 3.0, damp)
     stems['drift'] = m.loop_fold()
 
-    # COMBAT (madhya): the sarod plays the gat, the bansuri doubles it softly, the tabla keeps the theka, the santoor echoes a beat later
+    # COMBAT (madhya): the lead plays the composition at twice the pace, the drum keeps the theka lightly. Nothing else.
     beat_c = drift_beat / 2.0
     m = S.Mix(LOOP)
-    play(m, notes, beat_c, S.sarod, gain=0.72, pan=-0.15, rep=2, span=beats, decay=0.9)
-    play(m, notes, beat_c, S.bansuri, gain=0.28, pan=0.1, rep=2, span=beats, breath=0.12)
-    play(m, echo(notes, 1.0, 2.0), beat_c, S.santoor, gain=0.18, pan=0.45, rep=2, span=beats)
-    pulse(m, tala, sa, beat_c, C * 2, gain=0.7, density=0.6, accent_sa=0.3)
-    m.reverb(0.28, 2.4)
+    play(m, notes, beat_c, lead_c, gain=0.85, pan=0.0, rep=2, span=beats, **pal.get('combat_kw', {}))
+    pulse(m, tala, sa, beat_c, C * 2, gain=0.55, density=0.5, accent_sa=0.0, kit=kit)
+    m.reverb(wet - 0.08, 2.2, damp)
     stems['combat'] = m.loop_fold()
 
-    # CRISIS (drut): the ornamented gat at four times the pace, the whole theka, kartal on every beat, a nagara on each sam, the sarangi cries above
+    # CRISIS (drut): at four times the pace, the lead with a shadow an octave above, the whole theka, a nagara on each sam, small cymbals on the off-beats only
     beat_x = drift_beat / 4.0
     m = S.Mix(LOOP)
-    play(m, notes, beat_x, S.sarod, gain=0.7, pan=-0.2, rep=4, span=beats, decay=0.6, grace=1.0595)
-    play(m, notes, beat_x, S.sarangi, gain=0.3, pan=0.2, rep=4, span=beats)
-    pulse(m, tala, sa, beat_x, C * 4, gain=0.85, density=1.0, accent_sa=0.35)
+    play(m, notes, beat_x, lead_x, gain=0.8, pan=-0.1, rep=4, span=beats, **pal.get('crisis_kw', {}))
+    play(m, [type(n)(None if n.f is None else n.f * 2.0, n.start, n.dur, n.glide, n.gamaka, n.name, n.octave) for n in notes], beat_x, shadow, gain=0.2, pan=0.2, rep=4, span=beats)
+    pulse(m, tala, sa, beat_x, C * 4, gain=0.7, density=1.0, accent_sa=0.0, kit=kit)
     kart = S.kartal()
     for i in range(beats * 4):
-        m.add(kart, i * beat_x, 0.5 if i % 2 == 0 else 0.3, pan=0.5 if i % 2 else -0.5)
+        if i % 2 == 1:
+            m.add(kart, i * beat_x, 0.3, pan=0.5 if i % 4 == 1 else -0.5)
     for c in range(C * 4):
-        m.add(S.nagara(sa * 0.5, 1.2), c * B * beat_x, 0.55)
-    m.reverb(0.2, 1.8)
+        m.add(S.nagara(sa * 0.5, 1.2), c * B * beat_x, 0.45)
+    m.reverb(wet - 0.12, 1.6, damp)
     stems['crisis'] = m.loop_fold()
 
-    # THREAT: a low bowed string and a bowl a hair out of tune: the beating is the pressure; bowed metal rises across the minute
+    # THREAT: a single low bowed note on each half-minute, with a bowl a hair out of tune
     m = S.Mix(LOOP)
-    for k in range(6):
-        t = k * 10.0
-        m.add(S.sarangi(sa * 0.5, 11.0, vib=0.003, attack=3.0, release=3.0), t, 0.5, pan=-0.2)
-        m.add(S.bowl(sa * 0.5 * 1.0058, 11.0), t, 0.3, pan=0.2)
-    m.add(S.gong(sa * 0.25, 12.0), 0.0, 0.5)
-    m.reverb(0.4, 3.5)
+    for k in range(2):
+        t = k * 30.0
+        m.add(S.sarangi(sa * 0.5, 31.0, vib=0.003, attack=8.0, release=8.0), t, 0.5, pan=-0.2)
+        m.add(S.bowl(sa * 0.5 * 1.0058, 31.0), t, 0.25, pan=0.2)
+    m.reverb(0.4, 3.5, damp)
     stems['threat'] = m.loop_fold()
 
-    # VOICE: the low chant, a vowel to each cycle of the drift: it enters only in the crisis
+    # VOICE: the low chant, one vowel to each cycle of the drift
     m = S.Mix(LOOP)
-    seq = [(sa * 0.5, raga_voice), (sa * 0.75, raga_voice), (sa * 0.5, raga_voice), (sa * 0.5 * 2.0 ** (-2 / 12.0) * 2, raga_voice)]
+    seq_ = [(sa * 0.5, raga_voice), (sa * 0.75, raga_voice), (sa * 0.5, raga_voice), (sa * 0.5 * 2.0 ** (-2 / 12.0) * 2, raga_voice)]
     cyc = LOOP / 6.0
     for i in range(6):
-        f, v = seq[i % 4]
+        f, v = seq_[i % 4]
         m.add(S.voice(f, cyc * 0.9, v, attack=1.2, release=1.4), i * cyc, 0.7)
-    m.add(S.overtone_voice(sa * 0.5, 30.0, 1100.0), 0.0, 0.2)
-    m.add(S.overtone_voice(sa * 0.5, 30.0, 1500.0), 30.0, 0.2)
-    m.reverb(0.45, 3.5)
+    m.reverb(0.45, 3.5, damp)
     stems['voice'] = m.loop_fold()
 
     for k, v in stems.items():
@@ -422,12 +435,32 @@ REST_ATALA = "S:2 R:2 G:4 | M:2 P:2 G:4 | R:2 G:2 R:2 S:2 | N.:2 R:2 S:4 | G:2 M
 REST_VITALA = "S:2 r:2 G:4 | m:2 P:2 G:4 | r:2 G:2 r:2 S:2 | N.:2 d.:2 P.:4 | G:2 m:2 P:4 | d:2 P:2 m:2 G:2 | r:2 G:2 r:2 S:2 | S:8 _:8"
 
 
+ATALA_PAL = dict(drift=S.bansuri, combat=S.sarod, crisis=S.sarod, shadow=S.bansuri, kit='tabla', wet=0.32, damp=5200.0, drift_kw=dict(breath=0.18))
+VITALA_PAL = dict(drift=S.sarangi, combat=S.veena, crisis=S.sarangi, shadow=S.veena, kit='dholak', wet=0.28, damp=3000.0, drift_kw=dict(vib=0.007),
+                  combat_kw=dict(decay=1.0), sam=lambda: S.damaru(2, 0.09, 130) * 1.2)
+
+
+def pause():
+    """The pause: Raga Desh (the rain and the longing), a santoor and a jaltarang over the drone, in no hurry. Not heard anywhere else."""
+    sa = LOKA_SA[2]
+    m = S.Mix(LOOP)
+    tanpura_bed(m, sa, LOOP, gain=0.5)
+    phrase = parse("R:2 m:2 P:4 | N:2 S':2 n:2 D:2 | P:4 m:2 G:2 R:2 | G:2 R:2 S:4 | _:4 R:2 m:2 | P:2 D:2 N:2 S':2 | R':4 n:2 D:2 | P:2 m:2 G:2 R:2 | S:8", sa)
+    total = max(n.start + n.dur for n in phrase)
+    play(m, phrase, (LOOP - 4.0) / total, S.santoor, start=1.0, gain=0.6, pan=-0.15)
+    play(m, echo(phrase, 4.0, 2.0), (LOOP - 4.0) / total, S.jaltarang, start=1.0, gain=0.14, pan=0.35)
+    m.reverb(0.5, 4.0, 3800.0)
+    S.save(os.path.join(OUT, 'pause.ogg'), m.loop_fold(), quality=4)
+    print('pause ok')
+
+
 TARGETS = {
     'title': title,
     'menu': menu,
     'opening': opening,
-    'atala': lambda: explore('atala', LOKA_SA[0], 'teental', ATALA),
-    'vitala': lambda: explore('vitala', LOKA_SA[1], 'ektal', VITALA),
+    'atala': lambda: explore('atala', LOKA_SA[0], 'teental', ATALA, 'a', ATALA_PAL),
+    'vitala': lambda: explore('vitala', LOKA_SA[1], 'ektal', VITALA, 'o', VITALA_PAL),
+    'pause': pause,
     'bala': lambda: [ruler('bala_1', LOKA_SA[0], 'chautal', BALA_P1, S.sarangi, vowel='a'),
                      ruler('bala_2', LOKA_SA[0], 'jhaptal', BALA_P2, S.sarangi, vowel='a'),
                      ruler('bala_3', LOKA_SA[0], 'rupak', BALA_P3, S.sarangi, vowel='a')],

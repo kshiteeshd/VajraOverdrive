@@ -92,7 +92,7 @@ public final class AudioEngine implements SoundSink {
         for (int i = 0; i < 5; i++) { n.add("coin_" + i); n.add("shard_" + i); }
         for (String s : new String[] {"boom_small", "boom_big", "rock_tick", "hull_hit_light", "hull_hit_heavy", "shield_hit", "shield_loop", "death_burst", "astra_cancel", "astra_hit", "gate", "boss_wake", "lamp_bind",
                 "bay_dock", "bay_close", "repair", "betray", "piece_hum", "seal_open", "foe_hurt_armour", "foe_mend", "foe_dodge", "foe_dive", "foe_surface", "chest", "execute_kill", "boss_telegraph", "ram",
-                "health", "engine_loop", "mud_loop", "boost", "heartbeat", "ash_loop", "ash_start", "maya_forge", "mirror_shatter", "door_open", "amb_atala", "amb_vitala", "buy", "deny", "fit", "temper",
+                "health", "engine_low", "engine_whine", "thruster_loop", "boost_loop", "lamp_hum", "bay_hum", "ui_adjust", "ui_tab", "mud_loop", "boost", "heartbeat", "ash_loop", "ash_start", "maya_forge", "mirror_shatter", "door_open", "amb_atala", "amb_vitala", "buy", "deny", "fit", "temper",
                 "temper3", "sell", "ui_move", "ui_select", "ui_back", "ui_tour", "ui_page", "ui_wheel_open", "ui_wheel_tick", "ui_newgame", "ui_toggle", "ui_tick", "ui_popup", "ui_combo", "ui_error", "ui_codex"})
             n.add(s);
         for (String sp : new String[] {"indra", "bala", "bhairava", "scout", "maya", "kaliya", "seller", "maid", "dipaka", "vanija", "dvarapala", "voice"})
@@ -102,7 +102,7 @@ public final class AudioEngine implements SoundSink {
 
     /** Every piece of music it can ask for. */
     public static java.util.List<String> musicNames() {
-        java.util.ArrayList<String> n = new java.util.ArrayList<>(java.util.Arrays.asList("title", "menu", "opening", "bala_1", "bala_2", "bala_3", "bhairava", "death", "respawn", "descend_1", "yield_atala", "yield_vitala"));
+        java.util.ArrayList<String> n = new java.util.ArrayList<>(java.util.Arrays.asList("title", "pause", "opening", "bala_1", "bala_2", "bala_3", "bhairava", "death", "respawn", "descend_1", "yield_atala", "yield_vitala"));
         for (String a : AREAS) {
             n.add("rest_" + a);
             for (String s : new String[] {"drone", "drift", "combat", "crisis", "threat", "voice"}) n.add(a + "_" + s);
@@ -188,6 +188,19 @@ public final class AudioEngine implements SoundSink {
             s.setVolume(id[0], Math.min(1f, v));
             s.setPitch(id[0], pitch);
         }
+    }
+
+    /** A loop that sits at a place in the world (a lamp, a bay): louder and centred as the hull nears it, silent beyond `range`. */
+    private void loopAt(String key, String name, float vol, float wx, float wy, float range) {
+        float dx = wx - lx, dy = wy - ly, d = (float) Math.sqrt(dx * dx + dy * dy);
+        float att = 1f - d / range;
+        if (att <= 0.02) { loopOff(key); return; }
+        att *= att;
+        float pan = Math.max(-0.8f, Math.min(0.8f, dx / 600f));
+        loop(key, name, vol * att, 1f, false);
+        long[] id = loops.get(key);
+        Sound s = loopSound.get(key);
+        if (id != null && s != null) s.setPan(id[0], pan, Math.min(1f, vol * att * sfxVol()));
     }
 
     private void loopOff(String key) {
@@ -379,7 +392,6 @@ public final class AudioEngine implements SoundSink {
             if (!sting.isPlaying() && stingT > 0.3f) { sting.dispose(); sting = null; }
             else duckTarget = stingDuck;
         }
-        duckTarget *= paused ? 0.3f : 1f;
         duck += (duckTarget - duck) * Math.min(1f, dt * 3f);
         if (sting != null) sting.setVolume(Math.min(1f, mv));
         // create what is wanted, together
@@ -442,8 +454,15 @@ public final class AudioEngine implements SoundSink {
         boolean alive = !w.death.hidden();
         // the hull
         float sp = (float) Math.sqrt(s.vx * s.vx + s.vy * s.vy), spN = Math.min(1.4f, sp / Math.max(1f, s.maxSpeed()));
-        if (alive && !w.runEnded()) loop("engine", "engine_loop", 0.1f + 0.22f * Math.min(1f, spN), 0.78f + 0.45f * spN + (s.boosting ? 0.2f : 0f), false);
-        else loopOff("engine");
+        if (alive && !w.runEnded()) {
+            float sn = Math.min(1f, spN);
+            loop("elow", "engine_low", 0.16f + 0.22f * sn + (s.boosting ? 0.1f : 0f), 0.78f + 0.5f * sn + (s.boosting ? 0.15f : 0f), false);   // the rumble of the drive
+            loop("ewhine", "engine_whine", 0.02f + 0.11f * sn * sn, 0.55f + 1.15f * sn, false);                                            // the turbine climbs with the speed
+            loop("thr", "thruster_loop", 0.2f * sn, 0.9f + 0.25f * sn, false);                                                          // the exhaust, as the hull moves
+            if (s.boosting) loop("boostl", "boost_loop", 0.42f, 1f, false); else loopOff("boostl");
+        } else {
+            loopOff("elow"); loopOff("ewhine"); loopOff("thr"); loopOff("boostl");
+        }
         if (s.boosting && !boostOn) play("boost", 0.8f);
         boostOn = s.boosting;
         if (s.shieldOn && s.shieldEnergy > 0 && alive) loop("shield", "shield_loop", 0.12f, 1f, false); else loopOff("shield");
@@ -453,6 +472,22 @@ public final class AudioEngine implements SoundSink {
             heartT -= dt;
             if (heartT <= 0f) { play("heartbeat", 0.6f); heartT = 0.45f + 0.7f * (hpF / 0.3f); }
         }
+        // the lamps and the bays each hum their own tone when the hull comes near
+        float lampD = 1e9f, bayD = 1e9f, lampX = 0f, lampY = 0f, bayX = 0f, bayY = 0f;
+        for (vajra.world.Checkpoint c : w.checkpoints) {
+            if (c == null) continue;
+            float d = (c.x - lx) * (c.x - lx) + (c.y - ly) * (c.y - ly);
+            if (d < lampD) { lampD = d; lampX = c.x; lampY = c.y; }
+        }
+        for (float[] bay : w.shops) {
+            if (bay == null || bay[0] <= 0f) continue;
+            float d = (bay[0] - lx) * (bay[0] - lx) + (bay[1] - ly) * (bay[1] - ly);
+            if (d < bayD) { bayD = d; bayX = bay[0]; bayY = bay[1]; }
+        }
+        if (alive && !shopOpen && !cutscene) {
+            if (lampD < 1e9f) loopAt("lamp", "lamp_hum", 0.55f, lampX, lampY, 650f); else loopOff("lamp");
+            if (bayD < 1e9f) loopAt("bay", "bay_hum", 0.5f, bayX, bayY, 650f); else loopOff("bay");
+        } else { loopOff("lamp"); loopOff("bay"); }
         // the astra
         if (w.astraInvoking) {
             float k = Astra.k(w.astraCharge);
