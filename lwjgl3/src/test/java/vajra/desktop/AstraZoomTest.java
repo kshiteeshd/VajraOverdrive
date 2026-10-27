@@ -62,6 +62,7 @@ class AstraZoomTest {
                     for (int pass = 0; pass < 2; pass++) {
                         int kind = pass == 0 ? Astra.AGNI : Astra.VAYU;
                         w.hangar.shards[kind] = 5;
+                        w.hangar.owned[w.hangar.shipIndex][1] = true;
                         w.astraSel = kind;
                         w.astraCd = 0;
                         flow.keyDown(Input.Keys.F);

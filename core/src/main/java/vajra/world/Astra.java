@@ -79,7 +79,7 @@ public final class Astra {
 
     /** How many times this astra could be loosed right now from the shard pile. */
     public static int releases(Hangar h, int kind) {
-        if (kind < 0 || kind >= KINDS) return 0;
+        if (kind < 0 || kind >= KINDS || !h.canForge()) return 0;
         if (kind == PASHUPATA) return (h.shards[AGNI] + h.shards[PRITHVI]) / COST;
         if (kind < ELEMENTS) return h.shards[kind] / COST;
         int n = Integer.MAX_VALUE;

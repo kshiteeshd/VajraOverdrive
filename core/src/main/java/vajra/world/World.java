@@ -575,6 +575,7 @@ public class World {
         // Contact: each body shoves the other away along the contact line, opposite directions.
         // Impulses are velocity kicks — ship friction and Brain steering bleed them off naturally.
         for (Enemy e : enemies) contact(e);
+        tickZones(dt);
         for (int i = bullets.size() - 1; i >= 0; i--) {
             Bullet b = bullets.get(i);
             b.update(this, dt);
@@ -1180,16 +1181,18 @@ public class World {
             if (e.dead || e.submerged()) continue;                      // a round does not reach the floor
             if (Math.abs(b.x - e.x) > e.w / 2 + b.radius) continue;
             if (Math.abs(b.y - e.y) > e.h / 2 + b.radius) continue;
+            if (!b.hits(e)) continue;
             if (b.aoe > 0) { // splash: bursts on contact, never a plain hit
                 b.detonate(this);
                 return;
             }
             e.hitVx = b.vx;
             e.hitVy = b.vy;
-            boolean killed = e.hurt(b.damage, this);
+            boolean killed = e.hurt(b.damageTo(e), this);
             e.hitVx = e.hitVy = 0f;
             spray(b.x, b.y, b.vx, b.vy, b.r, b.g, b.b); // sparks thrown along the shot's path
-            if (!b.pierceEnemies || killed) {
+            boolean spent = b.onHit(this, e, killed);
+            if (spent || !b.pierceEnemies || killed) {
                 b.dead = true;
                 break;
             }
@@ -1350,6 +1353,7 @@ public class World {
     /** Which astra X has chosen: an {@link Astra} kind. */
     public int astraSel;
     /** HOLD F is down: the cage is gathering. */
+    private float lockedNoteAt = -10f;
     public boolean astraInvoking;
     /** Seconds the invocation has been held. */
     public float astraCharge;
@@ -1473,6 +1477,13 @@ public class World {
     /** BEGIN the invocation (F goes down). The cage starts with a few cubes and fills as you hold. False when there is
      *  nothing to invoke or it is too soon. Nothing is paid yet. */
     public boolean astraBegin() {
+        if (!hangar.canForge() && !runEnded() && !death.hidden() && astraCd <= 0 && popups != null) {   // the base variant: say why nothing happens (once a moment)
+            if (clock - lockedNoteAt > 2f) {
+                lockedNoteAt = clock;
+                popups.push(new Popups.Spec().text("THE BASE VARIANT CANNOT FORGE AN ASTRA").at(ship.x, ship.y + 70).color(1f, 0.84f, 0.35f).scale(1.1f).life(1.8f));
+            }
+            return false;
+        }
         if (!astraReady()) return false;
         astraKind = loadedAstra();
         astraInvoking = true;
@@ -2081,6 +2092,33 @@ public class World {
     }
 
     TileMap[] maps;
+
+    /** The Naga Cloud and its kind: ground that keeps burning whoever stands in it. {x, y, radius, time left, dps, owner, r, g, b} */
+    public final List<float[]> zones = new ArrayList<>();
+
+    public void addZone(float x, float y, float radius, float time, float dps, int owner, float r, float g, float b) {
+        if (zones.size() > 24) zones.remove(0);
+        zones.add(new float[] {x, y, radius, time, dps, owner, r, g, b});
+        addEffect(Effect.ring(x, y, radius, r, g, b));
+    }
+
+    private void tickZones(float dt) {
+        for (int i = zones.size() - 1; i >= 0; i--) {
+            float[] z = zones.get(i);
+            z[3] -= dt;
+            if (z[3] <= 0f) { zones.remove(i); continue; }
+            if (fxRng.nextFloat() < dt * 14f) {
+                float a = fxRng.nextFloat() * 6.2832f, d = (float) Math.sqrt(fxRng.nextFloat()) * z[2];
+                addEffect(Effect.spark(z[0] + (float) Math.cos(a) * d, z[1] + (float) Math.sin(a) * d, z[6], z[7], z[8]));
+            }
+            if (clientSeat) continue;
+            for (Enemy e : enemies) {
+                if (e.dead || e.submerged()) continue;
+                float dx = e.x - z[0], dy = e.y - z[1];
+                if (dx * dx + dy * dy < z[2] * z[2]) e.ignite(z[4], 0.5f, (int) z[5]);
+            }
+        }
+    }
 
     public void spawnBullet(float x, float y, float angle, WeaponDef def, float power, float dmgMult) {
         if (bullets.size() >= 400) return;

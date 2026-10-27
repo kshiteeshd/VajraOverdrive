@@ -81,7 +81,7 @@ final class HudTour {
                 "CHAIN KILLS WITHOUT BEING HIT TO RAISE THE COMBO. A HIT BREAKS THE CHAIN."));
         stops.add(new Stop(VedicHud.GEM_CX - VedicHud.RING_R - 12, VedicHud.GEM_CY - VedicHud.RING_R - 12, 2 * VedicHud.RING_R + 24, 2 * VedicHud.RING_R + 24, "THE ASTRA",
                 "FIVE SHARDS OF AN ELEMENT PAY FOR ONE RELEASE OF ITS ASTRA. THE RING FILLS AS YOU COLLECT THEM.",
-                "HOLD F TO FORM THE MANDALA, AND LET GO TO LOOSE IT. X CHOOSES WHICH ASTRA."));
+                "HOLD F TO FORM THE MANDALA, AND LET GO TO LOOSE IT. X CHOOSES WHICH ASTRA. ONLY A HULL'S 2ND AND 3RD VARIANTS CAN FORGE ONE."));
         stops.add(new Stop(Ui.UI_W - 176, Ui.UI_H / 2f - 110, 170, 150, "THE LOKA",
                 "THE LOKA YOU FLY IN, ITS RULER, AND THE DEPTH IN YOJANAS FROM THE GRAND GATE."));
         stops.add(new Stop(VajraPanel.PX - 6, VajraPanel.PY - 6, VajraPanel.PW + 12, VajraPanel.PH + 12, "THE VAJRA",

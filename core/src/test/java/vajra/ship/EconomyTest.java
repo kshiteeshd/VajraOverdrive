@@ -25,7 +25,9 @@ class EconomyTest {
 
     private static String signature(WeaponDef d) {
         return d.aimAssist + "/" + d.pierceEnemies + "/" + d.pierceWalls + "/" + d.homingTurn + "/"
-                + d.aoeRadius + "/" + d.range + "/" + d.count;
+                + d.aoeRadius + "/" + d.range + "/" + d.count + "/" + d.rearDamage + "/" + d.speed + "/" + d.life + "/" + d.burnDps
+                + "/" + d.burnTime + "/" + d.slow + "/" + d.slowTime + "/" + d.bounces + "/" + d.chain + "/" + d.aoeRadius + "/" + d.zoneRadius
+                + "/" + d.pullRadius + "/" + d.pull + "/" + d.stun + "/" + d.leech + "/" + d.splitCount + "/" + d.spreadDeg + "/" + d.grow + "/" + d.executeBelow;
     }
 
     @Test
@@ -64,7 +66,7 @@ class EconomyTest {
 
     @Test
     void patternsOpenFiveThreeTwoTwoTwoOne() {
-        int[] want = {5, 3, 2, 2, 2, 1, 0};
+        int[] want = {8, 6, 5, 5, 5, 4, 3};   // the standard patterns' five, three, two, two, two, one - and the lokas' three each
         int[] got = new int[7];
         for (WeaponDef d : WeaponDef.ALL) got[d.minLoka]++;
         assertArrayEquals(want, got);

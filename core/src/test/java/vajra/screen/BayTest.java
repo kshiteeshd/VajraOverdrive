@@ -94,10 +94,21 @@ class BayTest {
         assertTrue(w.hangar.weaponOwned[1]);
         assertEquals(1, w.hangar.weaponIndex, "a bought pattern is fitted");
         c.move(1, 0);
-        assertEquals(2, c.ui().arm(), "A/D walk the ring");
+        assertEquals(2, c.ui().arm(), "A/D walk along the row");
         c.ui().setArm(0);
         c.move(-1, 0);
-        assertEquals(WeaponDef.ALL.length - 1, c.ui().arm(), "and the ring wraps, unlike the strip");
+        assertEquals(0, c.ui().arm(), "and the row's end stops the walk");
+        c.ui().setArm(4);
+        c.move(1, 0);
+        assertEquals(WeaponDef.STANDARD, c.ui().arm(), "the standard block's edge crosses to Atala's first pattern");
+        c.move(-1, 0);
+        assertEquals(4, c.ui().arm(), "and back");
+        c.ui().setArm(WeaponDef.STANDARD + 3 * 6 + 1);
+        c.move(0, -1);
+        assertEquals(WeaponDef.STANDARD + 3 * 5 + 1, c.ui().arm(), "W/S walk the lokas");
+        c.ui().setArm(WeaponDef.STANDARD + 3 * 6);
+        c.move(-1, 0);
+        assertEquals(14, c.ui().arm(), "left from a deep loka lands on the standard block's last row");
     }
 
     @Test
@@ -117,6 +128,7 @@ class BayTest {
     @Test
     void theAstraChosenIsTheOneFInvokesAndAnUnpayableChoiceFallsBackToOneThatCanFly() {
         World w = new World();
+        w.hangar.owned[0][1] = true;
         w.hangar.shards[vajra.world.Astra.AKASHA] = 5;
         w.hangar.shards[vajra.world.Astra.AGNI] = 5;
         w.astraSel = vajra.world.Astra.AKASHA;
@@ -216,15 +228,19 @@ class BayTest {
     }
 
     @Test
-    void theWheelNodesAreSpacedAndInsideTheScreen() {
+    void theArmsGridFitsAndNoTwoCardsTouch() {
         int n = WeaponDef.ALL.length;
+        assertEquals(36, n, "fifteen standard patterns and twenty-one of the lokas'");
         for (int i = 0; i < n; i++) {
-            float[] a = BayUi.nodeAt(i), b = BayUi.nodeAt((i + 1) % n);
-            assertTrue(Math.hypot(a[0] - b[0], a[1] - b[1]) > BayUi.NODE + 10, "nodes " + i + " and next crowd");
-            assertTrue(a[1] - BayUi.NODE > BayUi.STATUS_Y + 10 && a[1] + BayUi.NODE < BayUi.RULE_Y, "node " + i + " inside");
-            boolean clearX = Math.abs(a[0] - BayUi.WHEEL_CX) > BayUi.HUB_W / 2 + BayUi.NODE / 2;
-            boolean clearY = Math.abs(a[1] - BayUi.WHEEL_CY) > BayUi.HUB_H / 2 + BayUi.NODE / 2;
-            assertTrue(clearX || clearY, "node " + i + " overlaps the hub");
+            float[] a = BayUi.nodeAt(i);
+            assertTrue(a[1] - BayUi.NODE / 2 > BayUi.STATUS_Y + 10 && a[1] + BayUi.NODE / 2 + 30 < BayUi.RULE_Y, "card " + i + " inside");
+            assertTrue(a[0] - BayUi.NODE / 2 > 40 && a[0] + BayUi.NODE / 2 < BayUi.HUB_X - 8, "card " + i + " clears the page");
+            int[] cell = BayUi.cellOf(i);
+            assertEquals(i, BayUi.armAt(cell[0], cell[1]), "cell round-trips " + i);
+            for (int j = i + 1; j < n; j++) {
+                float[] b = BayUi.nodeAt(j);
+                assertTrue(Math.abs(a[0] - b[0]) >= BayUi.NODE + 4 || Math.abs(a[1] - b[1]) >= BayUi.NODE + 4, "cards " + i + " and " + j + " overlap");
+            }
         }
     }
 }

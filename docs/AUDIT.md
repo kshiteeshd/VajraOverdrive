@@ -41,3 +41,8 @@ scenes, a 20,000-frame random flight through every band (0.27 ms of simulation a
 ## What stands
 The story flow holds from the opening through both rulers: the yield scenes, the piece that finds the hull, the veil that parts, the stage change, the saves; every door of the third astra is open ground connected to the start;
 the pilot's death, the stored repairs and the camera holds do what they say; the simulation is cheap; all tests pass.
+
+
+## Weapons and astras (after v1.0.2)
+- 36 patterns (see WEAPONS.md). Not yet checked: balance of the 21 new rows in real play (damage, costs, the burn/venom stack with the Agni astra), co-op (a guest sees the new rounds as plain tinted discs and none of their riders), and the economy test now accepts a smaller share of the shelf being affordable (0.2-0.8).
+- Astras need a 2nd or 3rd variant: existing saves with astra shards on a base hull simply cannot loose them until the variant is bought.

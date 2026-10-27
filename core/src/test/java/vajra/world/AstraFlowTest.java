@@ -14,6 +14,7 @@ class AstraFlowTest {
 
     private static World arena() {
         World w = new World();
+        w.hangar.owned[0][1] = true; // the 2nd variant: only it can forge an astra
         w.enemies.clear();
         w.maps = new TileMap[0];                                         // open ground: no rock to turn the flow aside
         w.ship.x = 2600;

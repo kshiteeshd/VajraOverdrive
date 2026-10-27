@@ -162,7 +162,7 @@ public class BulletImages {
 
     /** Sized to the bullet's hit box, turned along its heading: a dark outline, then the negative. */
     public void draw(SpriteBatch batch, Bullet b) {
-        TextureRegion reg = masks.get(b.def);
+        TextureRegion reg = b.def == null ? null : masks.get(b.def.art);
         if (reg == null) reg = b.hostile ? foe : disc;
         float w = b.radius * 2;
         float deg = (float) Math.toDegrees(Math.atan2(b.vy, b.vx));

@@ -68,6 +68,10 @@ public class Weapon {
             if (s.heated) off += (w.fxRng.nextFloat() - 0.5f) * 2f * Ship.HEAT_SCATTER_DEG;   // the forge-lands' heat: a little scatter
             w.spawnBullet(mx, my, a + (float) Math.toRadians(off), def, power, s.damageMult());
         }
+        if (def.rear) {                                                    // Mirror Shot: the reflection leaves by the tail
+            float bx = s.x - (float) Math.cos(a) * 22, by = s.y - (float) Math.sin(a) * 22;
+            w.spawnBullet(bx, by, a + (float) Math.PI, def, power, s.damageMult() * def.rearDamage);
+        }
         if (def.burst > 1 && burstLeft == 0) { // re-arm only from a fresh trigger pull —
             burstLeft = def.burst - 1;        // re-arming mid-burst loops it forever on burst 3+
             burstTimer = def.burstGap;

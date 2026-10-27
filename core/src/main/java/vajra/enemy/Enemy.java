@@ -266,6 +266,40 @@ public class Enemy {
     public int burnOwner;
     /** Seconds of electric shock left on it (Akasha's lightning): it jitters and crackles while this runs. Set by the flow, drawn by EnemyImages. */
     public float shockT;
+    // STATUS from the lokas' patterns (World.statusHit): alight / poisoned, slowed, frozen in place
+    public float dotT, dotDps, dotTick, slowT, slowK = 1f, stunT;
+    public int dotOwner;
+
+    /** Set the foe alight (or poisoned): it takes dps for `time` seconds, struck in quarter-second beats. */
+    public void ignite(float dps, float time, int owner) {
+        if (dps >= dotDps || dotT <= 0f) dotDps = dps;
+        dotT = Math.max(dotT, time);
+        dotOwner = owner;
+    }
+
+    public void slowBy(float frac, float time) {
+        if (boss) frac *= 0.4f;                                         // a ruler is slowed little
+        slowK = Math.min(slowT > 0f ? slowK : 1f, 1f - frac);
+        slowT = Math.max(slowT, time);
+    }
+
+    public void freeze(float time) { if (!boss) stunT = Math.max(stunT, time); }
+
+    private void tickStatus(float dt, World world) {
+        if (dotT > 0f) {
+            dotT -= dt;
+            dotTick += dt;
+            if (dotTick >= 0.25f) {
+                int prev = world.shooter;
+                world.shooter = dotOwner;
+                hurtPiercing(dotDps * dotTick, world, dotOwner);
+                world.shooter = prev;
+                dotTick = 0f;
+                if (!dead && world.fxRng.nextFloat() < 0.6f) world.addEffect(Effect.spark(x + (world.fxRng.nextFloat() - 0.5f) * w, y + (world.fxRng.nextFloat() - 0.5f) * h, 1f, 0.55f, 0.15f));
+            }
+        } else dotDps = 0f;
+        if (slowT > 0f) { slowT -= dt; if (slowT <= 0f) slowK = 1f; }
+    }
     public float burnPuffT;
 
     /** Down at the floor, in the rock, or in smoke: no body in the fight. */
@@ -359,6 +393,9 @@ public class Enemy {
         if (dead || parley) return;
         if (yielding) { vx = 0; vy = 0; if (hitFlash > 0) hitFlash -= dt; return; }
         if (caught > 0f) { caught -= dt; if (hitFlash > 0) hitFlash -= dt; return; }   // the tornado has it: the flow moves it, its brain waits
+        tickStatus(dt, world);
+        if (dead) return;
+        if (stunT > 0f) { stunT -= dt; vx = 0; vy = 0; if (hitFlash > 0) hitFlash -= dt; return; }   // frozen where it stands
         if (fireTimer > 0) fireTimer -= dt;
         if (hitFlash > 0) hitFlash -= dt;
         if (contactCd > 0) contactCd -= dt;
@@ -394,8 +431,9 @@ public class Enemy {
         } else if (vitala) VitalaBrain.think(this, world, dt, t);
         else Brain.think(this, world, dt, t);
         float px0 = x, py0 = y;
-        x += vx * dt;
-        y += vy * dt;
+        float sm = slowT > 0f ? slowK : 1f;
+        x += vx * dt * sm;
+        y += vy * dt * sm;
         if (phasing) inRock = world.blockedPx(x, y);                   // a bhuta goes where it likes
         else {
             float[] c = world.collide(x - w / 2, y - h / 2, w, h);

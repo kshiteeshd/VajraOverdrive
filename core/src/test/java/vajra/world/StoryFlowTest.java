@@ -110,6 +110,7 @@ class StoryFlowTest {
     @Test
     void aMantraHalfSaidDiesWithTheHullAndCannotBeLoosedFromTheWreck() {
         World w = new World(0, World.CAMPAIGN);
+        w.hangar.owned[0][1] = true;
         w.hangar.shards[Astra.AGNI] = 5;
         w.astraSel = Astra.AGNI;
         assertTrue(w.astraBegin());

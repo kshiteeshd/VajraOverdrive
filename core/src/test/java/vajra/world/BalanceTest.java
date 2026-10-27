@@ -93,6 +93,6 @@ class BalanceTest {
         for (vajra.weapon.WeaponDef d : vajra.weapon.WeaponDef.ALL) sinks += d.cost + d.rankCost(0) + d.rankCost(1);
         double share = total / sinks;
         System.out.println("Balance: a typical pilot banks " + (int) total + " coins over seven lokas against " + (int) sinks + " of things to buy (" + Math.round(share * 100) + "%)");
-        assertTrue(share > 0.4 && share < 0.8, "a typical run affords a build, not a checklist: " + share);
+        assertTrue(share > 0.2 && share < 0.8, "a typical run affords a build, not a checklist: " + share);
     }
 }

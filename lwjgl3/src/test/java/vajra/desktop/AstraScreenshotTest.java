@@ -65,6 +65,7 @@ class AstraScreenshotTest {
 
                     // a crowd to aim at, and the fuel for a release in the pile
                     w.hangar.shards[0] = 5;
+                    w.hangar.owned[0][1] = true;
                     w.ship.facing = (float) (Math.PI / 2);
                     for (int i = 0; i < 18; i++) {
                         vajra.enemy.Enemy e = new vajra.enemy.Enemy(

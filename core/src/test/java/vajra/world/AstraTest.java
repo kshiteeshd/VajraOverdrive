@@ -14,6 +14,7 @@ class AstraTest {
     /** A world with the ship at (2600, 2700) facing north and `n` living foes 300 px ahead, in view. */
     private static World arena(int n) {
         World w = new World();
+        w.hangar.owned[0][1] = true; // the 2nd variant: only it can forge an astra
         w.cubeVolleys = true;                                            // these are the tests of the cube system: Jala looses its old cube volley here
         w.enemies.clear();
         w.ship.x = 2600;
@@ -44,6 +45,7 @@ class AstraTest {
     @Test
     void fiveShardsOfAnElementPayOneRelease() {
         Hangar h = new Hangar();
+        h.owned[h.shipIndex][1] = true; // a 2nd variant: only it can forge an astra
         for (int i = 1; i <= 4; i++) assertFalse(h.addShard(Astra.AKASHA), "shard " + i + " does not complete a set");
         assertTrue(h.addShard(Astra.AKASHA), "the fifth completes one");
         assertEquals(1, Astra.releases(h, Astra.AKASHA));
@@ -54,6 +56,7 @@ class AstraTest {
     @Test
     void thereIsNothingToForgeTheFirstFiveAreFuelAlready() {
         Hangar h = new Hangar();
+        h.owned[h.shipIndex][1] = true; // a 2nd variant: only it can forge an astra
         h.shards[Astra.AGNI] = 5;
         assertTrue(Astra.canLoose(h, Astra.AGNI), "no forge step, no stored charge: the pile is the fuel");
     }
@@ -61,6 +64,7 @@ class AstraTest {
     @Test
     void onlyTheRightElementPaysForAnAstra() {
         Hangar h = new Hangar();
+        h.owned[h.shipIndex][1] = true; // a 2nd variant: only it can forge an astra
         h.shards[Astra.AGNI] = 9;
         assertFalse(Astra.canLoose(h, Astra.AKASHA), "Agni shards do not fuel the Akasha astra");
         assertTrue(Astra.canLoose(h, Astra.AGNI));
@@ -69,6 +73,7 @@ class AstraTest {
     @Test
     void payingTakesExactlyFiveOrNothing() {
         Hangar h = new Hangar();
+        h.owned[h.shipIndex][1] = true; // a 2nd variant: only it can forge an astra
         h.shards[Astra.JALA] = 7;
         assertTrue(Astra.pay(h, Astra.JALA));
         assertEquals(2, h.shards[Astra.JALA]);
@@ -79,6 +84,7 @@ class AstraTest {
     @Test
     void theBrahmastraNeedsFiveOfEveryElementAndTakesThemAll() {
         Hangar h = new Hangar();
+        h.owned[h.shipIndex][1] = true; // a 2nd variant: only it can forge an astra
         for (int t = 0; t < Astra.ELEMENTS; t++) h.shards[t] = 5;
         h.shards[Astra.PRITHVI] = 4;
         assertFalse(Astra.canLoose(h, Astra.BRAHMA), "one short of one element");
@@ -91,6 +97,7 @@ class AstraTest {
     @Test
     void sellingShardsSpendsTheAstra() {
         Hangar h = new Hangar();
+        h.owned[h.shipIndex][1] = true; // a 2nd variant: only it can forge an astra
         h.shards[Astra.AKASHA] = 5;
         assertTrue(Astra.canLoose(h, Astra.AKASHA));
         h.sellShards();

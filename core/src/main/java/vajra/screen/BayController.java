@@ -67,7 +67,10 @@ public final class BayController {
                 else ui.setHull(Math.max(0, Math.min(ShipDef.ALL.length - 1, ui.hull() + dx)));
                 break;
             case BayUi.ARMS:
-                ui.setArm(ui.arm() + (dx != 0 ? dx : dy));
+                int[] c = BayUi.cellOf(ui.arm());
+                int to = BayUi.armAt(c[0] + dx, c[1] + dy);
+                if (to < 0 && dx < 0 && c[0] + dx == BayUi.STD_COLS - 1) to = BayUi.armAt(BayUi.STD_COLS - 1, Math.min(c[1], BayUi.STD_ROWS - 1));   // back across to the standard block
+                if (to >= 0) ui.setArm(to);
                 break;
             default:
                 ui.setAstra(ui.astra() + dx);

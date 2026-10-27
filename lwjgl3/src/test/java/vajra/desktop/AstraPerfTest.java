@@ -68,6 +68,7 @@ class AstraPerfTest {
                         Gdx.gl.glFinish();
                         if (k > 0) {
                             for (int t = 0; t < vajra.world.Astra.ELEMENTS; t++) w.hangar.shards[t] = 20;
+                            w.hangar.owned[0][1] = true;
                             w.astraSel = kinds[k];
                             w.astraCd = 0;
                             flow.keyDown(com.badlogic.gdx.Input.Keys.F);

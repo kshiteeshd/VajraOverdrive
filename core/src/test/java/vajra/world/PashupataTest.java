@@ -15,6 +15,7 @@ class PashupataTest {
 
     private static World arena() {
         World w = new World();
+        w.hangar.owned[0][1] = true; // the 2nd variant: only it can forge an astra
         w.enemies.clear();
         w.ship.x = 2600;
         w.ship.y = 2700;
@@ -32,6 +33,7 @@ class PashupataTest {
     @Test
     void fireAndStoneTogetherPayForIt() {
         Hangar h = new Hangar();
+        h.owned[h.shipIndex][1] = true; // a 2nd variant: only it can forge an astra
         h.shards[Astra.AGNI] = 3;
         h.shards[Astra.PRITHVI] = 2;
         assertTrue(Astra.canLoose(h, Astra.PASHUPATA), "three of fire and two of stone are five");

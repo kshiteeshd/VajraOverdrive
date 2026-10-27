@@ -84,6 +84,7 @@ class ShardGaugeTest {
         assertEquals(3f, ShardGauge.progress(h, w, t), 0.001f, "three of five");
         assertFalse(vajra.world.Astra.canLoose(h, t), "not enough to loose at three");
 
+        h.owned[h.shipIndex][1] = true; // only a 2nd or 3rd variant can forge
         for (int i = 0; i < 2; i++) h.addShard(t);
         assertTrue(vajra.world.Astra.canLoose(h, t), "the fifth pays for a release");
         assertEquals(ShardGauge.SEGMENTS, ShardGauge.progress(h, w, t), 0.001f, "a full track");

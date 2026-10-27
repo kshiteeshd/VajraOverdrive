@@ -23,6 +23,12 @@ final class WeaponWheel {
     static final float CX = Ui.UI_W / 2f, CY = Ui.UI_H / 2f, RING = 150, CHIP = 30, DEAD = 46;
 
     private static final float[] GOLD = VedicHud.GOLD;
+    /** More chips than this and the wheel takes a second, inner ring (a pilot with the lokas' patterns owns up to 36). */
+    static final int ONE_RING = 14;
+    static final float INNER = 108, OUTER = 204, SMALL_CHIP = 24;
+
+    static float chip(int n) { return n > ONE_RING ? SMALL_CHIP : CHIP; }
+    static float outerRing(int n) { return n > ONE_RING ? OUTER : RING; }
 
     private final Ui ui;
     private final WeaponCards cards = new WeaponCards();
@@ -45,6 +51,16 @@ final class WeaponWheel {
     /** The chip the pointer is on, given its offset from the wheel's centre, or -1 in the dead centre. */
     static int pick(int n, float dx, float dy) {
         if (n <= 0 || dx * dx + dy * dy < DEAD * DEAD) return -1;
+        if (n > ONE_RING) {                                  // two rings: the nearest chip wins
+            int nearest = 0;
+            float nd = 1e9f;
+            for (int i = 0; i < n; i++) {
+                float[] p = slot(i, n);
+                float d = (p[0] - CX - dx) * (p[0] - CX - dx) + (p[1] - CY - dy) * (p[1] - CY - dy);
+                if (d < nd) { nd = d; nearest = i; }
+            }
+            return nearest;
+        }
         float a = MathUtils.atan2(dy, dx) * MathUtils.radiansToDegrees;
         int best = 0;
         float bestD = 1e9f;
@@ -71,12 +87,13 @@ final class WeaponWheel {
         if (hover >= 0 && n > 0) { // a spoke to the pointed chip
             float[] p = slot(hover, n);
             gold(0.7f);
-            ui.shapes.rectLine(CX + (p[0] - CX) * DEAD / RING, CY + (p[1] - CY) * DEAD / RING, p[0], p[1], 1.4f);
+            float pd = (float) Math.hypot(p[0] - CX, p[1] - CY);
+            ui.shapes.rectLine(CX + (p[0] - CX) * DEAD / pd, CY + (p[1] - CY) * DEAD / pd, p[0], p[1], 1.4f);
         }
         for (int i = 0; i < n; i++) {
             float[] p = slot(i, n);
             boolean cur = own[i] == w.hangar.weaponIndex, hov = i == hover;
-            float r = CHIP * (hov ? 1.18f : 1f);
+            float r = chip(n) * (hov ? 1.18f : 1f);
             ui.shapes.setColor(UiTheme.INK_R, UiTheme.INK_G, UiTheme.INK_B, 0.94f);
             ui.shapes.circle(p[0], p[1], r, 32);
             gold(hov ? 1f : cur ? 0.95f : 0.45f);
@@ -92,7 +109,7 @@ final class WeaponWheel {
         batch.begin();
         for (int i = 0; i < n; i++) {
             float[] p = slot(i, n);
-            float size = (CHIP * 2 - 14) * (i == hover ? 1.18f : 1f);
+            float size = (chip(n) * 2 - 12) * (i == hover ? 1.18f : 1f);
             batch.setColor(1, 1, 1, i == hover || own[i] == w.hangar.weaponIndex ? 1f : 0.7f);
             batch.draw(cards.get(own[i]), p[0] - size / 2, p[1] - size / 2, size, size);
         }
@@ -105,16 +122,22 @@ final class WeaponWheel {
         ui.caption.setColor(GOLD[0], GOLD[1], GOLD[2], 1f);
         ui.centered(batch, ui.caption, "RANK " + ROMAN[Math.min(2, w.hangar.weaponRank[shown])], CY - 8);
         ui.caption.setColor(1, 1, 1, 0.6f);
-        ui.centered(batch, ui.caption, "RELEASE " + VedicHud.weaponKey() + " TO FIT", CY - RING - CHIP - 26);
+        ui.centered(batch, ui.caption, "RELEASE " + VedicHud.weaponKey() + " TO FIT", CY - outerRing(n) - chip(n) - 26);
         ui.caption.setColor(1, 1, 1, 1);
         batch.end();
     }
 
     private static final String[] ROMAN = {"I", "II", "III"};
 
-    private static float[] slot(int i, int n) {
-        float a = angle(i, n);
-        return new float[] {CX + RING * MathUtils.cosDeg(a), CY + RING * MathUtils.sinDeg(a)};
+    static float[] slot(int i, int n) {
+        if (n <= ONE_RING) {
+            float a = angle(i, n);
+            return new float[] {CX + RING * MathUtils.cosDeg(a), CY + RING * MathUtils.sinDeg(a)};
+        }
+        int inner = n / 3, outer = n - inner;
+        boolean in = i < inner;
+        float a = in ? angle(i, inner) : angle(i - inner, outer), rad = in ? INNER : OUTER;
+        return new float[] {CX + rad * MathUtils.cosDeg(a), CY + rad * MathUtils.sinDeg(a)};
     }
 
     void dispose() { cards.dispose(); }

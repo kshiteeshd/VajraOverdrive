@@ -45,8 +45,12 @@ public final class BayUi {
     static final float TIER_W = 336, TIER_H = 250, TIER_GAP = 24;
     static final float TIER_X0 = (Ui.UI_W - (3 * TIER_W + 2 * TIER_GAP)) / 2f;
     static final float TIER_Y = 130;
-    static final float WHEEL_CX = Ui.UI_W / 2f, WHEEL_CY = 378, WHEEL_R = 200, NODE = 48;
-    static final float HUB_W = 256, HUB_H = 210;
+    // ARMS: the five-by-three standard patterns on the left, the lokas' three each (one row a loka) beside them, the pattern's page on the right
+    static final float NODE = 52, PITCH = 62;
+    static final float STD_X0 = 110, STD_Y0 = 530;
+    static final float LK_X0 = 610, LK_Y0 = 556, LABEL_X = 400;
+    static final int STD_COLS = 5, STD_ROWS = 3, LK_COLS = 3;
+    static final float HUB_W = 320, HUB_H = 232, HUB_X = 900, HUB_Y = 300;
     static final float AST_W = 160, AST_H = 330, AST_GAP = 12;
     static final float AST_X0 = (Ui.UI_W - (Astra.KINDS * AST_W + (Astra.KINDS - 1) * AST_GAP)) / 2f;
     static final float AST_Y = 196;
@@ -102,10 +106,27 @@ public final class BayUi {
     public static float tierX(int t) { return TIER_X0 + t * (TIER_W + TIER_GAP); }
     public static float astraX(int i) { return AST_X0 + i * (AST_W + AST_GAP); }
 
-    /** The centre of weapon node i on the wheel: the first sits at the top, then clockwise. */
+    /** The grid cell {column, row} of pattern i: the standard fifteen are columns 0-4 over three rows; each loka's three are columns 5-7 on that loka's row. */
+    public static int[] cellOf(int i) {
+        if (i < WeaponDef.STANDARD) return new int[] {i % STD_COLS, i / STD_COLS};
+        int k = i - WeaponDef.STANDARD;
+        return new int[] {STD_COLS + k % LK_COLS, k / LK_COLS};
+    }
+
+    /** The pattern in a grid cell, or -1 where there is none. */
+    public static int armAt(int col, int row) {
+        if (col < 0 || row < 0) return -1;
+        if (col < STD_COLS) return row < STD_ROWS ? row * STD_COLS + col : -1;
+        int k = (col - STD_COLS);
+        int i = WeaponDef.STANDARD + row * LK_COLS + k;
+        return k < LK_COLS && i < WeaponDef.ALL.length ? i : -1;
+    }
+
+    /** The centre of pattern i's card. */
     public static float[] nodeAt(int i) {
-        double a = Math.PI / 2 - i * 2 * Math.PI / WeaponDef.ALL.length;
-        return new float[] {WHEEL_CX + (float) Math.cos(a) * WHEEL_R, WHEEL_CY + (float) Math.sin(a) * WHEEL_R};
+        int[] c = cellOf(i);
+        if (c[0] < STD_COLS) return new float[] {STD_X0 + PITCH * c[0], STD_Y0 - PITCH * c[1]};
+        return new float[] {LK_X0 + PITCH * (c[0] - STD_COLS), LK_Y0 - PITCH * c[1]};
     }
 
     // --- hit testing ----------------------------------------------------------------------
@@ -275,11 +296,28 @@ public final class BayUi {
         if (d.aoeRadius > 0) add(t, "SPLASH");
         if (d.chargeTime > 0) add(t, "CHARGED");
         if (d.count > 1) add(t, "x" + d.count + " SPREAD");
+        if (d.rear) add(t, "FIRES BEHIND");
+        if (d.boomerang) add(t, "RETURNS");
+        if (d.waveAmp > 0) add(t, "WEAVES");
+        if (d.burnDps > 0) add(t, "BURNS");
+        if (d.slow > 0) add(t, "SLOWS");
+        if (d.stun > 0) add(t, "FREEZES");
+        if (d.knock > 0) add(t, "SHOVES");
+        if (d.leech > 0) add(t, "MENDS THE HULL");
+        if (d.bounces > 0) add(t, "RICOCHETS");
+        if (d.chain > 0) add(t, "CHAINS x" + d.chain);
+        if (d.prox > 0) add(t, "MINE");
+        if (d.zoneRadius > 0) add(t, "LEAVES A CLOUD");
+        if (d.pullRadius > 0) add(t, "DRAWS FOES IN");
+        if (d.grow > 0) add(t, "SWELLS");
+        if (d.splitCount > 0) add(t, "SPLITS x" + d.splitCount);
+        if (d.executeBelow > 0) add(t, "EXECUTES THE WOUNDED");
         return t.length() == 0 ? "PLAIN BOLT" : t.toString();
     }
 
     /** An astra card's state: how many releases the shard pile pays for, or how far it is from the first. */
     public static String astraState(Hangar h, int kind) {
+        if (!h.canForge()) return "LOCKED";
         int n = Astra.releases(h, kind);
         if (n > 0) return n + (n == 1 ? " RELEASE READY" : " RELEASES READY");
         if (kind == Astra.BRAHMA) return "NEEDS " + Astra.COST + " OF EACH";
@@ -289,6 +327,7 @@ public final class BayUi {
 
     /** Fill of an astra card's bar: full once a release is paid for, else the shards held toward the first. */
     public static float astraFill(Hangar h, int kind) {
+        if (!h.canForge()) return 0f;
         if (Astra.releases(h, kind) > 0) return 1f;
         if (kind == Astra.BRAHMA) {
             int m = Integer.MAX_VALUE;
@@ -381,11 +420,9 @@ public final class BayUi {
 
     private void armShapes(Hangar h, float ar, float ag, float ab) {
         float gr = UiTheme.GOLD_R, gg = UiTheme.GOLD_G, gb = UiTheme.GOLD_B;
-        ui.shapes.setColor(1, 1, 1, 0.14f); // the rim: a dotted ring through the nodes
-        for (int k = 0; k < 120; k++) {
-            double a = k * Math.PI * 2 / 120;
-            ui.shapes.rect(WHEEL_CX + (float) Math.cos(a) * WHEEL_R - 1, WHEEL_CY + (float) Math.sin(a) * WHEEL_R - 1, 2, 2);
-        }
+        ui.shapes.setColor(ar, ag, ab, 0.35f);   // a hairline under each block's header
+        ui.shapes.rect(STD_X0 - NODE / 2, STD_Y0 + NODE / 2 + 8, PITCH * (STD_COLS - 1) + NODE, 1);
+        ui.shapes.rect(LABEL_X - 8, LK_Y0 + NODE / 2 + 8, LK_X0 + PITCH * (LK_COLS - 1) + NODE / 2 - LABEL_X + 8, 1);
         for (int i = 0; i < WeaponDef.ALL.length; i++) {
             float[] n = nodeAt(i);
             boolean sel = i == arm, own = h.weaponOwned[i], fit = h.weaponIndex == i, offered = h.weaponOffered(i);
@@ -399,7 +436,7 @@ public final class BayUi {
                 Ornament.lock(ui, n[0], n[1] - 2, 1.0f);
             }
         }
-        float hx = WHEEL_CX - HUB_W / 2f, hy = WHEEL_CY - HUB_H / 2f;
+        float hx = HUB_X, hy = HUB_Y;
         Ornament.panel(ui, hx, hy, HUB_W, HUB_H, 9, ar, ag, ab, 0.6f, true);
         if (h.weaponOffered(arm)) {
             float[] bars = weaponBars(h.weapon(arm));
@@ -560,19 +597,36 @@ public final class BayUi {
             boolean sel = i == arm, own = h.weaponOwned[i], offered = h.weaponOffered(i);
             float s = NODE - 14 + (sel ? 8 : 0);
             TextureRegion r = cards.get(i);
+            s = 30 + (sel ? 4 : 0);
             if (r != null && offered) {
                 b.setColor(1, 1, 1, own ? 1f : 0.4f);
-                b.draw(r, n[0] - s / 2, n[1] - s / 2, s, s);
+                b.draw(r, n[0] - s / 2, n[1] - s / 2 + 5, s, s);
                 b.setColor(1, 1, 1, 1);
             }
             if (offered && !own) {
-                ui.caption.setColor(1, 1, 1, sel ? 0.9f : 0.45f);
-                centered(b, ui.caption, WeaponDef.ALL[i].cost + "c", n[0], n[1] - NODE / 2 - 8);
+                ui.caption.setColor(1, 1, 1, sel ? 0.9f : 0.5f);
+                centered(b, ui.caption, WeaponDef.ALL[i].cost + "c", n[0], n[1] - NODE / 2 + 13);
                 ui.caption.setColor(1, 1, 1, 1);
             }
         }
+        ui.caption.setColor(1, 1, 1, 0.75f);
+        ui.caption.draw(b, "STANDARD PATTERNS", STD_X0 - NODE / 2, STD_Y0 + NODE / 2 + 24);
+        ui.caption.draw(b, "THE LOKAS' PATTERNS", LABEL_X - 8, LK_Y0 + NODE / 2 + 24);
+        for (int r = 0; r < LokaTable.COUNT; r++) {                      // a loka's name beside its three
+            float y = LK_Y0 - PITCH * r;
+            boolean reached = h.loka >= r;
+            ui.hud.setColor(reached ? gr : 1, reached ? gg : 1, reached ? gb : 1, reached ? 1f : 0.4f);
+            ui.hud.draw(b, LokaTable.at(r).name.toUpperCase(), LABEL_X, y + 4);
+            ui.caption.setColor(1, 1, 1, reached ? 0.55f : 0.35f);
+            ui.caption.draw(b, reached ? "OPEN" : "NOT YET REACHED", LABEL_X, y - 12);
+        }
+        ui.hud.setColor(1, 1, 1, 1);
+        ui.caption.setColor(1, 1, 1, 0.5f);
+        ui.caption.draw(b, "A/D/W/S MOVE   ENTER BUYS, FITS, THEN TEMPERS", STD_X0 - NODE / 2, STD_Y0 - PITCH * 2 - NODE / 2 - 24);
+        ui.caption.draw(b, "RANK III GIVES EVERY PATTERN ONE NEW TRAIT", STD_X0 - NODE / 2, STD_Y0 - PITCH * 2 - NODE / 2 - 42);
+        ui.caption.setColor(1, 1, 1, 1);
         WeaponDef d = WeaponDef.ALL[arm];
-        float hx = WHEEL_CX - HUB_W / 2f, hy = WHEEL_CY - HUB_H / 2f;
+        float hx = HUB_X, hy = HUB_Y;
         boolean offered = h.weaponOffered(arm), own = h.weaponOwned[arm];
         TextureRegion r = cards.get(arm);
         if (r != null && offered) b.draw(r, hx + 20, hy + HUB_H - 76, 56, 56);
@@ -595,7 +649,7 @@ public final class BayUi {
         String st = offered ? weaponState(h, d) : "NOT YET OFFERED";
         boolean fit = h.weaponIndex == arm;
         ui.hud.setColor(own || fit ? gr : 1, own || fit ? gg : 1, own || fit ? gb : 1, own || fit ? 1f : h.coins >= d.cost ? 1f : 0.55f);
-        centered(b, ui.hud, st, WHEEL_CX, hy + 52);
+        centered(b, ui.hud, st, hx + HUB_W / 2f, hy + 52);
         ui.hud.setColor(1, 1, 1, 1);
         layout.setText(ui.caption, weaponHint(h, d), ui.caption.getColor(), HUB_W - 30, Align.center, true);
         ui.caption.setColor(1, 1, 1, 0.6f);
@@ -641,6 +695,12 @@ public final class BayUi {
             }
             ui.caption.setColor(1, 1, 1, 1);
             ui.hud.setColor(1, 1, 1, 1);
+        }
+        if (!h.canForge()) {
+            ui.hud.setColor(UiTheme.GOLD_R, UiTheme.GOLD_G, UiTheme.GOLD_B, 1f);
+            centered(b, ui.hud, "THIS HULL'S BASE VARIANT CANNOT FORGE OR LOOSE AN ASTRA.", Ui.UI_W / 2f, 600);
+            ui.hud.setColor(1, 1, 1, 0.75f);
+            centered(b, ui.hud, "BUY ITS 2ND OR 3RD VARIANT IN THE HULLS RAIL, AND THE SHARDS YOU CARRY ARE FUEL AGAIN.", Ui.UI_W / 2f, 576);
         }
         ui.hud.setColor(1, 1, 1, 0.6f);
         centered(b, ui.hud, "HOLD F TO INVOKE, LET GO TO LOOSE. FIVE SHARDS A RELEASE, PAID AT THE LOOSING.", Ui.UI_W / 2f, 150);

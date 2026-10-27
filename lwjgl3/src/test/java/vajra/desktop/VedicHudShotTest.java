@@ -86,6 +86,7 @@ class VedicHudShotTest {
 
                     w.lokaIndex = 6; // Patala pays every element: five shard rows
                     for (int t = 0; t < 5; t++) w.hangar.shards[t] = 2 + t; // 2..6 shards: the loaded astra can fly
+                    w.hangar.owned[0][1] = true;
                     w.astraSel = 3;
                     write(shot(w, dark()), "build/hud-vedic-patala.png");
 

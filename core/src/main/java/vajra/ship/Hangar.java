@@ -80,6 +80,11 @@ public class Hangar {
         return owned[id][2] ? 3 : owned[id][1] ? 2 : 1;
     }
 
+    /** Only a hull's 2nd and 3rd variants can forge and loose an astra; the base variant (x.1) cannot, on any ship. */
+    public boolean canForge() {
+        return shipIndex >= 0 && shipIndex < owned.length && owned[shipIndex][1];
+    }
+
     /** True when this run has bought the hull (x.1 is the ship itself). */
     public boolean ownsShip(int i) {
         return i >= 0 && i < owned.length && owned[i][0];

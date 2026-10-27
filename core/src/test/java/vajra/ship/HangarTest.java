@@ -139,6 +139,7 @@ class HangarTest {
     @Test
     void everyFifthShardCompletesARelease() {
         Hangar h = new Hangar();
+        h.owned[0][1] = true; // the 2nd variant: the base hull cannot forge
         for (int i = 1; i < vajra.world.Astra.COST; i++) assertFalse(h.addShard(Hangar.AKASHA), "no release at " + i);
         assertTrue(h.addShard(Hangar.AKASHA), "the last of five completes one");
         assertEquals(1, vajra.world.Astra.releases(h, Hangar.AKASHA));
@@ -166,7 +167,7 @@ class HangarTest {
     @Test
     void everyShipHasThreeTiersAndEveryWeaponExists() {
         for (ShipDef d : ShipDef.ALL) assertEquals(3, d.upgrades.length, d.name);
-        assertEquals(15, WeaponDef.ALL.length);
+        assertEquals(36, WeaponDef.ALL.length, "fifteen standard, three for each of the seven lokas");
     }
 
     @Test

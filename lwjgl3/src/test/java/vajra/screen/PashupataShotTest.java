@@ -38,6 +38,7 @@ class PashupataShotTest {
                     w.ship.y = 2700;
                     w.ship.facing = (float) (Math.PI / 2);
                     w.hangar.shards[Astra.AGNI] = 5;
+                    w.hangar.owned[0][1] = true;
                     w.astraSel = Astra.PASHUPATA;
                     w.astraBegin();
                     for (float t = 0; t < Astra.WIND_FULL * 0.9f; t += 1 / 60f) w.updateAstra(1 / 60f);
