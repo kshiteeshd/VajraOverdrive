@@ -700,6 +700,21 @@ public class World {
         }
     }
 
+    /** A loot item set down where the test arena (or a scene) wants it. */
+    public Pickup spawnPickup(int type, int variant, float x, float y) {
+        Pickup p = new Pickup();
+        p.netId = dropSeq++;
+        p.type = type;
+        p.variant = variant;
+        p.x = x;
+        p.y = y;
+        p.gx = x;
+        p.gy = y;
+        p.phase = fxRng.nextFloat() * 6.2831853f;
+        pickups.add(p);
+        return p;
+    }
+
     /** Pay a chest: coins that fly out, and the one useful thing of its loka's table. Deterministic from where it stands, so a restored run
      *  and a shared race roll the same treasure. */
     public void openChest(Chest c) {

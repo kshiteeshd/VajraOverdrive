@@ -13,7 +13,6 @@ import java.util.List;
 final class HudTour {
     /** One stop: the instrument's box in UI space (x, y, w, h), its name and its words. */
     private static final class Stop {
-        boolean keys;                                                    // the last stop of every new game: the page of keys, not a spotlight
         final float x, y, w, h;
         final String title;
         final String[] lines;
@@ -43,13 +42,16 @@ final class HudTour {
 
     int index() { return idx; }
 
-    /** The tour of the instruments (when `full`: a pilot's first time, or asked again) and, at the end of it, THE KEYS: the page of controls as this pilot has set them, shown every new game. */
-    void begin(boolean full) {
+    /** The tutorial of every new game: the instruments of the HUD, then the controls, one small card at a time (no page of keys, no wall of text). `full` is kept for callers: both parts always play. */
+    void begin(boolean full) { begin(full, Ui.UI_W / 2f, Ui.UI_H / 2f); }
+
+    /** As {@link #begin(boolean)}, with the hull's place on the screen (UI units) so the controls are taught on the ship itself. */
+    void begin(boolean full, float shipX, float shipY) {
+        this.shipUx = shipX;
+        this.shipUy = shipY;
         stops.clear();
-        if (full) addInstrumentStops();
-        Stop k = new Stop(Ui.UI_W / 2f - 60, Ui.UI_H / 2f - 20, 120, 40, "THE KEYS");
-        k.keys = true;
-        stops.add(k);
+        addInstrumentStops();
+        addControlStops();
         idx = 0;
         t = 0f;
         Stop first = stops.get(0);
@@ -58,6 +60,24 @@ final class HudTour {
         cw = first.w;
         ch = first.h;
         active = true;
+    }
+
+    /** The controls, as this pilot has them set (a rebound key shows as rebound), each on the hull itself. */
+    private void addControlStops() {
+        vajra.Settings st = vajra.profile.Profiles.active().settings;
+        float sx = shipUx - 70f, sy = shipUy - 70f;
+        stops.add(new Stop(sx, sy, 140f, 140f, "FLY",
+                vajra.Keymap.UP.name(st) + " " + vajra.Keymap.LEFT.name(st) + " " + vajra.Keymap.DOWN.name(st) + " " + vajra.Keymap.RIGHT.name(st) + " OR THE ARROWS MOVE THE HULL. UP IS ALWAYS UP THE SCREEN.",
+                vajra.Keymap.TURN_LEFT.name(st) + " AND " + vajra.Keymap.TURN_RIGHT.name(st) + " TURN THE NOSE. HOLD THE LEFT MOUSE BUTTON AND IT FOLLOWS THE CURSOR."));
+        stops.add(new Stop(sx, sy, 140f, 140f, "FIGHT",
+                vajra.Keymap.FIRE.name(st) + " OR THE LEFT BUTTON FIRES ALONG THE NOSE.",
+                vajra.Keymap.BOOST.name(st) + " BOOSTS WHILE YOU FLY. " + vajra.Keymap.SHIELD.name(st) + " OR THE RIGHT BUTTON HOLDS THE SHIELD."));
+        stops.add(new Stop(sx, sy, 140f, 140f, "ARMS AND ASTRAS",
+                vajra.Keymap.WEAPON_NEXT.name(st) + " AND " + vajra.Keymap.WEAPON_PREV.name(st) + " CHANGE WEAPON. HOLD THE FIRST FOR THE WHEEL.",
+                "HOLD " + vajra.Keymap.ASTRA.name(st) + " TO FORM AN ASTRA AND LET GO TO LOOSE IT. " + vajra.Keymap.ASTRA_CYCLE.name(st) + " CHOOSES. (2ND AND 3RD HULLS ONLY)"));
+        stops.add(new Stop(sx, sy, 140f, 140f, "REPAIR, HULLS, PAUSE",
+                vajra.Keymap.REPAIR.name(st) + " SPENDS A STORED REPAIR. " + vajra.Keymap.HULL_NEXT.name(st) + " OR 2-7 CHANGES TO A HULL YOU OWN.",
+                "ESC PAUSES. EVERY KEY CAN BE CHANGED IN SETTINGS, UNDER CONTROLS."));
     }
 
     private void addInstrumentStops() {
@@ -111,7 +131,6 @@ final class HudTour {
     void render(SpriteBatch batch) {
         if (!active) return;
         Stop s = stops.get(idx);
-        if (s.keys) { renderKeys(batch); return; }
         float pad = 10f + 2.5f * MathUtils.sin(t * 5f), x0 = cx - cw / 2f - pad, y0 = cy - ch / 2f - pad, w = cw + 2 * pad, h = ch + 2 * pad;
         float a = Math.min(1f, t * 3f + 0.4f);
 
@@ -156,47 +175,7 @@ final class HudTour {
         batch.end();
     }
 
-    /** The page of keys, as this pilot has them (a rebound key shows as rebound). */
-    private void renderKeys(SpriteBatch batch) {
-        vajra.Settings st = vajra.profile.Profiles.active().settings;
-        String[][] rows = {
-                {vajra.Keymap.UP.name(st) + " " + vajra.Keymap.LEFT.name(st) + " " + vajra.Keymap.DOWN.name(st) + " " + vajra.Keymap.RIGHT.name(st) + "  /  ARROWS", "FLY. UP IS ALWAYS UP THE SCREEN, WHEREVER THE NOSE POINTS."},
-                {vajra.Keymap.TURN_LEFT.name(st) + "  /  " + vajra.Keymap.TURN_RIGHT.name(st), "TURN THE NOSE. HOLD THE LEFT MOUSE BUTTON AND IT FOLLOWS THE CURSOR."},
-                {vajra.Keymap.FIRE.name(st) + "  /  LEFT BUTTON", "FIRE ALONG THE NOSE."},
-                {vajra.Keymap.BOOST.name(st), "BOOST WHILE FLYING. IT DRAINS THE RIGHT ARC OF THE DIAL."},
-                {vajra.Keymap.SHIELD.name(st) + "  /  RIGHT BUTTON", "HOLD FOR THE SHIELD. IT DRAINS THE LEFT ARC."},
-                {vajra.Keymap.WEAPON_NEXT.name(st) + "  /  " + vajra.Keymap.WEAPON_PREV.name(st), "NEXT AND PREVIOUS WEAPON. HOLD THE FIRST FOR THE WHEEL."},
-                {vajra.Keymap.ASTRA.name(st) + "   " + vajra.Keymap.ASTRA_CYCLE.name(st), "HOLD TO FORM AN ASTRA, LET GO TO LOOSE IT. THE OTHER KEY CHOOSES. (2ND, 3RD HULLS)"},
-                {vajra.Keymap.REPAIR.name(st), "SPEND A STORED REPAIR."},
-                {vajra.Keymap.HULL_NEXT.name(st) + "  /  2 - 7", "NEXT HULL YOU OWN, OR A HULL BY NUMBER."},
-                {"ESC", "PAUSE. F11 FULLSCREEN. F3 FRAME RATE."},
-        };
-        float w = 980f, h = 90f + rows.length * 31f, x = (Ui.UI_W - w) / 2f, y = (Ui.UI_H - h) / 2f;
-        float a = Math.min(1f, t * 3f + 0.3f);
-        ui.shapes.setProjectionMatrix(ui.camera.combined);
-        ui.beginShapes(ShapeRenderer.ShapeType.Filled);
-        ui.shapes.setColor(0f, 0f, 0f, 0.8f * a);
-        ui.shapes.rect(0, 0, Ui.UI_W, Ui.UI_H);
-        Ornament.panel(ui, x, y, w, h, 9, Template.accentR, Template.accentG, Template.accentB, 0.9f, false);
-        ui.shapes.end();
-        batch.setProjectionMatrix(ui.camera.combined);
-        batch.begin();
-        ui.menu.setColor(Template.accentR, Template.accentG, Template.accentB, 1f);
-        ui.menu.draw(batch, "THE KEYS", x + 34f, y + h - 28f);
-        ui.menu.setColor(1, 1, 1, 1);
-        for (int i = 0; i < rows.length; i++) {
-            float ry = y + h - 66f - i * 31f;
-            ui.hud.setColor(Template.accentR, Template.accentG, Template.accentB, 1f);
-            ui.hud.draw(batch, rows[i][0], x + 34f, ry);
-            ui.hud.setColor(1f, 0.97f, 0.9f, 0.95f);
-            ui.hud.draw(batch, rows[i][1], x + 270f, ry);
-        }
-        ui.hud.setColor(1, 1, 1, 1);
-        ui.caption.setColor(0.8f, 0.76f, 0.62f, 0.95f);
-        ui.caption.draw(batch, "ENTER  BEGIN      ANY KEY CAN BE CHANGED IN SETTINGS, UNDER CONTROLS", x + 34f, y + 22f);
-        ui.caption.setColor(1, 1, 1, 1);
-        batch.end();
-    }
+    private float shipUx = Ui.UI_W / 2f, shipUy = Ui.UI_H / 2f;
 
     private static String joined(String[] lines) { return String.join("\n", lines); }
 }

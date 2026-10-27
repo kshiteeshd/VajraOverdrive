@@ -50,6 +50,10 @@ public class GameScreen implements FlowState, ShipControls {
     private ShatterFx shatter;
     private VajraPanel vajraPanel;
     private HudTour tour;
+    private final vajra.world.Arena.Scenario scenario; // the test arena's scenario; null in a real run (nothing of an arena flight is saved)
+    private boolean godMode, arenaBar = true, tourQueued;
+    private int arenaKind;
+    private String arenaNote = "";
     private final Vector3 mouseV = new Vector3();
     private World world;
     private final Director director;
@@ -82,16 +86,22 @@ public class GameScreen implements FlowState, ShipControls {
 
     /** CONTINUE: the pilot's saved solo run (vajra.world.RunSave's text), poured over a fresh world. */
     public static GameScreen resume(SpriteBatch batch, Flow flow, Ui ui, String savedRun) {
-        GameScreen g = new GameScreen(batch, flow, ui, 0, savedRun);
+        GameScreen g = new GameScreen(batch, flow, ui, 0, savedRun, null);
         return g;
     }
 
     /** The multiplayer handoff: every pilot enters the run with the session's one seed. */
     public GameScreen(SpriteBatch batch, Flow flow, Ui ui, long seed) {
-        this(batch, flow, ui, seed, null);
+        this(batch, flow, ui, seed, null, null);
     }
 
-    private GameScreen(SpriteBatch batch, Flow flow, Ui ui, long seed, String savedRun) {
+    /** A scenario of the test arena (Settings > TEST): a campaign world arranged for it, never saved. */
+    public static GameScreen arena(SpriteBatch batch, Flow flow, Ui ui, vajra.world.Arena.Scenario scenario) {
+        return new GameScreen(batch, flow, ui, 0, null, scenario);
+    }
+
+    private GameScreen(SpriteBatch batch, Flow flow, Ui ui, long seed, String savedRun, vajra.world.Arena.Scenario scenario) {
+        this.scenario = scenario;
         this.resume = savedRun;
         this.batch = batch;
         this.flow = flow;
@@ -108,10 +118,16 @@ public class GameScreen implements FlowState, ShipControls {
         this.hud = new Hud(ui);
         this.wheel = new WeaponWheel(ui);
         this.shop = new BayController(world, shopUi);
-        this.coach = newCoach();
+        this.coach = coachFor();
         if (vajra.net.Net.active()) // a live co-op seat: the game planes land on the current world
             vajra.net.Net.session.listen((tag, sender, body, off, len) ->
                     vajra.net.GameWire.apply(vajra.net.Net.session, this.world, tag, sender, body, off, len));
+    }
+
+    /** The arena's pilot has learned everything (but the scenario that teaches it): no prompts over a test. */
+    private vajra.coach.Coach coachFor() {
+        if (scenario != null && !scenario.name.startsWith("FIRST LESSONS")) return new vajra.coach.Coach(true, true);
+        return newCoach();
     }
 
     /** A pilot who has not learned to fly is held to the first flight; a shared race never is. */
@@ -126,6 +142,7 @@ public class GameScreen implements FlowState, ShipControls {
      *  forged charges, all of it is built inside the run and dies with it. The save
      *  only contributes the best score. */
     private World loadWorld() {
+        if (scenario != null) return vajra.world.Arena.build(scenario);
         World w = new World(seed, World.CAMPAIGN);   // the campaign: Atala, and Vitala on its roof
         SaveGame.load(w.hangar);
         w.selectShip(w.hangar.shipIndex);
@@ -156,6 +173,7 @@ public class GameScreen implements FlowState, ShipControls {
             else director.press();
             return true;
         }
+        if (scenario != null && !shop.isOpen() && arenaKey(keycode)) return true;
         if (keycode == Input.Keys.ESCAPE && shop.isOpen()) {
             shop.close(); // parks that bay until the ship flies out — no reopening
             return true;
@@ -172,6 +190,7 @@ public class GameScreen implements FlowState, ShipControls {
             }
             dropWheel();
             world.astraCancel(); // a half-held invocation is let go for free
+            if (scenario != null) { flow.pop(); return true; }   // the test arena: ESC is the way back to the list
             flow.push(new PauseScreen(flow, ui, batch, world)); // the run freezes underneath
             return true;
         }
@@ -238,6 +257,59 @@ public class GameScreen implements FlowState, ShipControls {
     }
 
     /** Closes the wheel without choosing (a menu took the keys, a scene started, the run ended). */
+    // ---- the test arena's keys and bar ----------------------------------------------------------------------------------------------
+
+    private boolean arenaKey(int k) {
+        vajra.ship.Hangar h = world.hangar;
+        int n = vajra.weapon.WeaponDef.ALL.length;
+        switch (k) {
+            case Input.Keys.F4: arenaBar = !arenaBar; return true;
+            case Input.Keys.F5: godMode = !godMode; arenaNote = "GOD MODE " + (godMode ? "ON" : "OFF"); return true;
+            case Input.Keys.F6: {
+                boolean back = Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT);
+                int i = Math.floorMod(h.weaponIndex + (back ? -1 : 1), n);
+                h.weaponOwned[i] = true;
+                world.selectWeapon(i);
+                arenaNote = (i + 1) + ". " + vajra.weapon.WeaponDef.ALL[i].name.toUpperCase();
+                return true;
+            }
+            case Input.Keys.F7: {
+                int i = h.weaponIndex;
+                h.weaponRank[i] = (h.weaponRank[i] + 1) % vajra.weapon.WeaponDef.RANKS;
+                world.selectWeapon(i);
+                arenaNote = vajra.weapon.WeaponDef.ALL[i].name.toUpperCase() + " RANK " + BayUi.roman(h.weaponRank[i]);
+                return true;
+            }
+            case Input.Keys.F8:
+                arenaKind = (arenaKind + 1) % vajra.world.Arena.packKinds();
+                vajra.world.Arena.pack(world, arenaKind);
+                arenaNote = "SPAWNED 3 " + vajra.world.Arena.packName(arenaKind);
+                return true;
+            case Input.Keys.F9: vajra.world.Arena.clear(world); arenaNote = "FOES CLEARED"; return true;
+            case Input.Keys.F10: vajra.world.Arena.refill(world); arenaNote = "REFILLED"; return true;
+            case Input.Keys.F12: restart(); arenaNote = "SCENARIO RESET"; return true;
+            default: return false;
+        }
+    }
+
+    private void renderArenaBar() {
+        batch.setProjectionMatrix(ui.camera.combined);
+        batch.begin();
+        ui.caption.setColor(1f, 0.84f, 0.35f, 0.85f);
+        String line = "TEST ARENA  " + scenario.name + (godMode ? "   [GOD]" : "") + (arenaNote.isEmpty() ? "" : "   -   " + arenaNote);
+        ui.caption.draw(batch, line, Ui.UI_W / 2f - ui.measure(ui.caption, line) / 2f, 40);
+        ui.caption.setColor(1, 1, 1, 0.5f);
+        String keys = "F4 BAR  F5 GOD  F6 PATTERN  F7 RANK  F8 FOES  F9 CLEAR  F10 REFILL  F12 RESET  ESC BACK";
+        ui.caption.draw(batch, keys, Ui.UI_W / 2f - ui.measure(ui.caption, keys) / 2f, 22);
+        ui.caption.setColor(1, 1, 1, 1);
+        batch.end();
+    }
+
+    /** Where the hull is on the screen, in UI units (the camera is centred on it unless the world's edge holds it back). */
+    private float shipUiX() { return Math.max(70f, Math.min(Ui.UI_W - 70f, Ui.UI_W / 2f + (world.ship.x - camera.position.x) / Math.max(0.1f, camera.zoom))); }
+
+    private float shipUiY() { return Math.max(70f, Math.min(Ui.UI_H - 70f, Ui.UI_H / 2f + (world.ship.y - camera.position.y) / Math.max(0.1f, camera.zoom))); }
+
     private void dropWheel() {
         wheelDown = wheelOpen = false;
         wheelHover = -1;
@@ -285,7 +357,7 @@ public class GameScreen implements FlowState, ShipControls {
         World nw = loadWorld();
         swapWorld(nw);
         shop = new BayController(world, shopUi);
-        coach = newCoach();
+        coach = coachFor();
         endSaved = false;
     }
 
@@ -322,6 +394,14 @@ public class GameScreen implements FlowState, ShipControls {
 
     @Override
     public void update(float delta) {
+        if (scenario != null) {
+            if (godMode) { world.ship.hp = world.ship.maxHp(); world.ship.invuln = 1f; }
+            if (scenario.tour && !tourQueued) {                       // the tutorial of a new game, on demand
+                tourQueued = true;
+                if (tour == null) tour = new HudTour(ui);
+                tour.begin(true, shipUiX(), shipUiY());
+            }
+        }
         // Apply the FitViewport before the sim runs: world.update() (and aimX/Y under a
         // held mouse button) unprojects through it, and a 0x0 viewport turns aim into NaN.
         viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
@@ -376,6 +456,7 @@ public class GameScreen implements FlowState, ShipControls {
             vajra.net.GameWire.pump(vajra.net.Net.session, world, delta);
             vajra.net.Net.session.voice.push(pressed(Input.Keys.V));
         }
+        if (!endSaved && runEnded() && scenario != null) endSaved = true;   // an arena flight folds into nothing
         if (!endSaved && runEnded()) {
             vajra.profile.Profiles.endRun(world); // folds the run into the pilot + the save
             if (vajra.net.Net.active()) // a race result: the roster's book keeps the best flight
@@ -400,7 +481,7 @@ public class GameScreen implements FlowState, ShipControls {
         float s2 = world.ship.trauma * world.ship.trauma * vajra.profile.Profiles.active().settings.shake;
         camera.position.x += (world.fxRng.nextFloat() * 2 - 1) * 16 * s2;
         camera.position.y += (world.fxRng.nextFloat() * 2 - 1) * 16 * s2;
-        if (vajra.net.Net.session == null && !director.active() && !shop.isOpen() && !runEnded() && !world.death.active && !world.maya.active && world.yielder == null) {
+        if (scenario == null && vajra.net.Net.session == null && !director.active() && !shop.isOpen() && !runEnded() && !world.death.active && !world.maya.active && world.yielder == null) {
             autosaveT += delta; // CONTINUE stays close to where the pilot is, even if the window is killed
             if (autosaveT >= AUTOSAVE) {
                 autosaveT = 0;
@@ -409,7 +490,7 @@ public class GameScreen implements FlowState, ShipControls {
         }
         if (!director.active() && !shop.isOpen() && !runEnded()) {
             int learned = coach.update(delta, world.ship.x, world.ship.y, rawFire());
-            if (learned >= 0) { // the pilot has flown / fired: that lesson is theirs for good
+            if (learned >= 0 && scenario == null) { // the pilot has flown / fired: that lesson is theirs for good
                 vajra.profile.Profiles.active().learn(learned);
                 vajra.profile.Profiles.save();
             }
@@ -434,19 +515,25 @@ public class GameScreen implements FlowState, ShipControls {
         vajra.profile.Profile pilot = vajra.profile.Profiles.active();
         if (cue == vajra.world.Cue.FIRST_LAMP || cue == vajra.world.Cue.FIRST_BAY) {          // told once to a pilot, and never to one who has asked for no hints
             int beat = cue == vajra.world.Cue.FIRST_LAMP ? vajra.profile.Profile.BEAT_LAMP : vajra.profile.Profile.BEAT_BAY;
-            if (!hintsOn(pilot) || pilot.seen(beat)) return;
-            pilot.see(beat);
-            vajra.profile.Profiles.save();
-        }
-        director.start(vajra.scene.Scenes.build(cue, world), camera, () -> {
-            vajra.scene.Scenes.finish(cue, world);
-            if (cue == vajra.world.Cue.OPENING && hintsOn(pilot)) {   // after the opening of every new game the keys are shown; a pilot's first time (or one who asked again) is shown the instruments first
-                boolean full = !pilot.seen(vajra.profile.Profile.BEAT_TOUR);
-                if (full) { pilot.see(vajra.profile.Profile.BEAT_TOUR); vajra.profile.Profiles.save(); }
-                if (tour == null) tour = new HudTour(ui);
-                tour.begin(full);
+            if (scenario == null) {
+                if (!hintsOn(pilot) || pilot.seen(beat)) return;
+                pilot.see(beat);
+                vajra.profile.Profiles.save();
             }
-        });
+        }
+        try {
+            director.start(vajra.scene.Scenes.build(cue, world), camera, () -> {
+            vajra.scene.Scenes.finish(cue, world);
+            if (cue == vajra.world.Cue.OPENING && hintsOn(pilot)) {   // after the opening of every new game the HUD and the controls are taught
+                if (tour == null) tour = new HudTour(ui);
+                tour.begin(true, shipUiX(), shipUiY());                  // every new game: the instruments, then the controls
+            }
+            });
+        } catch (RuntimeException e) {
+            if (scenario == null) throw e;
+            arenaNote = "SCENE FAILED: " + e.getClass().getSimpleName();   // a scenario that cannot stage its scene says so and flies on
+            vajra.scene.Scenes.finish(cue, world);
+        }
     }
 
     @Override
@@ -479,6 +566,7 @@ public class GameScreen implements FlowState, ShipControls {
                 CoachPrompt.render(ui, batch, coach.lesson(), world.clock);
         }
         if (tour != null && tour.active()) tour.render(batch);
+        if (scenario != null && arenaBar) renderArenaBar();
         if (world.maya.active) { if (shatter == null) shatter = new ShatterFx(); shatter.render(world, camera, viewport); }   // Bala's broken mirror: the whole frame, in pieces
         if (Probe.showFrame) perfReadout();
         if (bootFade > 0) { // the white the title's launch left behind, fading off the run
@@ -613,7 +701,7 @@ public class GameScreen implements FlowState, ShipControls {
     public void dispose() {
         if (shatter != null) shatter.dispose();
         if (vajraPanel != null) vajraPanel.dispose();
-        if (vajra.net.Net.session == null) vajra.profile.Profiles.saveRun(world); // closed mid-flight: parked
+        if (vajra.net.Net.session == null && scenario == null) vajra.profile.Profiles.saveRun(world); // closed mid-flight: parked
         if (vajra.net.Net.active()) vajra.net.Net.session.listen(null); // no planes to a dead world
         wheel.dispose();
         blur.dispose();

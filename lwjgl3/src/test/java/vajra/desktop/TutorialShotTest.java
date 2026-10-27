@@ -52,7 +52,12 @@ class TutorialShotTest {
                     for (int i = 0; i < 120; i++) flow.render(1 / 60f);
                     for (int k = 0; k < 12; k++) { flow.keyDown(Input.Keys.ENTER); for (int i = 0; i < 6; i++) flow.render(1 / 60f); }   // read the opening through
                     for (int i = 0; i < 40; i++) flow.render(1 / 60f);
-                    ok[0] = vajra.profile.Profiles.active().seen(vajra.profile.Profile.BEAT_TOUR);
+                    java.lang.reflect.Field tf = GameScreen.class.getDeclaredField("tour");
+                    tf.setAccessible(true);
+                    Object tour = tf.get(gs);
+                    java.lang.reflect.Method act = tour == null ? null : tour.getClass().getDeclaredMethod("active");
+                    if (act != null) act.setAccessible(true);
+                    ok[0] = act != null && (Boolean) act.invoke(tour);
                     float y0 = w.ship.y;
                     for (int step = 0; step < 10; step++) {
                         for (int i = 0; i < 30; i++) flow.render(1 / 60f);
@@ -92,7 +97,7 @@ class TutorialShotTest {
             }
         }, cfg);
         if (boom.get() != null) throw new AssertionError("the tutorial failed", boom.get());
-        assertTrue(ok[0], "the tour began after the opening and is recorded as seen");
+        assertTrue(ok[0], "the tour began after the opening and is running");
         assertTrue(ok[1], "the world held still through the tour");
         assertTrue(ok[2], "the first lamp was shown, once");
     }

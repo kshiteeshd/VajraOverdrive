@@ -266,6 +266,8 @@ public class Enemy {
     public int burnOwner;
     /** Seconds of electric shock left on it (Akasha's lightning): it jitters and crackles while this runs. Set by the flow, drawn by EnemyImages. */
     public float shockT;
+    /** A target of the test arena: it takes every hit and status, and never dies, moves or fires. */
+    public boolean dummy;
     // STATUS from the lokas' patterns (World.statusHit): alight / poisoned, slowed, frozen in place
     public float dotT, dotDps, dotTick, slowT, slowK = 1f, stunT;
     public int dotOwner;
@@ -392,6 +394,7 @@ public class Enemy {
     public void update(float dt, World world, float t) {
         if (dead || parley) return;
         if (yielding) { vx = 0; vy = 0; if (hitFlash > 0) hitFlash -= dt; return; }
+        if (dummy) { tickStatus(dt, world); if (hitFlash > 0) hitFlash -= dt; vx = 0; vy = 0; if (hp < maxHp * 0.5f) hp = maxHp; return; }
         if (caught > 0f) { caught -= dt; if (hitFlash > 0) hitFlash -= dt; return; }   // the tornado has it: the flow moves it, its brain waits
         tickStatus(dt, world);
         if (dead) return;

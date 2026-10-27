@@ -26,7 +26,7 @@ import vajra.update.Updater;
  *   <li><b>MORE</b>: the tutorials, the key reference, the pilot's profile, the update check, a reset of every setting.</li>
  *  </ul> */
 public class SettingsScreen implements FlowState {
-    static final String[] TABS = {"DISPLAY", "AUDIO", "GAMEPLAY", "CONTROLS", "ACCESS", "MORE"};
+    static final String[] TABS = {"DISPLAY", "AUDIO", "GAMEPLAY", "CONTROLS", "ACCESS", "MORE", "TEST"};
     private static final float ROW_TOP = 492, HALF_W = 330, TAB_Y = 520;
 
     /** One line of a tab: a label, its value as text, what A / D do to it, what ENTER does, and a hint under the list while it is chosen. */
@@ -147,6 +147,11 @@ public class SettingsScreen implements FlowState {
             sure = false;
         }, "Every setting, the keys too, back to how the game ships."));
         tabs.add(m);
+
+        List<Row> t = new ArrayList<>();
+        t.add(new Row("OPEN THE TEST ARENA", () -> vajra.world.Arena.count() + " SCENARIOS", null, () -> flow.push(new ArenaScreen(flow, ui, batch)),
+                "Story, foes, weapons, astras, rulers, the world, loot, the HUD, hulls, hazards, tutorials and stress: fly any of them with the full armoury. Nothing is saved."));
+        tabs.add(t);
     }
 
     private Row vol(String label, Supplier<Float> get, java.util.function.Consumer<Float> set, String hint) {
