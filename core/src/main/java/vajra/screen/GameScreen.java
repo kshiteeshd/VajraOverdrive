@@ -49,6 +49,7 @@ public class GameScreen implements FlowState, ShipControls {
     private final FitViewport viewport;
     private ShatterFx shatter;
     private VajraPanel vajraPanel;
+    private HudTour tour;
     private final Vector3 mouseV = new Vector3();
     private World world;
     private final Director director;
@@ -116,7 +117,7 @@ public class GameScreen implements FlowState, ShipControls {
     /** A pilot who has not learned to fly is held to the first flight; a shared race never is. */
     private static vajra.coach.Coach newCoach() {
         vajra.profile.Profile p = vajra.profile.Profiles.active();
-        boolean free = vajra.net.Net.session != null;
+        boolean free = vajra.net.Net.session != null || !p.settings.hints;
         return new vajra.coach.Coach(free || p.learned(vajra.coach.Lessons.THRUST),
                 free || p.learned(vajra.coach.Lessons.FIRE));
     }
@@ -145,6 +146,11 @@ public class GameScreen implements FlowState, ShipControls {
     }
 
     private boolean onKey(int keycode) {
+        if (tour != null && tour.active()) {                            // the tour of the instruments: ENTER or SPACE on, ESC ends it
+            if (keycode == Input.Keys.ESCAPE) tour.skip();
+            else if (keycode == Input.Keys.ENTER || keycode == Input.Keys.SPACE) tour.next();
+            return true;
+        }
         if (director.active()) { // a cutscene owns every key: ESC leaves it, anything else reads on
             if (keycode == Input.Keys.ESCAPE) director.skip();
             else director.press();
@@ -174,38 +180,38 @@ public class GameScreen implements FlowState, ShipControls {
             restart(); // a fresh run, hangar back at its defaults, the story beats replay
             return true;
         }
-        if (keycode == Input.Keys.F) {
+        if (keycode == K(vajra.Keymap.ASTRA)) {
             // THE ASTRA RITE: F down begins the invocation (the cage gathers); F up looses it (see keyUp).
             if (!runEnded()) world.astraBegin();
             return true;
         }
-        if (keycode == Input.Keys.X) { // choose which astra the next F invokes
+        if (keycode == K(vajra.Keymap.ASTRA_CYCLE)) { // choose which astra the next F invokes
             world.cycleAstra();
             return true;
         }
-        if (keycode == Input.Keys.Z) { // next hull you own (Q and E are the nose, always)
+        if (keycode == K(vajra.Keymap.HULL_NEXT)) { // next hull you own (Q and E are the nose, always)
             world.selectShip(world.hangar.cycleShip(world.hangar.shipIndex, 1));
             return true;
         }
-        if (keycode == Input.Keys.NUM_1) { // a stored repair: 40% of the hull, spent on the spot
+        if (keycode == K(vajra.Keymap.REPAIR)) { // a stored repair: 40% of the hull, spent on the spot
             world.useMedkit();
             return true;
         }
-        if (keycode >= Input.Keys.NUM_2 && keycode <= Input.Keys.NUM_7) {
+        if (keycode >= Input.Keys.NUM_1 && keycode <= Input.Keys.NUM_7) {
             world.selectShip(keycode - Input.Keys.NUM_1); // 2-7 are hulls 2-7; the first hull is Z's, and a hull you do not own is a no-op
             return true;
         }
         // THE WEAPON KEY: V, or B while a session owns V for push-to-talk. A tap steps (V next, B previous), a hold
         // opens the wheel; which of the two it was is only known on release (keyUp) or after OPEN_AFTER seconds.
         boolean session = vajra.net.Net.active();
-        int wk = session ? Input.Keys.B : Input.Keys.V;
+        int wk = session ? K(vajra.Keymap.WEAPON_PREV) : K(vajra.Keymap.WEAPON_NEXT);
         if (keycode == wk) {
             wheelDown = true;
             wheelHold = 0;
             wheelKey = wk;
             return true;
         }
-        if (keycode == Input.Keys.B) { // solo: B is a plain "previous weapon"
+        if (keycode == K(vajra.Keymap.WEAPON_PREV)) { // solo: a plain "previous weapon"
             world.selectWeapon(world.hangar.cycleWeapon(world.hangar.weaponIndex, -1));
             return true;
         }
@@ -214,7 +220,7 @@ public class GameScreen implements FlowState, ShipControls {
 
     @Override
     public boolean keyUp(int keycode) {
-        if (keycode == Input.Keys.F) { // LET GO: the astra flies (or the mantra falters, if it was not held long enough)
+        if (keycode == K(vajra.Keymap.ASTRA)) { // LET GO: the astra flies (or the mantra falters, if it was not held long enough)
             world.astraLoose();
             return true;
         }
@@ -226,7 +232,7 @@ public class GameScreen implements FlowState, ShipControls {
             wheelOpen = false;
             wheelHover = -1;
         } else { // a tap: step to the next (V) or the previous (B in a session)
-            world.selectWeapon(world.hangar.cycleWeapon(world.hangar.weaponIndex, wheelKey == Input.Keys.B ? -1 : 1));
+            world.selectWeapon(world.hangar.cycleWeapon(world.hangar.weaponIndex, wheelKey == K(vajra.Keymap.WEAPON_PREV) ? -1 : 1));
         }
         return true;
     }
@@ -240,6 +246,10 @@ public class GameScreen implements FlowState, ShipControls {
     @Override
     public boolean touchDown(int sx, int sy, int pointer, int button) {
         Vector2 m = ui.at(sx, sy);
+        if (tour != null && tour.active()) {
+            tour.next();
+            return true;
+        }
         if (director.active()) {
             director.press();
             return true;
@@ -337,7 +347,7 @@ public class GameScreen implements FlowState, ShipControls {
         if (world.astraInvoking && (shop.isOpen() || director.active())) world.astraCancel(); // a menu or a scene took the keys
         // the wheel PAUSES a solo flight; a shared one cannot stop (a pause would be a free dodge), so it crawls
         float simDelta = wheelOpen ? (vajra.net.Net.session == null ? 0f : delta * WeaponWheel.SLOW) : delta;
-        if (!shop.isOpen() && !runEnded() && !director.active()) {
+        if (!shop.isOpen() && !runEnded() && !director.active() && !(tour != null && tour.active())) {
             // RELEASE FREEZE. The world holds still for a fraction of a second the instant the
             // Astra lets go. Impact is mostly the absence of motion: without this the cubes and
             // the shake arrive in the same frame and neither reads. (Presentation time: it
@@ -382,7 +392,7 @@ public class GameScreen implements FlowState, ShipControls {
                 Math.max(viewH / 2, Math.min(world.height - viewH / 2, world.ship.y)),
                 0
         );
-        float[] cf = world.camFocus();
+        float[] cf = world.camFocus(vajra.profile.Profiles.active().settings.gentleCamera);
         if (cf[2] > 0.001f) {                                      // the camera is drawn to someone else for a while
             camera.position.x += (Math.max(viewW / 2, Math.min(world.width - viewW / 2, cf[0])) - camera.position.x) * cf[2];
             camera.position.y += (Math.max(viewH / 2, Math.min(world.height - viewH / 2, cf[1])) - camera.position.y) * cf[2];
@@ -404,6 +414,7 @@ public class GameScreen implements FlowState, ShipControls {
                 vajra.profile.Profiles.save();
             }
         }
+        if (tour != null) tour.update(delta);
         stageCues(); // after the live camera is set, so a scene eases out of what was on screen
         director.steer(delta, camera, world); // a cutscene, if one plays, takes the camera
         camera.update();
@@ -411,15 +422,31 @@ public class GameScreen implements FlowState, ShipControls {
 
     /** Story cues the world raised become cutscenes, one at a time, when nothing else has the
      *  screen. A shared race has no pause to give, so its cues are simply dropped. */
+    private static boolean hintsOn(vajra.profile.Profile p) { return p.settings.hints && vajra.Settings.tutorialAllowed; }
+
     private void stageCues() {
         if (vajra.net.Net.session != null) { // no pause to give: settle what a scene would have settled
             while (!world.cues.isEmpty()) vajra.scene.Scenes.finish(world.cues.poll(), world);
             return;
         }
-        if (director.active() || shop.isOpen() || world.cues.isEmpty()) return;
+        if (director.active() || shop.isOpen() || world.cues.isEmpty() || (tour != null && tour.active())) return;
         vajra.world.Cue cue = world.cues.poll();
-        director.start(vajra.scene.Scenes.build(cue, world), camera,
-                () -> vajra.scene.Scenes.finish(cue, world));
+        vajra.profile.Profile pilot = vajra.profile.Profiles.active();
+        if (cue == vajra.world.Cue.FIRST_LAMP || cue == vajra.world.Cue.FIRST_BAY) {          // told once to a pilot, and never to one who has asked for no hints
+            int beat = cue == vajra.world.Cue.FIRST_LAMP ? vajra.profile.Profile.BEAT_LAMP : vajra.profile.Profile.BEAT_BAY;
+            if (!hintsOn(pilot) || pilot.seen(beat)) return;
+            pilot.see(beat);
+            vajra.profile.Profiles.save();
+        }
+        director.start(vajra.scene.Scenes.build(cue, world), camera, () -> {
+            vajra.scene.Scenes.finish(cue, world);
+            if (cue == vajra.world.Cue.OPENING && hintsOn(pilot) && !pilot.seen(vajra.profile.Profile.BEAT_TOUR)) {   // after the opening, a new pilot is shown the instruments
+                pilot.see(vajra.profile.Profile.BEAT_TOUR);
+                vajra.profile.Profiles.save();
+                if (tour == null) tour = new HudTour(ui);
+                tour.begin();
+            }
+        });
     }
 
     @Override
@@ -451,6 +478,7 @@ public class GameScreen implements FlowState, ShipControls {
             if (coach.lesson() >= 0 && !shop.isOpen() && !runEnded() && world.pieceShowT < 0f)
                 CoachPrompt.render(ui, batch, coach.lesson(), world.clock);
         }
+        if (tour != null && tour.active()) tour.render(batch);
         if (world.maya.active) { if (shatter == null) shatter = new ShatterFx(); shatter.render(world, camera, viewport); }   // Bala's broken mirror: the whole frame, in pieces
         if (Probe.showFrame) perfReadout();
         if (bootFade > 0) { // the white the title's launch left behind, fading off the run
@@ -510,25 +538,28 @@ public class GameScreen implements FlowState, ShipControls {
         batch.end();
     }
 
+    /** The key this pilot has for an action. */
+    private static int K(vajra.Keymap a) { return a.key(vajra.profile.Profiles.active().settings); }
+
     private boolean pressed(int key) {
         return Gdx.input.isKeyPressed(key);
     }
 
     @Override
     public float thrustY() {
-        return (pressed(Input.Keys.W) || pressed(Input.Keys.UP) ? 1 : 0)
-                + (pressed(Input.Keys.S) || pressed(Input.Keys.DOWN) ? -1 : 0);
+        return (pressed(K(vajra.Keymap.UP)) || pressed(Input.Keys.UP) ? 1 : 0)
+                + (pressed(K(vajra.Keymap.DOWN)) || pressed(Input.Keys.DOWN) ? -1 : 0);
     }
 
     @Override
     public float thrustX() {
-        return (pressed(Input.Keys.D) || pressed(Input.Keys.RIGHT) ? 1 : 0)
-                + (pressed(Input.Keys.A) || pressed(Input.Keys.LEFT) ? -1 : 0);
+        return (pressed(K(vajra.Keymap.RIGHT)) || pressed(Input.Keys.RIGHT) ? 1 : 0)
+                + (pressed(K(vajra.Keymap.LEFT)) || pressed(Input.Keys.LEFT) ? -1 : 0);
     }
 
     @Override
     public float rotate() {
-        return (pressed(Input.Keys.Q) ? 1 : 0) + (pressed(Input.Keys.E) ? -1 : 0);
+        return (pressed(K(vajra.Keymap.TURN_LEFT)) ? 1 : 0) + (pressed(K(vajra.Keymap.TURN_RIGHT)) ? -1 : 0);
     }
 
     @Override
@@ -537,19 +568,19 @@ public class GameScreen implements FlowState, ShipControls {
     }
 
     private boolean rawFire() {
-        return pressed(Input.Keys.SPACE) || (armed && Gdx.input.isButtonPressed(Input.Buttons.LEFT));
+        return pressed(K(vajra.Keymap.FIRE)) || (armed && Gdx.input.isButtonPressed(Input.Buttons.LEFT));
     }
 
     @Override
     public boolean boost() {
-        return pressed(Input.Keys.SHIFT_LEFT) || pressed(Input.Keys.SHIFT_RIGHT);
+        return pressed(K(vajra.Keymap.BOOST)) || pressed(Input.Keys.SHIFT_RIGHT);
     }
 
     @Override
     public boolean shield() {
         // F belongs to the Akasha Astra now, so the shield lives on G and the right mouse
         // button. G was the Tatva Lance's key and the Astra replaced it.
-        return pressed(Input.Keys.G) || (armed && Gdx.input.isButtonPressed(Input.Buttons.RIGHT));
+        return pressed(K(vajra.Keymap.SHIELD)) || (armed && Gdx.input.isButtonPressed(Input.Buttons.RIGHT));
     }
 
     @Override

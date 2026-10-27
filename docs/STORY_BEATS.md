@@ -29,3 +29,28 @@ light gathers from a ring, closing on one point, and the hull is whole again (a 
 ## The camera (World.camFocus)
 Besides the hull, the camera is drawn to: Bala while he forges his Maya-astra (it goes to him in half a second, stays while the mandala forms, and comes back over a second), the wreck-to-lamp path of a death, and the gate while the
 veil parts. While Brahma is forged the view creeps out slowly (World.astraSlowView).
+
+## The title, settings and tutorial (added)
+- **Title**: CONTINUE (when a run is parked), NEW GAME, MULTIPLAYER, SETTINGS, EXIT. Everything else lives in SETTINGS.
+- **Settings** (six tabs, Q/E to change tab): DISPLAY (fullscreen, window size, vsync, frame limit, frame readout), AUDIO (master, music, effects, voices - kept for the sound that comes), GAMEPLAY (shake, popup size,
+  dialogue speed, tutorial hints, replay the tutorial), CONTROLS (every flight key rebindable; a key another action holds swaps with it), ACCESS (reduce flashing, gentle camera), MORE (tutorials, key reference,
+  pilot profile, update check, reset all). The pilot's own keys are `Settings.keys` / `vajra.Keymap`.
+- **The tour** (`HudTour`): after the opening of a new game a spotlight goes round the instruments (hull, lives, stored repairs, weapon, dial, score, astra, loka, the Vajra), the world held still, a card for each.
+  **The first sights** (`Cue.FIRST_LAMP`, `FIRST_BAY`): the first time a lamp or a bay is near, the camera goes slowly to it and says what it is. Both are told once to a pilot (`Profile.beats`), never with hints off.
+
+## Vitala's foes (changed)
+No Vitala unit dives or rises from a floor (there is none): a leader's reserves FLY IN from behind him already in the air. The quick kinds (Agneya, Dhuma, Kila, Rekha, Jvala) sidestep a round coming at them
+(a leader or an elite nearly always, the rank and file now and then; Tamra, plated and slow, does not). The difficulty climbs band by band through `Balance.ramp`.
+
+## Bhairava (changed)
+He speaks with the pilot when he wakes, at each phase and as he casts; from his second phase he calls the ASH CLOUD (`AshCloud`): grey smoke fills the hall for 9-11 seconds and holds every hull to 55% speed with no
+boost, lying on the floor so that he and his court stay in plain sight; a grey glowing mandala (`Mandala.drawAsh`) turns at its heart. When he yields he cannot recall one name of the thousand pilgrims; Indra names
+what he was.
+
+## Jala (changed)
+The flood (`AstraFlow.WATER`, `assets/effects/astra_water.png`): a tide goes out from the hull, carries the foes round and out, soaks them and drowns them (a common foe in about three seconds; a leader, an elite
+and a ruler far more slowly); what the current throws at rock is hurt by the rock; rounds that enter it slow and soften; each foe taken mends the pilot a little.
+
+## Bala's doors (changed)
+The windows are LIVE: each shard shows a real part of Atala, redrawn every few frames (the hull's own door every frame), following the hull's own movement as if it flew there; the foes round each door are woken; the
+door that takes the hull keeps that offset.

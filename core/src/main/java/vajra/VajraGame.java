@@ -34,6 +34,7 @@ public class VajraGame extends Game {
         // Do it before the first render so the very first frame - the studio card - is already
         // the size the player will see the game at. F11 still drops back to windowed.
         Gdx.graphics.setFullscreenMode(Gdx.graphics.getDisplayMode());
+        vajra.screen.SettingsScreen.applyDisplay(vajra.profile.Profiles.active().settings);   // the pilot's own vsync, frame limit and dialogue speed
         flow.set(new SplashScreen(flow, ui, batch)); // then the main menu
     }
 

@@ -79,13 +79,31 @@ public class ControlScreen implements FlowState {
         for (int i = 0; i < ROWS.length; i++) {
             float y = ROW_Y - i * PITCH;
             ui.hud.setColor(Template.accentR, Template.accentG, Template.accentB, 1f);
-            ui.hud.draw(batch, ROWS[i][0], COL_X, y);
+            ui.hud.draw(batch, label(i), COL_X, y);
             ui.hud.setColor(1, 1, 1, 0.75f);
             ui.hud.draw(batch, ROWS[i][1], KEY_X, y);
         }
         ui.hud.setColor(1, 1, 1, 1);
         Template.keys(ui, batch, UiTheme.FOOT_Y, "ESC", "BACK");
         batch.end();
+    }
+
+    /** The key column as THIS pilot has set it (the rows that name a flight key follow the settings; the others are fixed). */
+    private static String label(int i) {
+        vajra.Settings st = vajra.profile.Profiles.active().settings;
+        switch (i) {
+            case 0: return vajra.Keymap.UP.name(st) + " " + vajra.Keymap.LEFT.name(st) + " " + vajra.Keymap.DOWN.name(st) + " " + vajra.Keymap.RIGHT.name(st) + " / arrows";
+            case 1: return vajra.Keymap.TURN_LEFT.name(st) + " / " + vajra.Keymap.TURN_RIGHT.name(st);
+            case 2: return vajra.Keymap.FIRE.name(st) + " / LMB";
+            case 3: return vajra.Keymap.BOOST.name(st);
+            case 4: return vajra.Keymap.SHIELD.name(st) + " / RMB";
+            case 5: return vajra.Keymap.WEAPON_NEXT.name(st) + " / " + vajra.Keymap.WEAPON_PREV.name(st);
+            case 6: return vajra.Keymap.REPAIR.name(st);
+            case 8: return vajra.Keymap.HULL_NEXT.name(st);
+            case 9: return vajra.Keymap.ASTRA.name(st);
+            case 10: return vajra.Keymap.ASTRA_CYCLE.name(st);
+            default: return ROWS[i][0];
+        }
     }
 
     @Override

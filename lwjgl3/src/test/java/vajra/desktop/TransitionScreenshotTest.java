@@ -65,13 +65,17 @@ class TransitionScreenshotTest {
                             "home frame shows the gold PLAY row (" + gold(home, 560, 720, 400, 432) + " px)",
                             failures);
 
-                    // 1b. the PROFILE row opens the pilot's page; ESC hands back home
-                    flow.keyDown(com.badlogic.gdx.Input.Keys.DOWN); // PLAY -> MULTIPLAYER
-                    flow.keyDown(com.badlogic.gdx.Input.Keys.DOWN); // MULTIPLAYER -> TUTORIALS
-                    flow.keyDown(com.badlogic.gdx.Input.Keys.DOWN); // TUTORIALS -> PROFILE
+                    // 1b. SETTINGS holds the pilot's page now (its MORE tab): ESC hands back, tab by tab
+                    flow.keyDown(com.badlogic.gdx.Input.Keys.DOWN); // NEW GAME -> MULTIPLAYER
+                    flow.keyDown(com.badlogic.gdx.Input.Keys.DOWN); // MULTIPLAYER -> SETTINGS
+                    flow.keyDown(com.badlogic.gdx.Input.Keys.ENTER);
+                    check(flow.top() instanceof vajra.screen.SettingsScreen, "SETTINGS opens", failures);
+                    for (int i = 0; i < 5; i++) flow.keyDown(com.badlogic.gdx.Input.Keys.E); // DISPLAY -> ... -> MORE
+                    flow.keyDown(com.badlogic.gdx.Input.Keys.S);    // TUTORIALS -> KEY REFERENCE
+                    flow.keyDown(com.badlogic.gdx.Input.Keys.S);    // -> PILOT PROFILE
                     flow.keyDown(com.badlogic.gdx.Input.Keys.ENTER);
                     check(flow.top() instanceof vajra.screen.ProfileScreen,
-                            "PROFILE opens the pilot page", failures);
+                            "PILOT PROFILE opens the pilot page", failures);
                     int[] profile = frame();
                     writePng(profile, "build/trans-profile.png");
                     // the pilot's name in the brand face at UI 508 (bottom-up readback)
@@ -83,10 +87,11 @@ class TransitionScreenshotTest {
                             "pilot page shows the ledger lines (" + bright(profile, 400, 880, 380, 475) + " px)",
                             failures);
                     flow.keyDown(com.badlogic.gdx.Input.Keys.ESCAPE);
-                    check(flow.top() instanceof HomeScreen, "ESC leaves the pilot page", failures);
-                    flow.keyDown(com.badlogic.gdx.Input.Keys.UP); // the cursor stayed on PROFILE:
-                    flow.keyDown(com.badlogic.gdx.Input.Keys.UP); // walk it back to PLAY for the handover
-                    flow.keyDown(com.badlogic.gdx.Input.Keys.UP);
+                    check(flow.top() instanceof vajra.screen.SettingsScreen, "ESC leaves the pilot page for the settings", failures);
+                    flow.keyDown(com.badlogic.gdx.Input.Keys.ESCAPE);
+                    check(flow.top() instanceof HomeScreen, "ESC leaves the settings", failures);
+                    flow.keyDown(com.badlogic.gdx.Input.Keys.UP); // the cursor stayed on SETTINGS:
+                    flow.keyDown(com.badlogic.gdx.Input.Keys.UP); // walk it back to NEW GAME for the handover
 
                     // 2. PLAY starts the run at once
                     flow.keyDown(com.badlogic.gdx.Input.Keys.ENTER);

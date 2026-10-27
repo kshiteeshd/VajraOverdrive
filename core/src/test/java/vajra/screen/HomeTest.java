@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
 
 /** The home screen is a plain menu: the only logic worth pinning is the wrapping cursor and
- *  that the six rows stay in the order the test expects.
+ *  that the four rows stay in the order the test expects.
  *
  *  <p>Plus its vertical budget. The logo is drawn 2x and everything below it was squeezed to
  *  make room; the first attempt put QUIT straight through the footer hint and nothing but a
@@ -17,14 +17,14 @@ class HomeTest {
     @Test
     void theMenuCursorWrapsBothWays() {
         assertEquals(1, HomeScreen.move(0, 1));
-        assertEquals(6, HomeScreen.move(0, -1), "up from the top wraps to QUIT");
-        assertEquals(0, HomeScreen.move(6, 1), "down from the bottom wraps to the top");
+        assertEquals(3, HomeScreen.move(0, -1), "up from the top wraps to EXIT");
+        assertEquals(0, HomeScreen.move(3, 1), "down from the bottom wraps to the top");
     }
 
     @Test
     void withNoSaveTheRowsAreNewGameMultiplayerAndTheRest() {
         assertArrayEquals(
-                new String[] {"NEW GAME", "MULTIPLAYER", "TUTORIALS", "PROFILE", "SETTINGS", "UPDATE", "QUIT"},
+                new String[] {"NEW GAME", "MULTIPLAYER", "SETTINGS", "EXIT"},
                 HomeScreen.rows(false));
     }
 
@@ -48,7 +48,7 @@ class HomeTest {
     /** The bottom row must clear the footer hint. This is the collision that actually happened. */
     @Test
     void theMenuClearsTheFooterHint() {
-        float bottom = HomeScreen.menuY() - 8 * HomeScreen.pitch(); // the bottom of nine rows (with CONTINUE)
+        float bottom = HomeScreen.menuY() - 4 * HomeScreen.pitch(); // the bottom of five rows (with CONTINUE)
         assertTrue(bottom - 14 > HINT_TOP + 10,
                 "QUIT at y" + bottom + " runs into the hint at y" + HINT_TOP);
     }

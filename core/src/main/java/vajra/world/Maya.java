@@ -32,6 +32,9 @@ public final class Maya {
     public final float[] doorX = new float[DOOR_COUNT], doorY = new float[DOOR_COUNT];
     public int doors, chosen = -1;
     public boolean carried;
+    /** Where the hull was when the windows began: every window follows the hull's own movement from here, as if it were flying there, and the door that takes it keeps that offset. */
+    public float originX, originY;
+    public boolean originSet;
 
     public void start(vajra.enemy.Enemy by, long seed, int mode) {
         boss = by;
@@ -48,6 +51,7 @@ public final class Maya {
         doors = 0;
         chosen = -1;
         carried = false;
+        originSet = false;
     }
 
     public void step(float dt) {

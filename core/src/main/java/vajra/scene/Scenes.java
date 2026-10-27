@@ -130,6 +130,17 @@ public final class Scenes {
                 }, "TWO PIECES. FIVE REMAIN.",
                         new String[] {"THE SECOND PIECE ANSWERS THE HAND THAT SEEKS IT.", "BEYOND THE GOLD GATE, THE WATERS OF SUTALA WAIT."}, null);
                 break;
+            case FIRST_LAMP:
+                s.add(new Shot(w.beatX, frame(w.beatY, CLOSE), CLOSE, null, false,
+                        "A LAMP OF THE DEEP. FLY THROUGH IT TO BIND IT TO YOU.",
+                        "IF THE HULL FALLS, YOU WAKE AT THE LAST LAMP YOU BOUND. THERE IS ONE IN EVERY BAND.").pan(2.6f));
+                break;
+            case FIRST_BAY:
+                s.add(new Shot(w.beatX, frame(w.beatY, CLOSE), CLOSE, null, false,
+                        "A MAKER'S BAY. HOLD STILL IN IT, AND THE DOCK TAKES THE HULL.",
+                        "THERE YOU BUY HULLS AND PATTERNS, AND CHOOSE ASTRAS FROM THE SHARDS YOU CARRY.",
+                        "COINS BUY. SHARDS FUEL THE ASTRAS. ESC LEAVES THE BAY.").pan(2.6f));
+                break;
             case BALA_FALLS:
                 yieldScene(w, s, new String[][] {
                         {"THE LAST STROKE FELL. BALA DID NOT FALL WITH IT.", "HE KNELT, AND THE MANDALA OF HIS ILLUSIONS WENT DARK."},

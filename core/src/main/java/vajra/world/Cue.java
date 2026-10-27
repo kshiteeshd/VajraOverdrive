@@ -18,5 +18,7 @@ public enum Cue {
     VOICE_SELLER, // first meeting: the Gold-Seller, a bhuta of Hara's court
     VOICE_MAID,   // first meeting: Gauri's Maid, keeper of the shrine lamps
     BHAIRAVA_WAKES,  // Vitala's ruler wakes as the hull comes into the Altar
-    BHAIRAVA_FALLS   // and his last breath
+    BHAIRAVA_FALLS,  // and his last breath
+    FIRST_LAMP,      // a lamp (a checkpoint) comes into sight for the first time: the camera goes to it and says what it is
+    FIRST_BAY        // so does a maker's bay (a shop)
 }

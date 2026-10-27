@@ -9,7 +9,6 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import vajra.flow.Flow;
 import vajra.flow.FlowState;
-import vajra.update.Updater;
 
 /** The title screen: an opaque ink field, the pixel logo, a temple divider, and its text rows:
  *  CONTINUE (only when the pilot left a run mid-flight) / NEW GAME / MULTIPLAYER / TUTORIALS /
@@ -28,13 +27,13 @@ import vajra.update.Updater;
 public class HomeScreen implements FlowState {
     /** The rows with no save to continue: NEW GAME leads. */
     static final String[] MENU =
-            {"NEW GAME", "MULTIPLAYER", "TUTORIALS", "PROFILE", "SETTINGS", "UPDATE", "QUIT"};
+            {"NEW GAME", "MULTIPLAYER", "SETTINGS", "EXIT"};
     static final String CONTINUE = "CONTINUE";
     static final String SURE = "ERASE SAVE?  ENTER AGAIN";
     private static final float MENU_Y = 292;  // first row baseline: up to eight rows, tighter pitch
-    private static final float PITCH = 26;    // row pitch (rows abut at HALF_H 13, no dead zone)
+    private static final float PITCH = 34;    // row pitch (rows abut at HALF_H 17, no dead zone)
     private static final float HALF_W = 200;  // row hit half-width
-    private static final float HALF_H = 13;   // row hit half-height
+    private static final float HALF_H = 17;   // row hit half-height
 
     /** The rows for a pilot: CONTINUE on top when a run is parked. */
     static String[] rows(boolean hasRun) {
@@ -60,7 +59,6 @@ public class HomeScreen implements FlowState {
     private final Texture logo =
             new Texture(Gdx.files.internal("brand/vajra-overdrive-logo.png"));
     private final UiMenu menu;
-    private final Updater updater;
     private final boolean hasRun;   // a parked run exists: CONTINUE is the first row
     private final String[] labels;
     private boolean sure;           // NEW GAME was pressed once over a save
@@ -72,7 +70,6 @@ public class HomeScreen implements FlowState {
         this.hasRun = vajra.profile.Profiles.active().hasRun();
         this.labels = rows(hasRun);
         this.menu = new UiMenu(labels, MENU_Y, PITCH, HALF_W, HALF_H);
-        updater = new Updater();
         Template.setAccent(UiTheme.GOLD_R, UiTheme.GOLD_G, UiTheme.GOLD_B); // back to brand gold
         logo.setFilter(TextureFilter.Linear, TextureFilter.Linear);
     }
@@ -125,10 +122,7 @@ public class HomeScreen implements FlowState {
         switch (MENU[row()]) {
             case "NEW GAME": newGame(); break;
             case "MULTIPLAYER": flow.push(new NetScreen(flow, ui, batch)); break;
-            case "TUTORIALS": flow.push(new TutorialScreen(flow, ui, batch)); break;
-            case "PROFILE": flow.push(new ProfileScreen(flow, ui, batch)); break;
             case "SETTINGS": flow.push(new SettingsScreen(flow, ui, batch)); break;
-            case "UPDATE": updater.begin(); break;
             default: Gdx.app.exit(); break;
         }
     }
@@ -172,10 +166,7 @@ public class HomeScreen implements FlowState {
         batch.draw(logo, Template.COL - LOGO_W / 2, LOGO_BOTTOM, LOGO_W, LOGO_H);
         for (int i = 0; i < menu.count(); i++)
             Template.menuRow(ui, batch, menu.label(i), menu.selected(i), menu.rowY(i));
-        if (updater.message().isEmpty()) // the hint row answers to the updater while it works
-            Template.keys(ui, batch, UiTheme.FOOT_Y, "W/S", "SELECT", "ENTER / CLICK", "CONFIRM");
-        else
-            Template.sub(ui, batch, updater.message(), UiTheme.FOOT_Y, 0.85f);
+        Template.keys(ui, batch, UiTheme.FOOT_Y, "W/S", "SELECT", "ENTER / CLICK", "CONFIRM");
         batch.end();
     }
 

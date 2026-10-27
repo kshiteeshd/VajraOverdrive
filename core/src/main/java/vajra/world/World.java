@@ -538,6 +538,7 @@ public class World {
         }
         if (victoryT >= 0) victoryT += dt;
         tickVeil(dt);
+        tickBeats();
         death.step(dt, this);
         ash.step(dt);
         ship.mud = ash.holds(ship.x, ship.y) ? AshCloud.MUD : 1f;
@@ -1809,6 +1810,23 @@ public class World {
 
     /** The invocation builds, cubes in flight fly and retire. Rock is never consulted - that is the whole point of them. */
     public final Maya maya = new Maya();
+    /** The first sight of a lamp and of a bay in this run (the screen decides whether the pilot has yet to be told): where it lies, and that it has been raised. */
+    public float beatX, beatY;
+    private boolean lampRaised, bayRaised;
+
+    private void tickBeats() {
+        if (clientSeat || (lampRaised && bayRaised)) return;
+        if (!lampRaised)
+            for (Checkpoint c : checkpoints) {
+                float dx = c.x - ship.x, dy = c.y - ship.y;
+                if (!c.collected && dx * dx + dy * dy < 640f * 640f) { lampRaised = true; beatX = c.x; beatY = c.y; cue(Cue.FIRST_LAMP); break; }
+            }
+        if (!bayRaised && lampRaised)                                              // (one beat at a time: the lamp first)
+            for (float[] sp : shops) {
+                float dx = sp[0] - ship.x, dy = sp[1] - ship.y;
+                if (dx * dx + dy * dy < 640f * 640f) { bayRaised = true; beatX = sp[0]; beatY = sp[1]; cue(Cue.FIRST_BAY); break; }
+            }
+    }
     /** The old cube volley for Jala, kept for the tests of the cube system (no astra looses cubes any more): the game never sets it. */
     public boolean cubeVolleys;
     /** The pilot's hull breaking up and being made whole at the lamp: a scene that runs inside the world's own clock (see DeathSeq). */
@@ -1860,12 +1878,15 @@ public class World {
     }
 
     /** Where the camera is drawn to besides the hull, and how strongly (0..1): x, y, weight. Bala's eyes are the camera's while he forges his astra. */
-    public float[] camFocus() {
+    public float[] camFocus() { return camFocus(false); }
+
+    /** With `gentle` (the pilot's setting) the camera keeps to the hull for a boss's astra and for the parting cloud; only the hull's own death moves it away. */
+    public float[] camFocus(boolean gentle) {
         camBuf[2] = 0f;
-        float k = maya.focus();
+        float k = gentle ? 0f : maya.focus();
         if (k > 0f) { camBuf[0] = maya.x; camBuf[1] = maya.y; camBuf[2] = k; }
         death.focus(camBuf);                                                   // the hull's death: the camera leaves the wreck and travels to the lamp
-        if (unveilT >= 0f && unveilStage >= 0) {                              // the cloud over the way to the next loka parts, and the camera is taken to see it
+        if (!gentle && unveilT >= 0f && unveilStage >= 0) {                              // the cloud over the way to the next loka parts, and the camera is taken to see it
             float in = Math.min(1f, unveilT / 1.0f), out = 1f - Math.max(0f, Math.min(1f, (unveilT - 3.2f) / 1.4f)), u = in * out;
             u = u * u * (3f - 2f * u);
             if (u > camBuf[2]) { camBuf[0] = axisX; camBuf[1] = veilY(unveilStage) + 260f; camBuf[2] = u; }
@@ -1896,6 +1917,19 @@ public class World {
         }
     }
 
+    /** While the windows are up: where the hull stood when they began is remembered (they follow its every movement), and the foes about each door are awake, so what the windows show
+     *  is a living place. */
+    private void tickDoors() {
+        if (!maya.originSet) { maya.originSet = true; maya.originX = ship.x; maya.originY = ship.y; }
+        if (clientSeat) return;
+        for (int i = 0; i < maya.doors; i++)
+            for (Enemy e : enemies) {
+                if (e.dead || e.ghost || e.voice || e.boss) continue;
+                float dx = e.x - maya.doorX[i], dy = e.y - maya.doorY[i];
+                if (dx * dx + dy * dy < 720f * 720f) e.active = true;
+            }
+    }
+
     /** The count: the hull goes through the door of the piece it was over (or, with nobody to count, the nearest door). */
     private void mayaCarry() {
         maya.carried = true;
@@ -1910,9 +1944,12 @@ public class World {
             }
         }
         if (maya.doors == 0) return;
+        float ox = maya.originSet ? ship.x - maya.originX : 0f, oy = maya.originSet ? ship.y - maya.originY : 0f;   // the windows showed the hull flying there: it arrives as it was
+        float tx = maya.doorX[d] + ox, ty = maya.doorY[d] + oy;
+        if (!openFor(tx, ty, 14f)) { tx = maya.doorX[d]; ty = maya.doorY[d]; }
         addEffect(Effect.ring(ship.x, ship.y, 260, 0.9f, 0.9f, 1f));
-        ship.x = maya.doorX[d];
-        ship.y = maya.doorY[d];
+        ship.x = tx;
+        ship.y = ty;
         addEffect(Effect.ring(ship.x, ship.y, 260, 0.9f, 0.9f, 1f));
         ship.trauma = Math.min(1f, ship.trauma + 0.5f);
     }
@@ -1920,6 +1957,7 @@ public class World {
     public void updateAstra(float dt) {
         maya.step(dt);
         if (maya.active && maya.mode == Maya.DOORS && !maya.carried && maya.t >= Maya.TELE_AT) mayaCarry();
+        if (maya.active && maya.mode == Maya.DOORS && !maya.carried && maya.t >= Maya.PREP_AT) tickDoors();
         if (astraCd > 0) astraCd -= dt;
         if (astraInvoking) {
             if (ship.hp <= 0 || runEnded()) {

@@ -33,6 +33,16 @@ public final class Profile {
     /** THE PRIMER: lessons this pilot has been taught (vajra.coach.Lessons ids). Null until the
      *  first lesson; a lesson learned is learned for good. */
     public boolean[] lessons;
+    /** THE TUTORIAL'S BEATS this pilot has seen: the tour of the instruments (0), the first sight of a lamp (1) and of a bay (2); the rest are for what is added. */
+    public boolean[] beats = new boolean[8];
+    public static final int BEAT_TOUR = 0, BEAT_LAMP = 1, BEAT_BAY = 2;
+
+    public boolean seen(int beat) { return beats != null && beat >= 0 && beat < beats.length && beats[beat]; }
+
+    public void see(int beat) {
+        if (beats == null || beats.length <= beat) beats = java.util.Arrays.copyOf(beats == null ? new boolean[0] : beats, Math.max(8, beat + 1));
+        beats[beat] = true;
+    }
     /** THE SAVED RUN: the solo run left mid-flight, as vajra.world.RunSave's JSON; null when there is
      *  none. It is what CONTINUE on the title loads; a run that ends (or a new game) clears it. */
     public String run;
@@ -102,6 +112,7 @@ public final class Profile {
         public String settings; // the settings' own JSON, so its clamps stay in one place
         public boolean[] codex; // the codex book, or null on a profile older than the book
         public boolean[] lessons; // the primer, or null on a profile older than the primer
+        public boolean[] beats; // the tutorial's beats seen, or null on a profile older than the tour
         public String run; // the saved solo run's own JSON, or null
     }
 
@@ -113,6 +124,7 @@ public final class Profile {
         d.settings = Settings.serialize(p.settings);
         d.codex = p.codex;
         d.lessons = p.lessons;
+        d.beats = p.beats;
         d.run = p.run;
         return JSON.toJson(d);
     }
@@ -132,6 +144,7 @@ public final class Profile {
         if (d.codex != null) p.recordCodex(d.codex);
         if (d.lessons != null)
             for (int i = 0; i < d.lessons.length; i++) if (d.lessons[i]) p.learn(i);
+        if (d.beats != null) for (int i = 0; i < d.beats.length; i++) if (d.beats[i]) p.see(i);
         if (d.run != null && !d.run.isBlank()) p.run = d.run;
         Settings.deserialize(p.settings, d.settings);
     }

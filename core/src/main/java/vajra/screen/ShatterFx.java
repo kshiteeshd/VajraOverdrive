@@ -182,7 +182,7 @@ final class ShatterFx {
             pb.begin();
             for (Piece pc : pieces) drawPiece(pc, m, fade);
             pb.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE);                  // the light that travels over the glass is added, not laid on
-            for (Piece pc : pieces) drawShine(pc, m, fade);
+            if (!calm()) for (Piece pc : pieces) drawShine(pc, m, fade);
             pb.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
             float veil = m.doorVeil();                                           // the chosen door comes to fill the screen (the others are lost behind it), then clears as the hull is through
             if (veil > 0f && m.chosen >= 0 && m.chosen < winReg.length && winDone[m.chosen]) {
@@ -200,7 +200,7 @@ final class ShatterFx {
         if (m.mode == Maya.DOORS) frames(m);
         sr.end();
         float flash = m.mode == Maya.DOORS ? Math.max(0f, 1f - Math.abs(m.t - Maya.TELE_AT) / 0.25f) : 0f;      // the instant the hull goes through
-        if (flash > 0f) {
+        if (flash > 0f && !calm()) {
             sr.begin(ShapeRenderer.ShapeType.Filled);
             sr.setColor(1f, 1f, 1f, 0.75f * flash);
             sr.rect(0f, 0f, bw, bh);
@@ -246,7 +246,7 @@ final class ShatterFx {
         if (!m.active || m.mode != Maya.DOORS || m.t < Maya.PREP_AT || pieces.isEmpty()) return;
         int bw = Gdx.graphics.getBackBufferWidth(), bh = Gdx.graphics.getBackBufferHeight();
         if (bw < 16 || bh < 16) return;
-        if (winSeed != m.seed) { winSeed = m.seed; java.util.Arrays.fill(winDone, false); refreshed = false; }
+        if (winSeed != m.seed) { winSeed = m.seed; java.util.Arrays.fill(winDone, false); }
         if (snapTex == null || snapTex.getWidth() != bw || snapTex.getHeight() != bh) {
             if (snapTex != null) snapTex.dispose();
             Pixmap pm = new Pixmap(bw, bh, Pixmap.Format.RGBA8888);
@@ -256,13 +256,21 @@ final class ShatterFx {
             for (int i = 0; i < win.length; i++) { if (win[i] != null) { win[i].dispose(); win[i] = null; } winDone[i] = false; }
         }
         if (sb == null) sb = new SpriteBatch();
-        int made = 0;
-        for (Piece pc : pieces) {
-            if (made >= 2) break;
+        float offX = m.originSet ? w.ship.x - m.originX : 0f, offY = m.originSet ? w.ship.y - m.originY : 0f;      // every window follows the hull as if it flew there
+        int made = 0, budget = 3;
+        java.util.ArrayList<Piece> order = new java.util.ArrayList<>();
+        for (Piece pc : pieces) if (pc.id < m.doors && !winDone[pc.id]) order.add(pc);                          // first the windows not yet drawn...
+        if (order.isEmpty()) {                                                                                 // ...then they are LIVE: the hull's own door each frame, and the others in turn
+            Piece hotPiece = null;
+            for (Piece pc : pieces) if (pc.id == (m.chosen >= 0 ? m.chosen : hot)) hotPiece = pc;
+            if (hotPiece != null) order.add(hotPiece);
+            if (!pieces.isEmpty()) { liveAt = (liveAt + 1) % pieces.size(); Piece o = pieces.get(liveAt); if (o != hotPiece && o.id < m.doors) order.add(o); }
+            budget = 2;
+        }
+        for (Piece pc : order) {
+            if (made >= budget) break;
             int id = pc.id;
-            boolean again = id == m.chosen && m.t >= Maya.PICK_AT && !refreshed;       // the chosen door is drawn once more, fresh, as it comes to fill the screen
-            if (id >= m.doors || (winDone[id] && !again)) continue;
-            cap.capture(snapTex, m.doorX[id], m.doorY[id]);
+            cap.capture(snapTex, m.doorX[id] + offX, m.doorY[id] + offY);
             if (win[id] == null) {
                 win[id] = new FrameBuffer(Pixmap.Format.RGBA8888, Math.max(64, bw / 3), Math.max(64, bh / 3), false);
                 winReg[id] = new TextureRegion(win[id].getColorBufferTexture());
@@ -275,12 +283,14 @@ final class ShatterFx {
             sb.end();
             win[id].end();
             winDone[id] = true;
-            if (again) refreshed = true;
             made++;
         }
     }
 
-    private boolean refreshed;
+    private int liveAt;
+
+    /** The pilot asked for no flashing: no white flare, no travelling bands of light. */
+    private static boolean calm() { return vajra.profile.Profiles.active().settings.reduceFlash; }
 
     private final com.badlogic.gdx.math.Matrix4 pm4 = new com.badlogic.gdx.math.Matrix4();
 
@@ -437,7 +447,7 @@ final class ShatterFx {
     private void cracks(Maya m, float fade) {
         float p = m.crack(), s = p * K, a = fade;
         float flash = MathUtils.clamp(1f - (m.t - Maya.CRACK_AT) / 0.4f, 0f, 1f);
-        if (flash > 0f) { sr.setColor(1f, 1f, 1f, 0.55f * flash); sr.circle(fx, fy, 30f + 120f * (1f - flash), 28); }
+        if (flash > 0f && !calm()) { sr.setColor(1f, 1f, 1f, 0.55f * flash); sr.circle(fx, fy, 30f + 120f * (1f - flash), 28); }
         for (int pass = 0; pass < 2; pass++) {
             for (int i = 0; i < RAYS; i++) {
                 for (int k = 0; k < K; k++) {

@@ -11,6 +11,8 @@ public final class CutscenePlayer {
     public static final float MOVE = 0.7f;   // default seconds to ease onto the next subject (Shot.moveSecs)
     public static final float OUTRO = 0.5f;  // seconds to ease back to play
     public static final float CPS = 24f;     // typing speed, characters per second: slow enough to be read as it comes
+    /** The pilot's dialogue speed (Settings.textSpeed): a multiplier on CPS. */
+    public static float speed = 1f;
     public static final float BANDS_IN = 0.45f; // the letterbox bands slide in over this
 
     private final List<Shot> shots;
@@ -73,7 +75,7 @@ public final class CutscenePlayer {
         }
         Shot s = shots.get(shot);
         ease(Math.min(1, move / s.moveSecs), s.x, s.y, s.zoom);
-        if (move >= s.moveSecs) chars += CPS * dt;
+        if (move >= s.moveSecs) chars += CPS * speed * dt;
     }
 
     /** A key or click: finish the line, else the next line, else the next shot, else leave. */
