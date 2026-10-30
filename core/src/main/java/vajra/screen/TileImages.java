@@ -36,7 +36,9 @@ public class TileImages {
             for (int i = 0; i < 16; i++) {
                 Texture t = ImageKit.texture(String.format(DIR, i), true);
                 if (t == null) throw new java.io.FileNotFoundException();
-                tile[i] = t;
+                t.dispose();
+                tile[i] = jewel(String.format(DIR, i));
+                if (tile[i] == null) throw new java.io.FileNotFoundException();
                 tileB[i] = basalt(String.format(DIR, i));
             }
         } catch (Throwable ignored) {
@@ -63,7 +65,40 @@ public class TileImages {
         Pixmap p = new Pixmap(Gdx.files.internal(path));
         toBasalt(p);
         Texture t = new Texture(p);
-        t.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
+        t.setFilter(TextureFilter.Linear, TextureFilter.Linear);
+        p.dispose();
+        return t;
+    }
+
+    /** One wall tile of ATALA: the ivory art read as pale stone in a sunless hall lit by jewels (cool, quiet, a little darker), its gold trim worn to old bronze. */
+    private static Texture jewel(String path) {
+        if (!Gdx.files.internal(path).exists()) return null;
+        Pixmap p = new Pixmap(Gdx.files.internal(path));
+        p.setBlending(Pixmap.Blending.None);
+        for (int y = 0; y < p.getHeight(); y++)
+            for (int x = 0; x < p.getWidth(); x++) {
+                int px = p.getPixel(x, y);
+                float r = ((px >>> 24) & 0xff) / 255f, g = ((px >>> 16) & 0xff) / 255f, b = ((px >>> 8) & 0xff) / 255f;
+                int a = px & 0xff;
+                if (a == 0) continue;
+                float lum = 0.299f * r + 0.587f * g + 0.114f * b;
+                boolean gold = r > 0.5f && r - b > 0.28f && r > g * 1.05f;
+                float or, og, ob;
+                if (gold) {
+                    float k = 0.42f + 0.40f * lum;
+                    or = Math.min(1f, 0.80f * k + 0.08f);
+                    og = Math.min(1f, 0.62f * k + 0.07f);
+                    ob = Math.min(1f, 0.34f * k + 0.06f);
+                } else {
+                    float base = (float) Math.pow(lum, 1.12) * 0.50f + 0.06f;
+                    or = Math.min(1f, base * 0.90f);
+                    og = Math.min(1f, base * 0.97f);
+                    ob = Math.min(1f, base * 1.10f);
+                }
+                p.drawPixel(x, y, ((int) (or * 255f) << 24) | ((int) (og * 255f) << 16) | ((int) (ob * 255f) << 8) | a);
+            }
+        Texture t = new Texture(p);
+        t.setFilter(TextureFilter.Linear, TextureFilter.Linear);
         p.dispose();
         return t;
     }
@@ -85,16 +120,16 @@ public class TileImages {
                 float lum = 0.299f * r + 0.587f * g + 0.114f * b;
                 boolean gold = r > 0.5f && r - b > 0.28f && r > g * 1.05f;
                 float or, og, ob;
-                if (gold) { // molten gold: brighter, redder, a hot core on the brightest pixels
-                    float k = 0.85f + 0.45f * lum;
-                    or = Math.min(1f, r * k + 0.08f);
-                    og = Math.min(1f, g * 0.72f * k);
-                    ob = Math.min(1f, b * 0.30f * k);
-                } else { // basalt, with a warm rim light so it still reads on a black floor
-                    float base = (float) Math.pow(lum, 1.15) * 0.42f + 0.05f;
-                    or = Math.min(1f, base * 1.12f);
-                    og = Math.min(1f, base * 0.92f);
-                    ob = Math.min(1f, base * 0.90f);
+                if (gold) { // a dull ember seam: the trim keeps its place but no longer shouts (the river is the loka's one gold)
+                    float k = 0.38f + 0.34f * lum;
+                    or = Math.min(1f, r * k + 0.05f);
+                    og = Math.min(1f, g * 0.55f * k);
+                    ob = Math.min(1f, b * 0.22f * k);
+                } else { // ash basalt, warm in its shadows, with a little rim so it still reads on a black floor
+                    float base = (float) Math.pow(lum, 1.15) * 0.25f + 0.04f;
+                    or = Math.min(1f, base * 1.08f);
+                    og = Math.min(1f, base * 0.94f);
+                    ob = Math.min(1f, base * 0.92f);
                 }
                 p.drawPixel(x, y, ((int) (or * 255f) << 24) | ((int) (og * 255f) << 16) | ((int) (ob * 255f) << 8) | a);
             }

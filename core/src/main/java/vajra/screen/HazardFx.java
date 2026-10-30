@@ -48,7 +48,7 @@ public class HazardFx {
 
     /** A burst of ground fire seen from above, `size` across, its own phase per seed so no two lick together. */
     private void tongue(SpriteBatch batch, float x, float y, float size, float time, int seed, float a) {
-        batch.setColor(1f, 0.95f, 0.8f, Math.min(1f, a * 1.3f));
+        batch.setColor(1f, 0.82f, 0.55f, Math.min(1f, a * 0.8f));
         fire.puff(batch, (seed & 1) == 0 ? FireSheet.GROUND : FireSheet.HEARTH, (int) (time * 12f) + seed * 3, x, y, size);
     }
 
@@ -62,14 +62,16 @@ public class HazardFx {
             Hazards.Patch p = hz.patches.get(i);
             if (p.x + p.r < l - 40 || p.x - p.r > l + vw + 40 || p.y + p.r < b - 40 || p.y - p.r > b + vh + 40) continue;
             float life = Math.min(1f, p.life / 1.2f) * Math.min(1f, (p.max - p.life) / 0.25f + 0.65f);
-            batch.setColor(1f, 0.5f, 0.12f, 0.75f * life);
-            batch.draw(glow, p.x - p.r * 1.7f, p.y - p.r * 1.7f, p.r * 3.4f, p.r * 3.4f);
-            int n = Math.max(3, (int) (p.r / 9f));
+            batch.setColor(1f, 0.45f, 0.1f, 0.38f * life);
+            batch.draw(glow, p.x - p.r * 1.5f, p.y - p.r * 1.5f, p.r * 3.0f, p.r * 3.0f);
+            int n = Math.max(2, (int) (p.r / 14f));
+            batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);          // the tongues cover rather than add, so a pile of patches stays fire and does not blow out to white
             for (int k = 0; k < n; k++) {
                 int hs = hash((int) p.x * 7 + k, (int) p.y * 13 + k);
                 float ang = (hs & 1023) / 1024f * 6.2831853f, rad = p.r * 0.85f * (((hs >>> 10) & 1023) / 1024f);
-                tongue(batch, p.x + (float) Math.cos(ang) * rad, p.y + (float) Math.sin(ang) * rad, 44f + (hs & 7) * 5f, time, k, life);
+                tongue(batch, p.x + (float) Math.cos(ang) * rad, p.y + (float) Math.sin(ang) * rad, 30f + (hs & 7) * 3f, time, k, life);
             }
+            batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE);
         }
         for (int i = 0; i < hz.lines.size(); i++) {
             Hazards.Line ln = hz.lines.get(i);

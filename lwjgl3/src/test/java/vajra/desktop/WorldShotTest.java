@@ -65,7 +65,7 @@ class WorldShotTest {
                         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
                         for (int k = 0; k < 4; k++) r.render(w, cam, vp);   // (the first frames bake the wall chunks)
                         write("build/world-" + i + ".png");
-                        if (i == 8) northIsPaler = Math.abs(lum(0, H / 3) - lum(2 * H / 3, H)) > 0.02f;   // Atala lies NORTH of the meadow: the two halves of the frame differ
+                        if (i == 8) { System.out.println("LUMS " + lum(0, H / 3) + " " + lum(2 * H / 3, H)); northIsPaler = Math.abs(lum(0, H / 3) - lum(2 * H / 3, H)) > 0.02f; }   // Atala lies NORTH of the meadow: the two halves of the frame differ
                     }
                     // how long a frame of the raycast world takes (the whole renderer, GPU included), mid-forest and over the meadow
                     for (float y : new float[] {800, 5200}) {

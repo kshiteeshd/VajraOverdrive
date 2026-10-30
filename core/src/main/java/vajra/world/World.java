@@ -2497,6 +2497,7 @@ public class World {
 
     /** Which loka the ship is in: Bhu before the gate, Atala beyond it. */
     public String lokaName() {
+        if (campaign && ship.y >= Hataki.Y0) return "Vitala";
         return currentRegionIndex() == 0 ? "Bhu" : "Atala";
     }
 

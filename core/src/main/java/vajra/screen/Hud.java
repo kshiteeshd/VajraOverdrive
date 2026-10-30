@@ -199,6 +199,7 @@ public final class Hud {
     private int shownCombo = -1;
     private String scoreStr = "", comboStr = "";
 
+    private String shownLoka = "";
     private int shownRegion = -1, shownYoj = -1;
     private String lokaStr = "", regStr = "", yojStr = "";
 
@@ -227,7 +228,9 @@ public final class Hud {
         }
 
         int region = w.currentRegionIndex();
-        if (region != shownRegion) {
+        String lokaNow = w.lokaName() + "|" + w.currentRegion();
+        if (region != shownRegion || !lokaNow.equals(shownLoka)) {
+            shownLoka = lokaNow;
             shownRegion = region;
             lokaStr = w.lokaName().toUpperCase(Locale.ROOT) + " LOKA";
             regStr = w.currentRegion();

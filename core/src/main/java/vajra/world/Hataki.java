@@ -23,7 +23,12 @@ public final class Hataki {
     public static final float[] END = {Y0 + 3000f, Y0 + 7600f, Y0 + 13200f, Y0 + 18600f, Y0 + 24000f, HEIGHT};
     public static final String[] NAMES = {"The Plunge", "Hataki Mouth", "The Smelters", "The Bhuta Court", "The Hearth Deep", "Altar of Bhairava"};
     /** Where the river starts (it rises in the pool the hull lands in) and where the Altar's cataract takes it. */
-    public static final float SOURCE_Y = Y0 + 2600f, SINK_Y = Y0 + 24600f;
+    public static final float SOURCE_Y = Y0 + 40f, SINK_Y = Y0 + 24600f;
+    /** The river is born at SOURCE_Y out of the dark, a thread that widens to its full breadth over this many px. */
+    public static final float MOUTH_LEN = 620f;
+
+    /** 0 at the source, 1 once the river has opened out. */
+    public static float opened(float y) { return smooth((y - SOURCE_Y) / MOUTH_LEN); }
     /** The Altar: its centre, the hearth the boss keeps. */
     public static final float ALTAR_X = CX, ALTAR_Y = Y0 + 25500f;
 
@@ -55,7 +60,7 @@ public final class Hataki {
         else if (y < START[4]) h = 150f;
         else if (y < START[5]) h = 85f;
         else h = 110f;
-        return h * (1f + 0.22f * (float) Math.sin(y / 260f));
+        return h * (1f + 0.22f * (float) Math.sin(y / 260f)) * (0.10f + 0.90f * opened(y));
     }
 
     /** Is the world's height inside Vitala at all. */

@@ -211,6 +211,7 @@ public final class WorldRenderer {
 
     private final CloudVeil veil = new CloudVeil();
     private final AshFx ashFx = new AshFx();
+    private final RiverFx riverFx = new RiverFx();
     private final com.badlogic.gdx.graphics.Texture moteTex;
     private final MirageFx mirage;
     private final TileChunks chunks;
@@ -528,7 +529,7 @@ public final class WorldRenderer {
                 (c.y >= vajra.world.Hataki.Y0 ? cpsV : cps).drawParticles(shapes, c, world.time());
             }
         }
-        if (world.campaign) riverChevrons(world, l, b, viewH);
+        // (the river's own life is RiverFx, drawn in the floor pass: glints, flecks, mist at its mouth)
         shapes.end();
     }
 
@@ -571,6 +572,7 @@ public final class WorldRenderer {
             for (TileMap m : world.tileMaps()) tiles.drawDark(batch, m, l, b, l + viewW, b + viewH, 3f, -4f, 0.55f); // the side face: a wall is thick
             for (TileMap m : world.tileMaps()) tiles.draw(batch, m, l, b, l + viewW, b + viewH);
         }
+        riverFx.draw(batch, world, l, b, viewW, viewH);
         ashFx.draw(batch, world, l, b, viewW, viewH);                                          // Bhairava's smoke lies on the floor: under every hull and round, so nothing in it is hidden
         for (int i = 0; i < world.torches.length; i++) { // wall-mounted props, behind everything
             float[] t = world.torches[i];
@@ -910,6 +912,7 @@ public final class WorldRenderer {
 
     public void dispose() {
         ashFx.dispose();
+        riverFx.dispose();
         veil.dispose();
         chunks.dispose();
         mirage.dispose();

@@ -123,11 +123,13 @@ public final class Arena {
 
     /** The region's middle: region i of the Atala bands. */
     static void atalaRegion(World w, int i) {
+        w.settleBeats();
         float end = i + 1 < w.regionStart.length ? w.regionStart[i + 1] : w.regionStart[i] + 3000f;
         tp(w, w.axisX, (w.regionStart[i] + end) / 2f);
     }
 
     static void vitalaRegion(World w, int i) {
+        w.settleBeats();
         tp(w, vajra.world.Hataki.CX, (vajra.world.Hataki.START[i] + vajra.world.Hataki.END[i]) / 2f);
     }
 
@@ -306,6 +308,7 @@ public final class Arena {
         add(WORLD, "BALA'S ARENA, SEALED", "Bala's arena with the seal still down.", w -> tp(w, w.pitX, w.regionStart[5] - 200f));
         add(WORLD, "A SHOP BAY (ATALA)", "Fly into the bay: the dock takes the hull and the shop opens.", w -> tp(w, w.shops[0][0] + 2f, w.shops[0][1] - 200f));
         add(WORLD, "A LAMP (CHECKPOINT)", "Fly through the lamp to bind it; die to wake here.", w -> { Checkpoint c = w.checkpoints[0]; if (c != null) tp(w, c.x, c.y - 300f); });
+        addV(WORLD, "VITALA, THE ARRIVAL", "The first screen of Vitala: the Hataki is born out of the dark behind you.", w -> { w.settleBeats(); tp(w, Hataki.CX, Hataki.Y0 + 90f); });
         addV(WORLD, "A SHOP BAY (VITALA)", "Vitala's bay.", w -> tp(w, w.shops[4][0] + 2f, w.shops[4][1] - 200f));
         add(WORLD, "ROCK AND WALLS", "Fly along the rock and test collisions, bullets on stone and mud.", w -> { clearFoes(w); atalaRegion(w, 2); });
 

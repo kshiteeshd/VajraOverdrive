@@ -147,20 +147,12 @@ public final class GroundMap {
         float t = clamp((hgt - 0.28f) / 0.44f);
         if (t < 0.5f) mixInto(c, b.soilDark, b.soilMid, t * 2f);
         else mixInto(c, b.soilMid, b.soilLight, (t - 0.5f) * 2f);
-        float speckle = (rnd(tx, ty, seed + 3) - 0.5f) * 0.07f;
-        c[0] += speckle;
-        c[1] += speckle;
-        c[2] += speckle;
-        // FLAGSTONES: 64 px slabs, each a shade of its own, dark seams between them - the floor is cut stone like the wall tiles
-        int sx = (int) Math.floor(wx / 64f), sy = (int) Math.floor(wy / 64f);
-        float flag = 0.93f + 0.13f * rnd(sx, sy, seed + 40);
-        float fx = wx - sx * 64f, fy = wy - sy * 64f;
-        boolean seam = fx < 3f || fy < 3f;
-        if (seam) flag *= 0.80f;
-        c[0] *= flag;
-        c[1] *= flag;
-        c[2] *= flag;
-        if (Biome.isVitala(b) && seam && rnd(sx, sy, seed + 41) > 0.5f) lift(c, b.accent, 0.42f);   // black basalt, its cracks running gold
+        // CALM STONE: no speckle, no slabs, no seams: the floor is read by large soft shapes of light and shade (a slow mottling and a long strata), never by lines
+        float mott = 0.90f + 0.20f * fbm(wx * 0.0021f, wy * 0.0021f, seed + 44, 3);
+        float strata = 1f + 0.035f * (float) Math.sin(wy * 0.0105f + n1 * 6f);
+        c[0] *= mott * strata;
+        c[1] *= mott * strata;
+        c[2] *= mott * strata;
 
         float rim = 0f;                                  // set where the ground is raised or edged (drawn after the soil)
         switch (b.style) {
@@ -194,6 +186,8 @@ public final class GroundMap {
             if (d < hw) {
                 onWater = true;
                 mixInto(c, b.waterShine, b.waterDeep, clamp(d / hw) * 0.8f);
+                float born = Hataki.opened(wy);                                       // out of the dark: the gold is black where it is born and kindles as it opens
+                if (born < 1f) mixInto(c, c.clone(), new float[] {0.03f, 0.015f, 0.012f, 1f}, (1f - born) * (1f - born) * 0.92f);
                 float streak = (float) Math.sin(wy * 0.045f + (float) Math.sin(wx * 0.03f + n2 * 5f) * 2.4f);
                 if (streak > 0.82f) lift(c, new float[] {1f, 0.96f, 0.70f}, 0.55f);
             } else if (d < hw + 14f) {
@@ -217,7 +211,22 @@ public final class GroundMap {
         if (rim > 0f) lift(c, b.accent, rim);
         float h = onWater ? 0f : relief(b, wx, wy);
         if (h > 0f && b.style == Biome.PLAIN) rockColour(h, c);
+        grade(b, c, wx, wy);                              // the loka's own light over all of it, the rock too
         c[3] = h;
+    }
+
+    /** THE LOKA'S OWN LIGHT on the finished colour: Atala (bila-svarga, "heavens in holes", sunless and lit by jewels) is read cool and quiet, its stone pale in moonlight; Vitala is basalt and
+     *  ash, warm and dark, and the only gold in it is the river. The surface (Bhu Loka) is left as it was. */
+    private void grade(Biome b, float[] c, float wx, float wy) {
+        if (b == Biome.BANDS[0]) return;
+        float luma = 0.299f * c[0] + 0.587f * c[1] + 0.114f * c[2];
+        float sat, mul, tr, tg, tb;
+        if (Biome.isVitala(b)) { sat = 0.80f; mul = 0.80f; tr = 1.04f; tg = 0.98f; tb = 0.96f; }
+        else { sat = 0.70f; mul = b == Biome.BANDS[1] ? 0.92f : 0.60f; tr = 0.92f; tg = 0.99f; tb = 1.09f; }       // (the golden door is the one lit threshold: ivory, a little cooled)
+        float vig = 1f - 0.10f * (float) Math.pow(Math.abs(wx / worldW - 0.5f) * 2f, 2.0);        // the hall falls into darkness toward its walls
+        c[0] = (luma + (c[0] - luma) * sat) * mul * tr * vig;
+        c[1] = (luma + (c[1] - luma) * sat) * mul * tg * vig;
+        c[2] = (luma + (c[2] - luma) * sat) * mul * tb * vig;
     }
 
     /** The golden rings of the dream-circle: concentric circles and spokes drawn into the ground, a new mandala every 2400 px. */
@@ -227,10 +236,7 @@ public final class GroundMap {
         if (r > 1150f) return 0f;
         float ring = r / 150f, f = Math.abs(ring - Math.round(ring));
         float line = 0f;
-        if (f * 150f < 3.5f && Math.round(ring) >= 1) line = 0.7f;
-        float spokes = 16f, a = (float) Math.atan2(dy, dx) * spokes / (2f * (float) Math.PI);
-        float fa = Math.abs(a - Math.round(a));
-        if (r > 150f && fa * r * 2f * (float) Math.PI / spokes < 3f) line = Math.max(line, 0.4f);
+        if (f * 150f < 2.2f && Math.round(ring) >= 1) line = 0.30f;                    // faint rings only: the spokes are gone
         float lit = 1f + 0.08f * (1f - r / 1150f);            // the court inside the rings is a shade brighter
         c[0] *= lit;
         c[1] *= lit;
@@ -241,34 +247,22 @@ public final class GroundMap {
     /** The ribs of the throat: bands that run across the land and bow with a slow wave, amber on the crests. */
     private void ribs(Biome b, float wx, float wy, float[] c) {
         float v = (float) Math.sin(wy * 0.021f + (float) Math.sin(wx * 0.0031f) * 2.6f);
-        float shade = 0.84f + 0.16f * v;
+        float shade = 0.93f + 0.07f * v;
         c[0] *= shade;
         c[1] *= shade;
         c[2] *= shade;
-        if (v > 0.9f) lift(c, b.accent, 0.35f);
-        else if (v < -0.8f) {
-            c[0] *= 0.8f;
-            c[1] *= 0.8f;
-            c[2] *= 0.8f;
-        }
+        if (v > 0.93f) lift(c, b.accent, 0.12f);
     }
 
     /** Bala's court: an ivory and gold checker of 80 px slabs, edged, with concentric gold rings round the dais. */
     private void mosaic(Biome b, float wx, float wy, float[] c) {
         int cx = (int) Math.floor(wx / 80f), cy = (int) Math.floor(wy / 80f);
-        boolean odd = ((cx + cy) & 1) == 1;
-        mixInto(c, odd ? b.soilMid : b.soilLight, odd ? b.road : b.soilMid, odd ? 0.32f : 0.08f);
-        float fx = wx - cx * 80f, fy = wy - cy * 80f;
-        if (fx < 2f || fy < 2f) {
-            c[0] *= 0.82f;
-            c[1] *= 0.82f;
-            c[2] *= 0.82f;
-        }
+        // (the checker of slabs is gone: one calm polished floor, with the rings inlaid in it)
         float dx = wx - worldW * 0.5f, dy = wy - throneY(wy);
         float r = (float) Math.sqrt(dx * dx + dy * dy);
         if (r < 760f) {
             float ring = r / 120f, f = Math.abs(ring - Math.round(ring));
-            if (f * 120f < 3f) lift(c, b.road, 0.8f);
+            if (f * 120f < 2f) lift(c, b.road, 0.28f * (1f - r / 760f));
         }
     }
 

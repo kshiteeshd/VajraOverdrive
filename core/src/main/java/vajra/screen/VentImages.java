@@ -92,16 +92,13 @@ public class VentImages {
                 float g = p * p;
                 batch.setColor(1f, 0.35f, 0.08f, 0.55f * g);
                 batch.draw(glow, a[0] - 52, a[1] - 52, 104, 104);
-                float len = 26f + 70f * p;
-                batch.setColor(1f, 0.55f, 0.15f, 0.35f + 0.4f * p);
-                drawJet(batch, (int) (time * 14f) + i, a, len, 18f);
+                softJet(batch, a, 30f + 80f * p, 14f, 0.25f + 0.3f * p, time, i, 0.35f);                // the warning: a low red glow in the wall and a short soft tongue building
             } else {                                                                         // the flame: rises fast, holds, dies back
                 float rise = Math.min(1f, p * 5f), fall = p > 0.8f ? 1f - (p - 0.8f) / 0.2f : 1f;
                 float len = Vents.LENGTH * rise;
-                batch.setColor(1f, 0.85f, 0.45f, 0.95f * fall);
-                drawJet(batch, (int) (time * 16f) + i * 3, a, len, Vents.HALF * 2f * (0.8f + 0.2f * fall));
-                batch.setColor(1f, 0.5f, 0.12f, 0.5f * fall);
-                batch.draw(glow, a[0] - 96, a[1] - 96, 192, 192);
+                softJet(batch, a, len, Vents.HALF * 1.5f, 0.55f * fall, time, i, 1f);                    // the flame: a stream of soft fire, white-gold at the mouth, red at the tip
+                batch.setColor(1f, 0.5f, 0.12f, 0.22f * fall);
+                batch.draw(glow, a[0] - 64, a[1] - 64, 128, 128);
             }
             batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
             batch.setColor(1, 1, 1, 1);
@@ -143,6 +140,24 @@ public class VentImages {
         batch.setColor(1, 1, 1, 1);
     }
 
+    /** A jet as a stream of soft puffs, tapering and cooling down its length (white-gold at the mouth, orange, then a dull red at the tip), each swaying a little: it reads as fire moving, not as a stamped picture. */
+    private void softJet(SpriteBatch batch, float[] a, float len, float width, float alpha, float time, int seed, float flame) {
+        float c = (float) Math.cos(a[2]), s = (float) Math.sin(a[2]);
+        int n = 22;
+        for (int k = 0; k < n; k++) {
+            float f = ((k + ((time * 5f + seed * 0.37f) % 1f)) / n) % 1f;
+            float h = hash(k, seed, 7);
+            float d = f * len;
+            float sway = (float) Math.sin(time * 7f + k * 1.7f + seed) * width * 0.12f * f;
+            float px = a[0] + c * d - s * sway, py = a[1] + s * d + c * sway;
+            float r = width * (0.35f + 0.85f * f) * (0.8f + 0.4f * h);
+            float al = alpha * (float) Math.pow(1f - f, 1.25f) * (0.7f + 0.3f * h);
+            float rr = 1f, gg = 0.92f - 0.62f * f, bb = 0.55f - 0.52f * f;
+            batch.setColor(rr, Math.max(0.2f, gg), Math.max(0.04f, bb), al);
+            batch.draw(glow, px - r, py - r, r * 2f, r * 2f);
+        }
+    }
+
     private void drawJet(SpriteBatch batch, int frame, float[] a, float len, float width) {
         fire.jet(batch, frame, a[0], a[1], (float) Math.toDegrees(a[2]), len, width, 1f);
     }
@@ -161,7 +176,7 @@ public class VentImages {
             else if (st == Vents.FLAMING) {
                 float fall = p > 0.8f ? 1f - (p - 0.8f) / 0.2f : 1f;
                 for (int k = 0; k < 3; k++)
-                    out.add(new float[] {a[0] + c * (60f + 100f * k), a[1] + s * (60f + 100f * k), 230f, 1f * fall, 0.58f * fall, 0.18f * fall});
+                    out.add(new float[] {a[0] + c * (60f + 100f * k), a[1] + s * (60f + 100f * k), 200f, 0.55f * fall, 0.30f * fall, 0.09f * fall});
             }
         }
     }

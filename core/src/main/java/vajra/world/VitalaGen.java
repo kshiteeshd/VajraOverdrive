@@ -139,6 +139,18 @@ final class VitalaGen {
         w.add(e);
     }
 
+    /** THE GATE-WARDENS: at each gate across the river two of Tamra's ore-hulls stand either side of the door, the way guards would, and wake when the hull comes up the road. */
+    private void wardens(float gateY, int door) {
+        float dx = door * TileMap.TILE + 90f;
+        for (float side : new float[] {-1f, 1f}) {
+            float[] spot = g.openNear(Hataki.CX + side * dx, gateY - 240f, gateY - 420f, gateY - 120f);
+            Enemy e = new Enemy(Enemy.Kind.BHAVI, spot[0], spot[1]);
+            e.sentry = true;
+            e.wakeRange = 760;
+            w.add(e);
+        }
+    }
+
     /** A sentry pair that floats on the river itself (Kila, the nails). */
     private void pair(float y) {
         float x = Hataki.centre(y);
@@ -159,6 +171,9 @@ final class VitalaGen {
         // band 1 - Hataki Mouth: the gentle band - Dhuma, Kila and the first Agneya, on the broad gold
         float y0 = Hataki.START[1];
         pair(y0 + 350f);
+        wardens(Hataki.START[2], GATE_DOOR[1]);
+        wardens(Hataki.START[3], GATE_DOOR[2]);
+        wardens(Hataki.START[4], GATE_DOOR[3]);
         float[] d1 = {-260f, 220f, -80f};
         Enemy.Kind[][] mouth = {{DHUMA, DHUMA}, {KILA, KILA}, {AGNEYA, DHUMA}, {DHUMA, DHUMA}, {KILA, DHUMA}, {AGNEYA, AGNEYA}, {DHUMA, KILA}};
         for (int i = 0; i < mouth.length; i++) court(mouth[i][0], mouth[i][1], y0 + 800f + i * 580f, d1[i % 3], 3 + (i & 1), 1 + (i % 3 == 0 ? 1 : 0), 900f);

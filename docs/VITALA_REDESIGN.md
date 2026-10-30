@@ -69,3 +69,21 @@ Every fire hazard now has a visible, audible tell and a fixed home: a **vent** s
 
 ## 7. Order of work
 1. Boss: gates, phases, the new brain, damage cap. 2. The bar and the animation. 3. The smoke. 4. The river. 5. The floors and walls. 6. The caverns and placements. 7. The fire's tells. 8. A walk of every band and the fight, with the arena.
+
+---
+
+## 8. What has been built (status)
+
+| Part | State |
+|---|---|
+| Bhairava: four gated phases, a damage cap per blow and a refilling bucket (a burst cannot empty him), a brain that reads the hull and never repeats an act, ground marked before it burns, an immolation with a gap to fly through | done (`BhairavaBrain`, `Enemy.hurt`); `BhairavaGatesTest` |
+| His poses and aura (breathing, leaning, wind-up, stretch with afterimages, roar, cast, stagger, flinch; embers off the shoulders and eye) and the thin bar with a hairline per gate | done (`BossPose`, `EnemyImages.drawRuler`, `WorldRenderer`) |
+| The smoke as a fluid simulation, stirred by hulls and bodies, in the world's time | done (`world/Smoke`, `AshFx`); `SmokeTest` |
+| The Hataki: it exists from the first screen, is born out of a black well with mist, and is full of moving glints, sparks and slag | done (`Hataki`, `RiverFx`, `GroundMap`) |
+| Vitala's nine creatures, round, each with an idle loop and three action clips done now and then, out of step from unit to unit | done (`tools/enemy_art/roundkit.py`, `vitala_round.py`, `EnemyImages.cellV`); `VitalaRoundArtTest` |
+| Floors: no grid, no slabs, no speckle; calm mottled stone; each loka graded by its own light (Atala cool and jewel-lit, Vitala ash and basalt with the river its one gold) | done (`GroundMap`) |
+| Walls: Atala's ivory read as pale stone, its gold worn to bronze; Vitala's basalt with dull ember seams instead of a bright outline; soft filtering | done (`TileImages`) |
+| Fire read, not sprung: vents are a stream of soft fire with a low red warning glow; patches cover rather than add up to white | done (`VentImages`, `HazardFx`) |
+| Gate-wardens at three gates; the HUD says VITALA | done |
+
+**Not yet:** a hand-built redrawing of the cave outlines themselves (the rock still has the tile grid's silhouette: the colouring and light are new, the shapes are the old ones), columns and architecture as props, a full re-placement of every court, the same round-and-alive treatment for Atala's creatures and the keepers' Atala sheets, and the dedicated brains of section 1 for Vitala's six units beyond what `VitalaBrain` already does (their telegraphs and formations exist; the *threat model* and the *engage budget* are not built).
