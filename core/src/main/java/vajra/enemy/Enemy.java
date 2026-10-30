@@ -183,6 +183,14 @@ public class Enemy {
     public boolean dismissed;   // the commander stood this unit down: leave the arena, no fire
     public boolean bossHidden;  // mid-blink: not drawn, not hit, not colliding
     public boolean bossInvuln;  // stagger beat between phases: hits are ignored
+    // BHAIRAVA'S GATES AND POSES (BhairavaBrain): the hull stops at gateHp until the phase has turned; the renderer shows `pose`
+    public float gateHp;
+    public boolean gateHit, gateInit;
+    public int pose, lastAct;
+    public float poseT, flinchT, immolateCd, vB, hitT;
+    public final float[] pend = new float[60];   // ground marked to burn: {x, y, seconds to go, radius} x 15
+    public int pendN;
+    private float dmgBucket = -1f;   // a ruler's hull can only be spent so fast: a bucket that refills (see hurt)
     public boolean bossTelegraph;
     /** A ruler struck to nothing does not die: he YIELDS - he stands where he fell, silent, beyond harm, while the scene is told, and then lets go of the piece (World.bossReleases). */
     public boolean yielding;
@@ -396,6 +404,10 @@ public class Enemy {
     public void update(float dt, World world, float t) {
         if (dead || parley) return;
         if (yielding) { vx = 0; vy = 0; if (hitFlash > 0) hitFlash -= dt; return; }
+        if (flinchT > 0f) flinchT -= dt;
+        if (boss && vitala && dmgBucket >= 0f) dmgBucket = Math.min(maxHp * vajra.enemy.BhairavaBrain.BUCKET, dmgBucket + maxHp * vajra.enemy.BhairavaBrain.REFILL * dt);
+        if (hitT > 0f) hitT -= dt;
+        if (immolateCd > 0f) immolateCd -= dt;
         if (dummy) { tickStatus(dt, world); if (hitFlash > 0) hitFlash -= dt; vx = 0; vy = 0; if (hp < maxHp * 0.5f) hp = maxHp; return; }
         if (caught > 0f) { caught -= dt; if (hitFlash > 0) hitFlash -= dt; return; }   // the tornado has it: the flow moves it, its brain waits
         tickStatus(dt, world);
@@ -630,6 +642,14 @@ public class Enemy {
         // score phantom kills, drop phantom loot and delete the host's real drops.
         if (ghost && w.clientSeat) return false;
         if (boss && (bossInvuln || bossHidden)) return false; // stagger beats and blinks eat hits
+        if (boss && vitala && !yielding) {                                 // a blow takes at most a sixth of a tenth of him; and the hull STOPS at each gate until the phase has turned
+            if (dmgBucket < 0f) dmgBucket = maxHp * vajra.enemy.BhairavaBrain.BUCKET;
+            amount = Math.min(Math.min(amount, maxHp * vajra.enemy.BhairavaBrain.HIT_CAP), dmgBucket);
+            dmgBucket -= amount;
+            if (gateHp > 0f && hp - amount <= gateHp) { amount = Math.max(0f, hp - gateHp); gateHit = true; }
+            if (amount > maxHp * 0.02f) flinchT = 0.3f;
+            hitT = 1.2f;
+        }
         parley = false; // struck first: the talking is over
         if (armoured) { amount *= armourFactor(w); w.snd(vajra.audio.Snd.FOE_HURT_ARMOUR, x, y, 0, 0f); }
         hp = Math.max(0, hp - amount);

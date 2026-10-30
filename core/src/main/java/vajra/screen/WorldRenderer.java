@@ -654,30 +654,36 @@ public final class WorldRenderer {
             if (foe.x + foe.w < l || foe.x - foe.w > l + viewW || foe.y + foe.h < b || foe.y - foe.h > b + viewH) continue;
             hpBar(shapes, foe);
         }
-        // Bala's bar rides above his hull like everyone else's — bigger, segmented, phase-tinted,
-        // notched at both thresholds. Appears the moment the ship enters the boss region.
-        if (world.currentRegionIndex() == 5 && world.boss != null && !world.boss.dead
-                && !world.boss.bossHidden) {
+        if (world.boss != null && world.boss.vitala && !world.boss.dead && world.boss.active && !world.boss.yielding) {          // embers stream off his shoulders and rise from the eye
+            Enemy bo = world.boss;
+            float sz = bo.drawSize(), tm = world.time();
+            int n = 22 + 6 * bo.bossPhase;
+            for (int i = 0; i < n; i++) {
+                float h = ((i * 0.6180339f) % 1f), age = (tm * (0.45f + 0.3f * h) + h * 7f) % 1f;
+                float side = (i % 3) - 1f, sxp = bo.x + side * sz * 0.24f + (float) Math.sin(tm * 1.7f + i) * 6f, syp = bo.y + sz * (side == 0f ? 0.0f : 0.14f);
+                float px = sxp + side * 26f * age + (float) Math.sin(tm * 2.2f + i * 1.9f) * 14f * age, py = syp + 90f * age + 20f * age * age;
+                shapes.setColor(1f, 0.55f + 0.35f * (1f - age), 0.15f + 0.2f * (1f - age), 0.8f * (1f - age));
+                shapes.circle(px, py, 1.2f + 2.4f * (1f - age));
+            }
+        }
+        // A ruler's bar rides above his hull: one thin line (no frame, no pips), a hairline at each gate, the colour of the phase, and an echo of the last blow draining behind it.
+        if (world.currentRegionIndex() == 5 && world.boss != null && !world.boss.dead && !world.boss.bossHidden) {
             Enemy bal = world.boss;
-            float bw = 240, bh = 16, bx = bal.x - bw / 2, by = bal.y + bal.h / 2 + 10;
+            float bw = 300, bh = 3, bx = bal.x - bw / 2, by = bal.y + bal.h / 2 + 14;
             if (bx + bw > l && bx < l + viewW && by < b + viewH && by + bh > b) {
-                float frac = Math.max(0f, bal.dispHp / bal.maxHp);
-                shapes.setColor(1f, 0.78f, 0.2f, 1f);          // gold frame
-                shapes.rect(bx - 3, by - 3, bw + 6, bh + 6);
-                shapes.setColor(0.07f, 0.05f, 0.05f, 0.95f);   // dark backing
-                shapes.rect(bx, by, bw, bh);
-                if (bal.bossPhase == 1) shapes.setColor(1f, 0.78f, 0.2f, 1f);       // gold
-                else if (bal.bossPhase == 2) shapes.setColor(1f, 0.5f, 0.12f, 1f);  // ember
-                else shapes.setColor(0.95f, 0.22f, 0.1f, 1f);                      // blood
-                float seg = bw / 20f; // segmented fill: an honor bar, not a plain strip
-                for (int s = 0; s < 20; s++) {
-                    float left = frac * bw - s * seg;
-                    if (left <= 0) break;
-                    shapes.rect(bx + s * seg, by + 2, Math.min(seg - 2, left), bh - 4);
-                }
-                shapes.setColor(1, 1, 1, 0.7f);                // threshold notches
-                shapes.rect(bx + bw / 3f - 1, by, 2, bh);
-                shapes.rect(bx + 2 * bw / 3f - 1, by, 2, bh);
+                float frac = Math.max(0f, bal.hp / bal.maxHp), echo = Math.max(frac, bal.dispHp / bal.maxHp);
+                float breath = 0.85f + 0.15f * (float) Math.sin(world.time() * 2.4f);
+                shapes.setColor(0f, 0f, 0f, 0.55f);
+                shapes.rect(bx - 1, by - 1, bw + 2, bh + 2);                               // a shadow, so the line reads on any ground
+                shapes.setColor(1f, 1f, 1f, 0.55f);
+                shapes.rect(bx, by, bw * echo, bh);                                        // the echo of what was just taken
+                float[] c = bal.bossPhase <= 1 ? new float[] {1f, 0.78f, 0.2f} : bal.bossPhase == 2 ? new float[] {1f, 0.5f, 0.12f}
+                        : bal.bossPhase == 3 ? new float[] {0.95f, 0.22f, 0.1f} : new float[] {1f, 0.95f, 0.8f};
+                shapes.setColor(c[0], c[1], c[2], breath);
+                shapes.rect(bx, by, bw * frac, bh);
+                shapes.setColor(1f, 1f, 1f, 0.8f);                                          // the gates: a hairline each, no more
+                float[] gates = bal.vitala ? new float[] {0.75f, 0.5f, 0.25f} : new float[] {0.667f, 0.333f};
+                for (float g : gates) shapes.rect(bx + bw * g - 0.5f, by - 2, 1, bh + 4);
             }
         }
         if (!shipR.hasArt(world.ship) && !world.death.hidden()) shipR.drawHull(shapes, world.ship);

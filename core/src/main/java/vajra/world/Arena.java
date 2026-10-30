@@ -133,13 +133,17 @@ public final class Arena {
 
     /** The ruler of the current stage stands in his arena, awake the moment the hull comes in. */
     static Enemy ruler(World w) {
+        w.gazeStage = 99;                                   // (the ruler's three gaze scenes are for a real run's climb to him)
         System.arraycopy(w.quota, 0, w.kills, 0, w.quota.length);
         w.trySpawnBoss();
+        w.cues.removeIf(c -> c == Cue.GAZE_NOTICED || c == Cue.GAZE_WATCHING || c == Cue.GAZE_ROUSED);
         Enemy b = w.boss;
         if (b == null) return null;
         b.vitala = w.stage == 1;
-        float y = Math.max(w.bossWakeY + 80f, w.pitY - 700f);
-        tp(w, w.pitX, y);
+        tp(w, w.pitX, w.pitY - 280f);                       // inside his hall, and he is already awake (the wake scenes are under STORY)
+        b.active = true;
+        w.settleBeats();
+        w.cues.removeIf(c -> c == Cue.FIRST_LAMP || c == Cue.FIRST_BAY || c == Cue.BALA_WAKES || c == Cue.BHAIRAVA_WAKES);
         return b;
     }
 
@@ -220,8 +224,8 @@ public final class Arena {
         addV(STORY, "ENTERING VITALA", "The crossing through Bala's door into the Plunge.", w -> w.cue(Cue.VITALA_ENTER));
         addV(STORY, "THE GOLD-SELLER", "First meeting with the Gold-Seller of Hara's court.", w -> w.cue(Cue.VOICE_SELLER));
         addV(STORY, "GAURI'S MAID", "First meeting with the keeper of the shrine lamps.", w -> w.cue(Cue.VOICE_MAID));
-        add(STORY, "BALA WAKES", "The ruler of Atala wakes on your crossing into his arena.", w -> { Enemy b = ruler(w); if (b != null) tp(w, w.pitX, w.bossWakeY + 80f); });
-        addV(STORY, "BHAIRAVA WAKES", "The ruler of Vitala wakes as you come into the Altar.", w -> { Enemy b = ruler(w); if (b != null) tp(w, w.pitX, w.bossWakeY + 80f); });
+        add(STORY, "BALA WAKES", "The ruler of Atala wakes on your crossing into his arena.", w -> { Enemy b = ruler(w); if (b != null) { b.active = false; tp(w, w.pitX, w.bossWakeY + 80f); } });
+        addV(STORY, "BHAIRAVA WAKES", "The ruler of Vitala wakes as you come into the Altar.", w -> { Enemy b = ruler(w); if (b != null) { b.active = false; tp(w, w.pitX, w.bossWakeY + 80f); } });
         add(STORY, "YOUR DEATH, WITH LIVES", "The hull is lost: particles, the camera to the lamp, a wake. Then you fly on.", w -> { w.ship.invuln = 0; w.ship.iFrames = 0; w.ship.hp = 1f; w.ship.damage(9999f, w); });
         add(STORY, "YOUR DEATH, NO LIVES LEFT", "There is no game over: with none left you still wake at a lamp.", w -> { w.lives = 0; w.ship.invuln = 0; w.ship.iFrames = 0; w.ship.hp = 1f; w.ship.damage(9999f, w); });
 
@@ -284,7 +288,8 @@ public final class Arena {
         add(BOSSES, "MAYA ASTRA: THE DOORS", "Doors into Atala, live windows, the crack at his feet; the ship is free to fly into any.", w -> { Enemy b = ruler(w); if (b != null) w.startMaya(b, Maya.DOORS); });
         addV(BOSSES, "BHAIRAVA: THE FULL FIGHT", "Vitala's ruler from his wake, with his ash cloud and his new words.", w -> ruler(w));
         addV(BOSSES, "BHAIRAVA: PHASE TWO (66%)", "Bhairava at two thirds.", w -> { Enemy b = ruler(w); if (b != null) b.hp = b.maxHp * 0.62f; });
-        addV(BOSSES, "BHAIRAVA: PHASE THREE (33%)", "Bhairava at a third.", w -> { Enemy b = ruler(w); if (b != null) b.hp = b.maxHp * 0.3f; });
+        addV(BOSSES, "BHAIRAVA: PHASE THREE (33%)", "Bhairava at a third: the Flood.", w -> { Enemy b = ruler(w); if (b != null) b.hp = b.maxHp * 0.3f; });
+        addV(BOSSES, "BHAIRAVA: PHASE FOUR (20%)", "Bhairava in the Last Fire: the immolation.", w -> { Enemy b = ruler(w); if (b != null) b.hp = b.maxHp * 0.2f; });
         addV(BOSSES, "BHAIRAVA: ABOUT TO YIELD", "One hit and he gives way.", w -> { Enemy b = ruler(w); if (b != null) b.hp = 3f; });
         addV(BOSSES, "BHAIRAVA'S ASH CLOUD NOW", "The grey cloud and its mandala over your hull: every hull slowed, foes seen.", w -> { Enemy b = ruler(w); w.ash.start(w.ship.x, w.ship.y + 200f, 520f, 40f); });
 

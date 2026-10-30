@@ -42,7 +42,14 @@ class StoryFlowTest {
         run(w, 1);
         assertEquals(1, w.lokaIndex);
         Enemy bhairava = summon(w);
-        bhairava.hurt(99999, w);
+        for (int i = 0; i < 12000 && !bhairava.yielding; i++) {              // he is brought down through his four gated phases, never in one blow
+            if (!bhairava.bossInvuln) bhairava.hurt(99999, w);
+            w.ship.invuln = 1e6f;
+            w.ship.x = Hataki.ALTAR_X;
+            w.ship.y = Hataki.ALTAR_Y - 500f;
+            w.update(1 / 60f, ShipControls.NONE);
+        }
+        assertTrue(bhairava.yielding, "the fight ended in a yield");
         assertTrue(w.cues.contains(Cue.BHAIRAVA_FALLS));
         w.bossReleases();
         run(w, 8);

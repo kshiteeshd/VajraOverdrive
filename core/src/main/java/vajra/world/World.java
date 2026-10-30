@@ -648,7 +648,7 @@ public class World {
     private void tickVitala(float dt) {
         if (quietT > 0f) quietT = Math.max(0f, quietT - dt);
         boolean quiet = quietT > 0f;
-        vents.arenaOn = stage == 1 && boss != null && !bossDead && boss.bossPhase == 2;   // the Altar's rim vents open in the second phase (Kindling)
+        vents.arenaOn = stage == 1 && boss != null && !bossDead && (boss.bossPhase == 2 || boss.bossPhase == 4);   // the Altar's rim vents open in the second phase (Kindling)
         flood = stage == 1 && boss != null && !bossDead && boss.bossPhase >= 3;           // and in the third the cataract is opened: the Flood
         ship.heated = !(quietT > 0f) && ship.y > Hataki.START[1];                      // the forge-lands' heat, past the Plunge, unless a shrine holds its breath
         if (Hataki.on(ship.x, ship.y)) Codex.unlock(this, Codex.HATAKI);
@@ -1857,6 +1857,9 @@ public class World {
     /** The first sight of a lamp and of a bay in this run (the screen decides whether the pilot has yet to be told): where it lies, and that it has been raised. */
     public float beatX, beatY;
     private boolean lampRaised, bayRaised;
+
+    /** The first sight of a lamp and of a bay are taken as told (a test arena, a scene that does not want them). */
+    public void settleBeats() { lampRaised = bayRaised = true; }
 
     private void tickBeats() {
         if (clientSeat || (lampRaised && bayRaised)) return;

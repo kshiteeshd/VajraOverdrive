@@ -1,67 +1,84 @@
 package vajra.screen;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import vajra.enemy.Enemy;
 import vajra.world.AshCloud;
+import vajra.world.Smoke;
 import vajra.world.World;
 
-/** BHAIRAVA'S SMOKE, drawn: a bank of soft grey puffs that turns slowly round the heart of the cloud, thickest inside, with a few wisps drifting off its edge. It lies on the
- *  floor (WorldRenderer draws it before the hulls and the rounds), so everything in it stays plainly visible; the grey mandala at its heart is Mandala.drawAsh. */
+/** BHAIRAVA'S SMOKE, drawn: a real fluid (world/Smoke: stable fluids on a 96 x 96 grid) fed when the cloud is called, turning slowly, stirred by every hull and body that moves
+ *  through it, thinning when the cloud ends. The grid's density becomes one soft texture over the hall. It lies on the floor (WorldRenderer draws it before the hulls and the rounds),
+ *  so everything in it stays plainly visible; the grey mandala at its heart is Mandala.drawAsh. */
 final class AshFx {
-    private static final int N = 128, PUFFS = 150;
-    private final Texture puff;
+    private static final int N = 96;
+    private final Smoke sim = new Smoke(N);
+    private final Pixmap pm = new Pixmap(N, N, Pixmap.Format.RGBA8888);
+    private final Texture tex;
+    private boolean live, seeded;
+    private float cloudT = -1f, lastClock;
 
     AshFx() {
-        Pixmap pm = new Pixmap(N, N, Pixmap.Format.RGBA8888);
-        for (int y = 0; y < N; y++) {
-            for (int x = 0; x < N; x++) {
-                float dx = (x + 0.5f) / N * 2f - 1f, dy = (y + 0.5f) / N * 2f - 1f, r = (float) Math.sqrt(dx * dx + dy * dy);
-                float body = (float) Math.pow(Math.max(0f, 1f - r), 1.2f);
-                float n = 0.5f * noise(x * 0.08f, y * 0.08f, 5) + 0.3f * noise(x * 0.18f, y * 0.18f, 9) + 0.2f * noise(x * 0.4f, y * 0.4f, 13);
-                float a = Math.min(1f, body * (0.35f + 1.0f * n));
-                float shade = 0.42f + 0.26f * n;
-                int g = (int) (255 * shade);
-                pm.drawPixel(x, y, (g << 24) | (g << 16) | (Math.min(255, g + 6) << 8) | (int) (255 * a));
-            }
-        }
-        puff = new Texture(pm);
-        pm.dispose();
-        puff.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
-    }
-
-    private static float hash(int a, int b, int c) {
-        int h = a * 374761393 + b * 668265263 + c * 2147483647;
-        h = (h ^ (h >>> 13)) * 1274126177;
-        return ((h ^ (h >>> 16)) & 0xFFFF) / 65535f;
-    }
-
-    private static float noise(float x, float y, int seed) {
-        int xi = (int) Math.floor(x), yi = (int) Math.floor(y);
-        float fx = x - xi, fy = y - yi, ux = fx * fx * (3 - 2 * fx), uy = fy * fy * (3 - 2 * fy);
-        float a = hash(xi, yi, seed), b = hash(xi + 1, yi, seed), c = hash(xi, yi + 1, seed), d = hash(xi + 1, yi + 1, seed);
-        return (a + (b - a) * ux) + ((c + (d - c) * ux) - (a + (b - a) * ux)) * uy;
+        pm.setBlending(Pixmap.Blending.None);
+        tex = new Texture(pm);
+        tex.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+        tex.setWrap(Texture.TextureWrap.ClampToEdge, Texture.TextureWrap.ClampToEdge);
     }
 
     /** Inside an open SpriteBatch, in world space. */
     void draw(SpriteBatch batch, World w, float l, float b, float vw, float vh) {
         AshCloud c = w.ash;
-        if (!c.active) return;
-        float k = c.k(), rr = c.radiusNow();
-        if (k <= 0.01f || c.x + rr < l - 200 || c.x - rr > l + vw + 200 || c.y + rr < b - 200 || c.y - rr > b + vh + 200) return;
-        float t = w.clock;
-        for (int i = 0; i < PUFFS; i++) {
-            float h1 = hash(i, 1, 71), h2 = hash(i, 2, 71), h3 = hash(i, 3, 71), h4 = hash(i, 4, 71);
-            float rad = (float) Math.sqrt(h1) * rr * 1.04f, ang = h2 * 6.2831853f + t * (0.05f + 0.07f * h3) * (h4 > 0.5f ? 1f : -1f) * (1.2f - rad / (rr * 1.1f));
-            float px = c.x + (float) Math.cos(ang) * rad + (float) Math.sin(t * 0.3f + h4 * 6f) * 18f, py = c.y + (float) Math.sin(ang) * rad + (float) Math.cos(t * 0.27f + h3 * 6f) * 14f;
-            float sz = (260f + 220f * h3) * (0.8f + 0.2f * (float) Math.sin(t * 0.5f + h1 * 9f));
-            if (px + sz < l || px - sz > l + vw || py + sz < b || py - sz > b + vh) continue;
-            float edge = 1f - 0.45f * Math.max(0f, rad / rr - 0.75f) / 0.3f;                    // thinner toward the rim
-            batch.setColor(1f, 1f, 1f, Math.max(0f, 0.30f * k * edge));
-            batch.draw(puff, px - sz / 2f, py - sz / 2f, sz, sz);
+        float dt = Math.max(0f, Math.min(0.05f, w.clock - lastClock));                 // the fluid lives in the world's time: it holds when the world is held
+        lastClock = w.clock;
+        if (c.active && (!seeded || c.t < cloudT - 0.01f)) {                     // a cloud has just been called: seed the fluid at its heart
+            sim.reset(c.x, c.y, c.r);
+            sim.puff(c.x, c.y, 0.30f * c.r, 3.4f, 170f);
+            for (int i = 0; i < 7; i++) {
+                float a = i * 0.8976f;
+                sim.puff(c.x + (float) Math.cos(a) * 0.32f * c.r, c.y + (float) Math.sin(a) * 0.32f * c.r, 0.16f * c.r, 1.6f, 90f);
+            }
+            seeded = true;
+            live = true;
         }
+        cloudT = c.active ? c.t : -1f;
+        if (!live) return;
+        float side = sim.side();
+        if (sim.originX() + side < l - 100 || sim.originX() > l + vw + 100 || sim.originY() + side < b - 100 || sim.originY() > b + vh + 100) {
+            if (!c.active) live = false;
+            return;
+        }
+        boolean ending = !c.active || c.dur - c.t < AshCloud.FALL;
+        sim.step(dt, ending ? 0f : 0.35f, ending ? 1.1f : 0.06f);
+        // everything that moves through it drags it along
+        vajra.ship.Ship s = w.ship;
+        sim.stir(s.x, s.y, s.vx, s.vy, 70f, 1f);
+        for (int i = 0; i < w.enemies.size(); i++) {
+            Enemy e = w.enemies.get(i);
+            if (e.dead || e.depth > 0.05f) continue;
+            sim.stir(e.x, e.y, e.vx, e.vy, Math.max(40f, e.drawSize() * 0.45f), e.boss ? 2.2f : 1f);
+        }
+        float tot = 0f;
+        float k = Math.min(1f, c.active ? 1f : sim.total() / 30f);
+        for (int j = 0; j < N; j++)
+            for (int i = 0; i < N; i++) {
+                float d = sim.density(i, j);
+                tot += d;
+                float a = Math.max(0f, Math.min(0.86f, d * 0.62f));
+                float mv = Math.min(1f, sim.speedAt(i, j) / 160f);
+                float shade = 0.40f + 0.20f * Math.min(1f, d) + 0.10f * mv;                // dense smoke is paler, and where it moves quickest it catches the light
+                int r = (int) (255 * Math.min(1f, shade + 0.035f)), g = (int) (255 * shade), bl = (int) (255 * (shade - 0.01f));
+                pm.drawPixel(i, N - 1 - j, (r << 24) | (g << 16) | (bl << 8) | (int) (255 * a * k));
+            }
+        tex.draw(pm, 0, 0);
+        if (!c.active && tot < 1.5f) live = false;
         batch.setColor(1f, 1f, 1f, 1f);
+        batch.draw(tex, sim.originX(), sim.originY(), side, side);
     }
 
-    void dispose() { puff.dispose(); }
+    void dispose() {
+        tex.dispose();
+        pm.dispose();
+    }
 }

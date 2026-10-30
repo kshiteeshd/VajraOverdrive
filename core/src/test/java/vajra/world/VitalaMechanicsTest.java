@@ -205,8 +205,18 @@ class VitalaMechanicsTest {
         return w.boss;
     }
 
+    /** Take him through his gates to a phase: his hull stops at each cut, the phase turns while he cannot be touched. */
+    private static void toPhase(World w, Enemy b, int phase) {
+        for (int i = 0; i < 4000 && b.bossPhase < phase; i++) {
+            if (!b.bossInvuln && b.hp > b.gateHp) { b.hp = b.gateHp + 1f; b.hurt(1000f, w); }
+            w.ship.x = Hataki.ALTAR_X;
+            w.ship.y = Hataki.ALTAR_Y - 380f;
+            w.update(1 / 60f, idle());
+        }
+    }
+
     @Test
-    void bhairavaKeepsTheAltarAndHisThreePhasesTurnTheHallInto() {
+    void bhairavaKeepsTheAltarAndHisFourPhasesTurnTheHallInto() {
         World w = vitala();
         Enemy b = summonBhairava(w);
         assertEquals(Hataki.ALTAR_X, b.x, 1f);
@@ -221,12 +231,12 @@ class VitalaMechanicsTest {
         w.update(1 / 60f, idle());
         assertEquals(1, b.bossPhase, "stoking: full hull");
         assertEquals(Vents.COOL, w.vents.state(rim, 1.5f, false), "phase 1: the rim holds");
-        b.hp = b.maxHp * 0.5f;
-        w.update(1 / 60f, idle());
-        assertEquals(2, b.bossPhase, "kindling at two thirds");
+        toPhase(w, b, 2);
+        assertEquals(2, b.bossPhase, "kindling after the first gate");
         w.update(1 / 60f, idle());
         assertEquals(Vents.FLAMING, w.vents.state(rim, 1.5f - w.vents.at[rim][3], false), "phase 2: the rim vents breathe");
-        b.hp = b.maxHp * 0.2f;
+        toPhase(w, b, 3);
+        b.hp = b.maxHp * 0.3f;
         w.ship.x = Hataki.ALTAR_X - 200f;
         w.ship.y = Hataki.ALTAR_Y - 250f;
         float x0 = w.ship.x;
