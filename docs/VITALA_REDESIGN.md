@@ -87,3 +87,7 @@ Every fire hazard now has a visible, audible tell and a fixed home: a **vent** s
 | Gate-wardens at three gates; the HUD says VITALA | done |
 
 **Not yet:** a hand-built redrawing of the cave outlines themselves (the rock still has the tile grid's silhouette: the colouring and light are new, the shapes are the old ones), columns and architecture as props, a full re-placement of every court, the same round-and-alive treatment for Atala's creatures and the keepers' Atala sheets, and the dedicated brains of section 1 for Vitala's six units beyond what `VitalaBrain` already does (their telegraphs and formations exist; the *threat model* and the *engage budget* are not built).
+
+## Status: columns and perches
+
+The river hall has 19 round columns on its banks (MapGen.pillars, gold-rimmed by the trim, never in a gate, bay or cavern mouth, river lane kept clear), and a Kila sniper is perched in the lee of every third one in the three middle bands (VitalaGen.spawn). Threat model and engage budget: built (enemy/Engage, VitalaThreatTest).

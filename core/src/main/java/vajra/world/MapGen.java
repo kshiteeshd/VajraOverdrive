@@ -314,8 +314,38 @@ final class MapGen {
         smooth(m, cols / 2, 2);
         for (int tx = 0; tx < cols; tx++) m.set(tx, rows - 1, TileMap.ROCK);          // smoothing leaves a gap at each end for a map above to join: Sutala's hall is the roof of the world
         removeSpecks(m);
+        for (float[] c : pillars(pockets)) // the columns of the river hall: round pillars of the same rock, rimmed in gold by the trim
+            for (int ty = 0; ty < rows; ty++)
+                for (int tx = 0; tx < cols; tx++) {
+                    float wx = 24 + tx * TileMap.TILE + 16, wy = Hataki.Y0 + ty * TileMap.TILE + 16;
+                    if (Math.abs(wy - c[1]) < 70f && Math.hypot(wx - c[0], wy - c[1]) < c[2]) m.set(tx, ty, TileMap.ROCK);
+                }
         trim(m);
         return m;
+    }
+
+    /** THE COLUMNS: {x, y, radius, side} of the pillars that stand on the river's banks, one every 540 px, alternating banks, a pair every third row. Never in a gate's
+     *  way, a bay's hall or a side cavern's mouth, and only where the air round them is open. */
+    static java.util.List<float[]> pillars(java.util.List<float[]> pockets) {
+        java.util.List<float[]> out = new java.util.ArrayList<>();
+        int i = 0;
+        for (float y = Hataki.START[1] + 560f; y < Hataki.START[5] - 900f; y += 540f, i++) {
+            boolean clear = true;
+            for (int g = 1; g < Hataki.START.length; g++) clear &= Math.abs(y - Hataki.START[g]) > 520f;
+            if (!clear) continue;
+            for (int side = -1; side <= 1; side += 2) {
+                boolean free = true;                                                   // nothing of this bank (a bay's hall, a side cavern's tunnel) within reach
+                for (float[] s : SHOPS) free &= Math.signum(s[0] - Hataki.centre(y)) != side || Math.abs(s[1] - y) > 420f;
+                for (float[] q : pockets) free &= Math.signum(q[0] - Hataki.centre(y)) != side || Math.abs(q[1] - y) > q[3] + 120f;
+                if (!free) continue;
+                if (i % 3 != 0 && side != (i % 2 == 0 ? 1 : -1)) continue;
+                float x = Hataki.centre(y) + side * (Hataki.half(y) + 110f), r = 40f + 6f * (i % 3);
+                boolean open = vitalaOpen(x, y, pockets);
+                for (int k = 0; k < 8 && open; k++) open = vitalaOpen(x + (float) Math.cos(k * 0.785f) * (r + 16f), y + (float) Math.sin(k * 0.785f) * (r + 16f), pockets);
+                if (open) out.add(new float[] {x, y, r, side});
+            }
+        }
+        return out;
     }
 
     /** Full-width gate wall across a band boundary, doorway on the centre column so it lands

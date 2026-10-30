@@ -200,6 +200,16 @@ final class VitalaGen {
         for (int i = 0; i < hearth.length; i++) court(hearth[i][0], hearth[i][1], y3 + 420f + i * 500f, (i % 2 == 0 ? -1 : 1) * (50f + 70f * (i % 3)), 5, 2, 1000f);
         for (int i = 0; i < 3; i++) elite(i == 0 ? TAMRA : i == 1 ? AGNEYA : JVALA, y3 + 1400f + i * 1500f, (i % 2 == 0 ? 1 : -1) * 130f);
         pair(Hataki.END[4] - 380f);
+        // the columns shelter a Kila each: a sniper perched in the lee of a pillar, on the bank side, in the three middle bands
+        int pi = 0;
+        for (float[] c : MapGen.pillars(MapGen.pockets())) {
+            if (c[1] < Hataki.START[2] || c[1] > Hataki.START[4] + 4000f || pi++ % 3 != 1) continue;
+            float[] spot = g.openNear(c[0] + c[3] * (c[2] + 55f), c[1] + 50f, c[1] - 150f, c[1] + 150f);
+            Enemy e = new Enemy(KILA, spot[0], spot[1]);
+            e.sentry = true;
+            e.wakeRange = 820;
+            w.add(e);
+        }
         // band 5 - the Altar: the honor guard round the hearth, the boss alone behind the seal
         float ay = Hataki.ALTAR_Y;
         pair(Hataki.START[5] + 380f);
