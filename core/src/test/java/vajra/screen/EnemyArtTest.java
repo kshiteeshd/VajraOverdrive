@@ -43,7 +43,7 @@ class EnemyArtTest {
         }
     }
 
-    /** The keepers and the six soldiers wear 64x64 sheets: idle, rage, hit, death, ranked. */
+    /** The keepers and the six soldiers wear 64x64 sheets: idle, rage, hit, death, ranked, then three action clips each for a plain unit, a leader and an elite. */
     @Test
     void everySheetIsSixteenByFourCellsOfSixtyFour() throws Exception {
         int sheets = 0;
@@ -53,7 +53,7 @@ class EnemyArtTest {
             sheets++;
             java.awt.image.BufferedImage im = javax.imageio.ImageIO.read(f);
             assertEquals(1024, im.getWidth(), k + " sheet width");
-            assertEquals(256, im.getHeight(), k + " sheet height");
+            assertEquals(832, im.getHeight(), k + " sheet height (the usual four rows and the nine action rows)");
             for (int col = 0; col < 16; col++) // every cell the game reads must hold a drawn body
                 for (int row = 0; row < 4; row++) {
                     if (row == 1 && col >= 7) continue; // hit x2 + death x6 fill the row's first eight; the last may be nearly empty

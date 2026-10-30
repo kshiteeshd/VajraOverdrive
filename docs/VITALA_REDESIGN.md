@@ -91,3 +91,5 @@ Every fire hazard now has a visible, audible tell and a fixed home: a **vent** s
 ## Status: columns and perches
 
 The river hall has 19 round columns on its banks (MapGen.pillars, gold-rimmed by the trim, never in a gate, bay or cavern mouth, river lane kept clear), and a Kila sniper is perched in the lee of every third one in the three middle bands (VitalaGen.spawn). Threat model and engage budget: built (enemy/Engage, VitalaThreatTest).
+
+Atala's six creatures (Mirage, Gale, Dream, Shard, Whisper, Veil) are now round with action clips too (`tools/enemy_art/atala_round.py`); its keepers are Vitala's figures turned to jewel colours. Sheets are 13 rows; EnemyImages plays the action clips for any 13-row sheet.

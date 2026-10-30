@@ -209,7 +209,7 @@ public class EnemyImages {
     public void draw(SpriteBatch batch, Enemy e, float time) {
         TextureRegion[][] sh = e.vitala && sheetV[e.kind.ordinal()] != null ? sheetV[e.kind.ordinal()] : sheet[e.kind.ordinal()];
         if (sh != null) {
-            int[] c = bossSheet && e.vitala && e.kind == Enemy.Kind.BALA ? bossCell(e, time) : e.vitala && sh.length >= ACTION_ROWS ? cellV(e, time) : cell(e, time);
+            int[] c = bossSheet && e.vitala && e.kind == Enemy.Kind.BALA ? bossCell(e, time) : sh.length >= ACTION_ROWS ? cellV(e, time) : cell(e, time);
             float s = e.drawSize();
             if (!e.active && !e.voice && e.hitFlash <= 0) batch.setColor(0.6f, 0.6f, 0.62f, 1); // asleep: dimmed
             if (e.smoked || e.inRock) batch.setColor(1f, 1f, 1f, 0.28f);                      // in smoke or in rock: a ghost of itself
