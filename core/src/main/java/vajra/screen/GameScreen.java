@@ -165,6 +165,10 @@ public class GameScreen implements FlowState, ShipControls {
     }
 
     private boolean onKey(int keycode) {
+        if (reveal.holding()) {                                         // a tutorial callout is up: any of these reads it on, nothing else reaches the flight
+            if (keycode == Input.Keys.ENTER || keycode == Input.Keys.SPACE || keycode == Input.Keys.ESCAPE) { reveal.dismiss(); vajra.audio.Audio.get().ui("ui_tour"); }
+            return true;
+        }
         if (director.active()) { // a cutscene owns every key: ESC leaves it, anything else reads on
             if (keycode == Input.Keys.ESCAPE) director.skip();
             else director.press();
@@ -315,6 +319,10 @@ public class GameScreen implements FlowState, ShipControls {
     @Override
     public boolean touchDown(int sx, int sy, int pointer, int button) {
         Vector2 m = ui.at(sx, sy);
+        if (reveal.holding()) {
+            reveal.dismiss();
+            return true;
+        }
         if (director.active()) {
             director.press();
             return true;
@@ -429,7 +437,7 @@ public class GameScreen implements FlowState, ShipControls {
         }
         if (world.astraInvoking && (shop.isOpen() || director.active())) world.astraCancel(); // a menu or a scene took the keys
         // the wheel PAUSES a solo flight; a shared one cannot stop (a pause would be a free dodge), so it crawls
-        float simDelta = wheelOpen ? (vajra.net.Net.session == null ? 0f : delta * WeaponWheel.SLOW) : delta;
+        float simDelta = wheelOpen ? (vajra.net.Net.session == null ? 0f : delta * WeaponWheel.SLOW) : reveal.holding() ? 0f : delta;   // a tutorial callout holds the flight still
         if (!shop.isOpen() && !runEnded() && !director.active()) {
             // RELEASE FREEZE. The world holds still for a fraction of a second the instant the
             // Astra lets go. Impact is mostly the absence of motion: without this the cubes and

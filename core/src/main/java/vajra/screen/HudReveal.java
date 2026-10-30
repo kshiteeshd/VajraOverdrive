@@ -47,6 +47,13 @@ final class HudReveal {
 
     boolean active() { return active; }
 
+    /** A callout is on the screen: the flight holds still until it is read (ENTER, SPACE, ESC or a click goes on). */
+    boolean holding() { return active && cur != null && t < life - 0.45f; }
+
+    void dismiss() {
+        if (cur != null && t > 0.9f) t = Math.max(t, life - 0.45f);
+    }
+
     /** A new game: nothing on the screen until the flight asks for it. */
     void begin() {
         active = true;
@@ -228,6 +235,8 @@ final class HudReveal {
         batch.begin();
         ui.caption.setColor(ar, ag, ab, 0.6f * a);
         ui.caption.draw(batch, "SYSTEM ONLINE", px + 22f, py + ph - 14f);
+        ui.caption.setColor(ar, ag, ab, 0.5f * a);
+        ui.caption.draw(batch, "ENTER  CONTINUE", px + PW - 22f - ui.measure(ui.caption, "ENTER  CONTINUE"), py + ph - 14f);
         ui.menu.setColor(ar, ag, ab, a);
         ui.menu.draw(batch, n.title, px + 22f, py + ph - 32f);
         int shown = Math.min(n.text.length(), (int) ((t - 0.65f) * CPS));

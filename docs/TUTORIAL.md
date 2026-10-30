@@ -1,6 +1,6 @@
 # The tutorial of a new game
 
-A new game starts with an EMPTY screen. Each instrument comes on the first time the flight gives it a reason, with a holographic callout (corner brackets close on it, a line runs to a small panel that unfolds, types a line or two and fades after 8 s). The flight is never held. Code: `screen/HudReveal.java`, gated in `VedicHud` and `Hud`; wired in `GameScreen.newReveal()`.
+A new game starts with an EMPTY screen. Each instrument comes on the first time the flight gives it a reason, with a holographic callout (corner brackets close on it, a line runs to a small panel that unfolds, types a line or two and fades after 8 s). The flight HOLDS STILL while a callout is up; ENTER, SPACE, ESC or a click reads it on. Code: `screen/HudReveal.java`, gated in `VedicHud` and `Hud`; wired in `GameScreen.newReveal()`.
 
 | Instrument | Appears when |
 |---|---|
