@@ -52,20 +52,19 @@ class TutorialShotTest {
                     for (int i = 0; i < 120; i++) flow.render(1 / 60f);
                     for (int k = 0; k < 12; k++) { flow.keyDown(Input.Keys.ENTER); for (int i = 0; i < 6; i++) flow.render(1 / 60f); }   // read the opening through
                     for (int i = 0; i < 40; i++) flow.render(1 / 60f);
-                    java.lang.reflect.Field tf = GameScreen.class.getDeclaredField("tour");
-                    tf.setAccessible(true);
-                    Object tour = tf.get(gs);
-                    java.lang.reflect.Method act = tour == null ? null : tour.getClass().getDeclaredMethod("active");
-                    if (act != null) act.setAccessible(true);
-                    ok[0] = act != null && (Boolean) act.invoke(tour);
-                    float y0 = w.ship.y;
-                    for (int step = 0; step < 10; step++) {
-                        for (int i = 0; i < 30; i++) flow.render(1 / 60f);
-                        if (step == 0 || step == 3 || step == 6 || step == 8 || step == 9) shot("build/tour-" + step + ".png");
-                        flow.keyDown(Input.Keys.ENTER);
-                    }
-                    for (int i = 0; i < 20; i++) flow.render(1 / 60f);
-                    ok[1] = Math.abs(w.ship.y - y0) < 5f;     // the world held still through the tour
+                    java.lang.reflect.Field rf = GameScreen.class.getDeclaredField("reveal");
+                    rf.setAccessible(true);
+                    Object rev = rf.get(gs);
+                    java.lang.reflect.Method on = rev.getClass().getDeclaredMethod("on", int.class);
+                    on.setAccessible(true);
+                    ok[0] = !(Boolean) on.invoke(rev, 1) && !(Boolean) on.invoke(rev, 8) && !(Boolean) on.invoke(rev, 64);   // an empty screen to begin with
+                    shot("build/tour-0.png");
+                    w.ship.hp -= 30f;                                         // the first hit: the hull tube comes up
+                    for (int i = 0; i < 60; i++) flow.render(1 / 60f);
+                    shot("build/tour-1.png");
+                    for (int i = 0; i < 100; i++) flow.render(1 / 60f);
+                    shot("build/tour-2.png");
+                    ok[1] = (Boolean) on.invoke(rev, 1) && !(Boolean) on.invoke(rev, 8);
                     w.cues.clear();
                     vajra.world.Checkpoint cp = w.checkpoints[0];
                     w.ship.x = cp.x + 120f;
@@ -97,8 +96,8 @@ class TutorialShotTest {
             }
         }, cfg);
         if (boom.get() != null) throw new AssertionError("the tutorial failed", boom.get());
-        assertTrue(ok[0], "the tour began after the opening and is running");
-        assertTrue(ok[1], "the world held still through the tour");
+        assertTrue(ok[0], "the screen began empty");
+        assertTrue(ok[1], "the hull tube came up on the first hit and nothing else did");
         assertTrue(ok[2], "the first lamp was shown, once");
     }
 }

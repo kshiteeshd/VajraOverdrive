@@ -64,6 +64,10 @@ final class VedicHud {
     private final ShardGauge shards;
     private final WeaponCards cards;
     private final float[] spot = new float[2], land = new float[3];
+    /** The tutorial of a new game keeps an instrument off the screen until the flight needs it (null: all on). */
+    HudReveal reveal;
+
+    private boolean on(int bit) { return reveal == null || reveal.on(bit); }
 
     private float gazeShown;                       // eased toward the true gaze
     private float eyeA;                            // the eye's own fade: shut away while he is unaware of you
@@ -81,15 +85,14 @@ final class VedicHud {
     // =================================================================================
 
     void shapes(World w, float dt) {
-        tube(w);
-        medallion(w);
-        lives(w);
-        repairs(w);
+        if (on(HudReveal.HULL)) { tube(w); lives(w); }
+        if (on(HudReveal.WEAPON)) medallion(w);
+        if (on(HudReveal.REPAIRS)) repairs(w);
         eyeA += ((w.currentRegionIndex() >= 1 && w.gazeStage >= 1 ? 1f : 0f) - eyeA) * Math.min(1f, dt * 3f);
         if (eyeA > 0.02f) eye(w, dt);
-        minimap(w);
+        if (on(HudReveal.DIAL)) minimap(w);
         shieldAndBoost(w);
-        astraDial(w);
+        if (on(HudReveal.ASTRA)) astraDial(w);
     }
 
     // ---- the health tube: a glass capsule on its side, the hull a liquid that flows in it ----------
@@ -500,9 +503,11 @@ final class VedicHud {
         float bo = frac(sh.boostEnergy / 100f);
         float t = w.clock;
         // the shield (left) churns while it is up; the boost (right) surges while it burns
-        halfTube(270 - 6, -1, sp, SKY, sh.shieldOn ? 1f : 0.8f, t, sh.shieldOn ? 14f : 5f, false);
-        halfTube(-90 + 6, 1, bo, SAFFRON, sh.boosting ? 1f : 0.8f, t, sh.boosting ? 26f : 5f, sh.boosting);
-        if (sp <= 0) { // a spent shield: a faint red edge, so "down" is not just "empty"
+        boolean shield = on(HudReveal.SHIELD), boost = on(HudReveal.BOOST);
+        if (shield) halfTube(270 - 6, -1, sp, SKY, sh.shieldOn ? 1f : 0.8f, t, sh.shieldOn ? 14f : 5f, false);
+        if (boost) halfTube(-90 + 6, 1, bo, SAFFRON, sh.boosting ? 1f : 0.8f, t, sh.boosting ? 26f : 5f, sh.boosting);
+        if (!on(HudReveal.DIAL)) return;
+        if (shield && sp <= 0) { // a spent shield: a faint red edge, so "down" is not just "empty"
             s().setColor(VERMILION[0], VERMILION[1], VERMILION[2], 0.4f + 0.2f * (float) Math.sin(w.clock * 6f));
             arc(MAP_CX, MAP_CY, ARC_R + 5.6f, 270 - 6, 270 - 6 - HALF_SWEEP, 16, 1f);
         }
@@ -585,18 +590,24 @@ final class VedicHud {
         refreshWords(w);
 
         // the weapon: its card in the medallion, its key under it, its name beside the lives
-        batch.draw(cards.get(w.hangar.weaponIndex), MED_CX - 17, MED_CY - 13, 34, 34);
-        ui.caption.setColor(GOLD[0], GOLD[1], GOLD[2], 0.95f);
-        ui.caption.draw(batch, weaponKey(), MED_CX - ui.measure(ui.caption, weaponKey()) / 2f, MED_CY - 17);
-        ui.hud.setColor(1, 1, 1, 0.9f);
-        int slots = MathUtils.clamp(Math.max(3, w.lives), 3, World.MAX_LIVES);
-        ui.hud.draw(batch, weaponStr, LIFE_X0 + (slots - 1) * LIFE_PITCH + LIFE_R + 14, LIFE_Y + 6);
-        ui.hud.setColor(1, 1, 1, 1);
+        if (on(HudReveal.WEAPON)) {
+            batch.draw(cards.get(w.hangar.weaponIndex), MED_CX - 17, MED_CY - 13, 34, 34);
+            ui.caption.setColor(GOLD[0], GOLD[1], GOLD[2], 0.95f);
+            ui.caption.draw(batch, weaponKey(), MED_CX - ui.measure(ui.caption, weaponKey()) / 2f, MED_CY - 17);
+            if (on(HudReveal.HULL)) {
+                ui.hud.setColor(1, 1, 1, 0.9f);
+                int slots = MathUtils.clamp(Math.max(3, w.lives), 3, World.MAX_LIVES);
+                ui.hud.draw(batch, weaponStr, LIFE_X0 + (slots - 1) * LIFE_PITCH + LIFE_R + 14, LIFE_Y + 6);
+                ui.hud.setColor(1, 1, 1, 1);
+            }
+        }
 
         // the key of the stored repairs, before the crosses
-        ui.caption.setColor(GOLD[0], GOLD[1], GOLD[2], w.medkits > 0 ? 0.95f : 0.4f);
-        ui.caption.draw(batch, "1", REP_X - 22f, TUBE_CY + 4f);
-        ui.caption.setColor(1, 1, 1, 1);
+        if (on(HudReveal.REPAIRS)) {
+            ui.caption.setColor(GOLD[0], GOLD[1], GOLD[2], w.medkits > 0 ? 0.95f : 0.4f);
+            ui.caption.draw(batch, "1", REP_X - 22f, TUBE_CY + 4f);
+            ui.caption.setColor(1, 1, 1, 1);
+        }
 
         // the gaze's name and word, just above the eye
         if (eyeA > 0.3f) {
@@ -608,6 +619,7 @@ final class VedicHud {
 
         // the astra's gem, the one thing in the corner
         int kind = loadedKind(w);
+        if (!on(HudReveal.ASTRA)) kind = Astra.ELEMENTS;
         if (kind < Astra.ELEMENTS) {
             batch.setColor(1, 1, 1, Astra.canLoose(w.hangar, kind) && w.astraCd <= 0 ? 1f : 0.5f);
             batch.draw(shards.gem(kind), GEM_CX - GEM_R, GEM_CY - GEM_R, GEM_R * 2, GEM_R * 2);
@@ -620,6 +632,7 @@ final class VedicHud {
             ui.caption.setColor(1, 1, 1, 1);
         }
 
+        if (!on(HudReveal.DIAL)) return;
         // where the pilot is: the band's name beside the dial, over the land it names
         String band = vajra.world.Biome.of(vajra.world.Biome.band(w.ship.y, w.regionStart)).name.toUpperCase(Locale.ROOT);
         ui.caption.setColor(GOLD[0], GOLD[1], GOLD[2], 0.85f);

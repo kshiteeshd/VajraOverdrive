@@ -188,6 +188,8 @@ public class Enemy {
     public boolean gateHit, gateInit;
     public int pose, lastAct;
     public float poseT, flinchT, immolateCd, vB, hitT;
+    /** Vitala's units: seconds a committed act still holds its place in the engage budget; a Kila's spoiled aim; a reaction's cooldown. */
+    public float commitT, spoilT, reactCd;
     public final float[] pend = new float[60];   // ground marked to burn: {x, y, seconds to go, radius} x 15
     public int pendN;
     private float dmgBucket = -1f;   // a ruler's hull can only be spent so fast: a bucket that refills (see hurt)
@@ -405,6 +407,9 @@ public class Enemy {
         if (dead || parley) return;
         if (yielding) { vx = 0; vy = 0; if (hitFlash > 0) hitFlash -= dt; return; }
         if (flinchT > 0f) flinchT -= dt;
+        if (commitT > 0f) commitT -= dt;
+        if (spoilT > 0f) spoilT -= dt;
+        if (reactCd > 0f) reactCd -= dt;
         if (boss && vitala && dmgBucket >= 0f) dmgBucket = Math.min(maxHp * vajra.enemy.BhairavaBrain.BUCKET, dmgBucket + maxHp * vajra.enemy.BhairavaBrain.REFILL * dt);
         if (hitT > 0f) hitT -= dt;
         if (immolateCd > 0f) immolateCd -= dt;
@@ -651,6 +656,7 @@ public class Enemy {
             hitT = 1.2f;
         }
         parley = false; // struck first: the talking is over
+        if (vitala && kind == Kind.LANCE && !boss) spoilT = 1.4f;                      // a hit spoils a sniper's next aim
         if (armoured) { amount *= armourFactor(w); w.snd(vajra.audio.Snd.FOE_HURT_ARMOUR, x, y, 0, 0f); }
         hp = Math.max(0, hp - amount);
         if (boss) bossTook[bossPattern] += amount; // MEMORY: what this pattern cost while it played

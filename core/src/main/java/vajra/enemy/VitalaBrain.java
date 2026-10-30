@@ -146,6 +146,7 @@ public final class VitalaBrain {
             if (lead == null) leadTick(e, w, dt);
             float[] g = G;
             g[0] = g[1] = Float.NaN;
+            react(e, w, hull, dist, ux, uy);
             volleys(e, w, dt, hull, lead, dist, ux, uy);
             action(e, w, dt, hull, dist, ux, uy, g);
             if (!Float.isNaN(g[0])) {                                        // a personal action has the wheel (a dart run, a drift in smoke, a held line)
@@ -385,31 +386,25 @@ public final class VitalaBrain {
         if (e.sentry && dist > 760f) return;                                  // a post only answers what comes near it
         if (dist > 1300f || e.vState != 0) return;
         if (!w.clearLine(e.x, e.y, hull.x, hull.y) && e.kind != Enemy.Kind.HATAKA && e.kind != Enemy.Kind.MAYAVI) return;
-        if (lead == null && e.kind == Enemy.Kind.HATAKA) e.vA = e.facing;      // a Rekha leader sets the angle the whole grid is drawn at
+        if (!w.engage.request(e)) return;                                         // only a few are committed at once: the rest hold their formation and wait for a place
+        float[] lp = new float[2];
+        Engage.lead(hull, 0.6f, lp);
+        if (lead == null && e.kind == Enemy.Kind.HATAKA) e.vA = (float) Math.atan2(lp[1] - e.y, lp[0] - e.x);          // a Rekha leader draws its grid across where the hull is going      // a Rekha leader sets the angle the whole grid is drawn at
         switch (e.kind) {
             case VAKRA:                                                       // Agneya: the dart run begins with a tell
                 e.vState = 1;
                 e.vT = 0.5f;
-                w.addEffect(Effect.flash(e.x, e.y, hull.x, hull.y, 1f, 0.55f, 0.15f));
+                w.addEffect(Effect.flash(e.x, e.y, lp[0], lp[1], 1f, 0.55f, 0.15f));
                 break;
             case LANCE:                                                       // Kila: a laser tell, then the burst
                 e.vState = 1;
                 e.vT = 0.42f;
                 break;
-            case AURIS: {                                                     // Dhuma: smoke, then a place close to the hull
-                e.vState = 1;
-                e.vT = 1.5f;
-                e.smoked = true;
-                float a = (float) Math.atan2(e.y - hull.y, e.x - hull.x) + (e.phase > 3f ? 1f : -1f) * (0.9f + 0.6f * (float) Math.sin(e.clockT));
-                float r = 230f + 60f * (float) Math.abs(Math.sin(e.clockT * 2f));
-                e.vX = hull.x + (float) Math.cos(a) * r;
-                e.vY = hull.y + (float) Math.sin(a) * r;
-                if (!w.openFor(e.vX, e.vY, 14f)) { e.vX = hull.x - ux * r; e.vY = hull.y - uy * r; }
-                w.addEffect(Effect.ring(e.x, e.y, 26, 0.7f, 0.75f, 0.9f));
+            case AURIS:                                                       // Dhuma: smoke, then a place beside the hull's path
+                dhuma(e, w, hull, ux, uy);
                 break;
-            }
             case BHAVI: {                                                     // Tamra: a slag shell, and the ring if it is touched
-                float aim = e.facing;
+                float aim = Engage.aim(hull, e.x, e.y, SLAG.speed);
                 fire(w, e, SLAG, aim);
                 if (dist < 170f) {
                     w.addEffect(Effect.ring(e.x, e.y, 90, 0.9f, 0.5f, 0.2f));
@@ -421,6 +416,10 @@ public final class VitalaBrain {
             case MAYAVI: {                                                    // Jvala: ground where the hull is GOING
                 float px = hull.x + hull.vx * 0.9f, py = hull.y + hull.vy * 0.9f;
                 w.hazards.patch(px, py, 52f, 6f);
+                if (Engage.still(hull)) {                                                 // a hull that stands still is ringed in
+                    w.hazards.patch(hull.x + 64f, hull.y, 38f, 5f);
+                    w.hazards.patch(hull.x - 64f, hull.y, 38f, 5f);
+                }
                 if (src.form == F_COLUMN || src.form == F_CIRCLE) {
                     w.hazards.patch(px + uy * 70f, py - ux * 70f, 40f, 5f);
                     w.hazards.patch(px - uy * 70f, py + ux * 70f, 40f, 5f);
@@ -445,6 +444,46 @@ public final class VitalaBrain {
         }
     }
 
+    /** Dhuma's act: smoke, then a place close to the hull, read from where the hull is HEADED: beside its path when it flies, behind it when it runs from her, any way round when it is still. */
+    private static void dhuma(Enemy e, World w, Ship hull, float ux, float uy) {
+        e.vState = 1;
+        e.vT = 1.5f;
+        e.smoked = true;
+        float side = e.phase > 3f ? 1f : -1f;
+        float sp = Engage.speed(hull), r = 230f + 60f * (float) Math.abs(Math.sin(e.clockT * 2f));
+        if (sp > 80f) {
+            float hx = hull.vx / sp, hy = hull.vy / sp;
+            float[] ahead = new float[2];
+            Engage.lead(hull, 1.3f, ahead);
+            boolean fleeing = Engage.closing(hull, e) < -40f;
+            e.vX = fleeing ? ahead[0] - hx * 60f + (-hy) * side * 90f : ahead[0] + (-hy) * side * r;      // a running hull is met at its flank, close; a crossing one is flanked at range
+            e.vY = fleeing ? ahead[1] - hy * 60f + hx * side * 90f : ahead[1] + hx * side * r;
+        } else {
+            float a = (float) Math.atan2(e.y - hull.y, e.x - hull.x) + side * (0.9f + 0.6f * (float) Math.sin(e.clockT));
+            e.vX = hull.x + (float) Math.cos(a) * r;
+            e.vY = hull.y + (float) Math.sin(a) * r;
+        }
+        if (!w.openFor(e.vX, e.vY, 14f)) { e.vX = hull.x - ux * r; e.vY = hull.y - uy * r; }
+        w.addEffect(Effect.ring(e.x, e.y, 26, 0.7f, 0.75f, 0.9f));
+    }
+
+    /** What a unit does when it is hurt or crowded, before its formation's clock comes round (each at most every few seconds): a Dhuma struck while visible goes to smoke at once; a Jvala
+     *  that the hull has come close to lays three patches between them and backs off. */
+    private static void react(Enemy e, World w, Ship hull, float dist, float ux, float uy) {
+        if (e.reactCd > 0f || e.vState != 0 || e.routed || e.inRock || e.smoked) return;
+        if (e.kind == Enemy.Kind.AURIS && e.hitFlash > 0.06f && !e.sentry && w.engage.request(e)) {
+            e.reactCd = 3.5f;
+            dhuma(e, w, hull, ux, uy);
+        } else if (e.kind == Enemy.Kind.MAYAVI && dist < 250f && w.engage.request(e)) {
+            e.reactCd = 4.5f;
+            float px = -uy, py = ux;
+            for (int i = -1; i <= 1; i++) w.hazards.patch(e.x + ux * 90f + px * i * 70f, e.y + uy * 90f + py * i * 70f, 40f, 5f);
+            e.dodgeVx = -ux * 420f;                                                      // and it backs away from them
+            e.dodgeVy = -uy * 420f;
+            w.addEffect(Effect.ring(e.x + ux * 90f, e.y + uy * 90f, 60, 1f, 0.5f, 0.15f));
+        }
+    }
+
     // ---- personal actions that take the wheel -------------------------------------------------------------------------------------
 
     private static void action(Enemy e, World w, float dt, Ship hull, float dist, float ux, float uy, float[] g) {
@@ -458,9 +497,11 @@ public final class VitalaBrain {
                     if (e.vT <= 0f) {
                         e.vState = 2;
                         e.vT = 0.55f;
-                        float d = Math.max(1f, dist);
-                        e.vX = ux * 780f;
-                        e.vY = uy * 780f;
+                        float[] ap = new float[2];
+                        Engage.lead(hull, Math.max(1f, dist) / 780f * 0.8f, ap);
+                        float ax = ap[0] - e.x, ay = ap[1] - e.y, ad = Math.max(1f, (float) Math.hypot(ax, ay));
+                        e.vX = ax / ad * 780f;
+                        e.vY = ay / ad * 780f;
                         e.vT2 = 0f;
                     }
                 } else {                                                      // the dart run: thrown straight, burning ground behind it
@@ -479,7 +520,9 @@ public final class VitalaBrain {
                 g[1] = 0f;
                 if (e.vT > 0f) w.addEffect(Effect.flash(e.x, e.y, hull.x, hull.y, 1f, 0.9f, 0.5f));
                 else {
-                    fire(w, e, NEEDLE, e.facing);
+                    float aim = Engage.aim(hull, e.x, e.y, NEEDLE.speed);
+                    if (e.spoilT > 0f) aim += (e.phase > 3f ? 0.18f : -0.18f);               // it was struck: the shot goes wide
+                    fire(w, e, NEEDLE, aim);
                     e.vState = 0;
                 }
                 break;

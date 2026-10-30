@@ -1854,6 +1854,8 @@ public class World {
 
     /** The invocation builds, cubes in flight fly and retire. Rock is never consulted - that is the whole point of them. */
     public final Maya maya = new Maya();
+    /** Vitala's engage budget: how many of its units may be committed to an attack at once (enemy/Engage). */
+    public final vajra.enemy.Engage engage = new vajra.enemy.Engage();
     /** The first sight of a lamp and of a bay in this run (the screen decides whether the pilot has yet to be told): where it lies, and that it has been raised. */
     public float beatX, beatY;
     private boolean lampRaised, bayRaised;

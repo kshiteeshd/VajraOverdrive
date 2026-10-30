@@ -110,6 +110,16 @@ public final class Hud {
         this.vedic = new VedicHud(ui, shards, cards);
     }
 
+    /** The tutorial's reveal: which instruments are on the screen yet (null: all of them). */
+    public void reveal(HudReveal r) {
+        this.reveal = r;
+        vedic.reveal = r;
+    }
+
+    private HudReveal reveal;
+
+    private boolean on(int bit) { return reveal == null || reveal.on(bit); }
+
     // =================================================================================
     // FRAME
     // =================================================================================
@@ -151,18 +161,18 @@ public final class Hud {
         jobs.shapes(ui, w);
         toast.shapes(ui, w);
         crewShapes(w);
-        depthTape(w);
+        if (on(HudReveal.LOKA)) depthTape(w);
         vedic.shapes(w, 1 / 60f); // health tube, weapon medallion, lives, gaze, minimap with shield and boost, astra dial
     }
 
     private void batchPass(SpriteBatch batch, World w, boolean hangar, boolean over,
                            ShipRenderer ships, BayUi shopUi) {
         if (!hangar) {
-            drawScore(batch);
+            if (on(HudReveal.SCORE)) drawScore(batch);
             jobs.text(ui, batch, w);
             toast.text(ui, batch, w);
-            drawIndicator(batch, w); // the world meter's words
-            drawVitals(batch);
+            if (on(HudReveal.LOKA)) drawIndicator(batch, w); // the world meter's words
+            if (on(HudReveal.WEAPON)) drawVitals(batch);
             drawCrew(batch, w);
             vedic.labels(batch, w);
         }
