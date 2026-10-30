@@ -115,7 +115,7 @@ class EnemyArtTest {
     private static File sheetOf(Enemy.Kind k) {
         for (String p : new String[] { "assets/enemies/atala/", "../assets/enemies/atala/" }) {
             File f = new File(p + k.name().toLowerCase() + ".png");
-            if (f.isFile()) return f;
+            if (f.isFile() && k != Enemy.Kind.BALA) return f;                  // (the ruler wears his own 128 px sheet, not a 64 px unit sheet)
         }
         return null;
     }
@@ -126,5 +126,21 @@ class EnemyArtTest {
             if (d.isDirectory()) return d;
         }
         return null;
+    }
+
+    /** Bala's own sheet: 8 x 8 cells of 128, every cell of the idle, tell, release, cast and arrival rows drawn. */
+    @Test
+    void balaWearsA128SheetWithAClipForEachScene() throws Exception {
+        File f = new File("assets/enemies/atala/bala.png");
+        if (!f.isFile()) f = new File("../assets/enemies/atala/bala.png");
+        java.awt.image.BufferedImage im = javax.imageio.ImageIO.read(f);
+        assertEquals(1024, im.getWidth());
+        assertEquals(1024, im.getHeight());
+        for (int row : new int[] {0, 1, 2, 4, 5, 6, 7})
+            for (int col = 0; col < 8; col++) {
+                int px = 0;
+                for (int y = 0; y < 128; y++) for (int x = 0; x < 128; x++) if ((im.getRGB(col * 128 + x, row * 128 + y) >>> 24) > 40) px++;
+                assertTrue(px > 800, "row " + row + " col " + col + " holds a body: " + px);
+            }
     }
 }

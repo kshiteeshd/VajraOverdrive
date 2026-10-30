@@ -33,6 +33,9 @@ public class EnemyImages {
     private final TextureRegion[][][] sheetV = new TextureRegion[Enemy.Kind.values().length][][];
     private final Texture[] sheetVTex = new Texture[Enemy.Kind.values().length];
     private boolean bossSheet;
+    /** Bala's own sheet (assets/enemies/atala/bala.png, 8 x 8 cells of 128): idle by phase, hit and death, the tell, the release, the Maya-astra, the arrival after a blink. */
+    private TextureRegion[][] balaSheet;
+    private Texture balaTex;
     static final int BOSS_CELL = 128;
 
     private Texture glowTex;
@@ -87,8 +90,13 @@ public class EnemyImages {
                 Texture t = ImageKit.texture(sheetPath, true);
                 if (t != null) {
                     t.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
-                    sheetTex[k.ordinal()] = t;
-                    sheet[k.ordinal()] = TextureRegion.split(t, CELL, CELL);
+                    if (k == Enemy.Kind.BALA && t.getHeight() == 8 * BOSS_CELL) {
+                        balaTex = t;
+                        balaSheet = TextureRegion.split(t, BOSS_CELL, BOSS_CELL);
+                    } else {
+                        sheetTex[k.ordinal()] = t;
+                        sheet[k.ordinal()] = TextureRegion.split(t, CELL, CELL);
+                    }
                 }
             }
             String vp = "enemies/vitala/" + name + ".png";
@@ -206,7 +214,40 @@ public class EnemyImages {
         batch.draw(r, e.x - e.radius / 2, e.y - e.radius / 2, e.radius, e.radius);
     }
 
+    /** Which cell of Bala's sheet shows now: the pose he is in (the brain sets it) picks the row, and how long he has held it the frame. */
+    static int[] balaCell(Enemy e, float time) {
+        int phase = Math.max(0, Math.min(2, e.bossPhase - 1));
+        if (e.bossInvuln) return new int[] {3, ((int) (time * 14f) & 1)};                          // the stagger between phases: the white strobe
+        if (e.hitFlash > 0) return new int[] {3, e.hitFlash > 0.06f ? 0 : 1};
+        switch (e.pose) {
+            case vajra.enemy.BossBrain.WINDUP: return new int[] {4, Math.min(7, (int) (e.poseT / 0.5f * 8f))};
+            case vajra.enemy.BossBrain.ROAR: return new int[] {5, Math.min(7, (int) (e.poseT / 0.5f * 8f))};
+            case vajra.enemy.BossBrain.CAST: return new int[] {6, Math.floorMod((int) (time * 10f), 8)};
+            case vajra.enemy.BossBrain.ARRIVE: return new int[] {7, Math.min(7, (int) (e.poseT / 0.6f * 8f))};
+            default: return new int[] {phase, Math.floorMod((int) (time * 10f + e.phase * 2), 8)};
+        }
+    }
+
+    /** Bala: the ring's glow behind him, then his body in the pose of the moment (the same procedural stance as Bhairava's, BossPose). */
+    private void drawBala(SpriteBatch batch, Enemy e, float time) {
+        float s = e.drawSize();
+        float[] p = BossPose.of(e, time);
+        int[] c = balaCell(e, time);
+        int src = batch.getBlendSrcFunc(), dst = batch.getBlendDstFunc();
+        batch.setBlendFunction(com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA, com.badlogic.gdx.graphics.GL20.GL_ONE);
+        float gs = s * (1.4f + 0.1f * (float) Math.sin(time * 2.3f));
+        batch.setColor(p[5], p[6], p[7], p[8] * 0.8f);
+        batch.draw(glow(), e.x - gs / 2f, e.y + s * 0.08f - gs / 2f, gs, gs);
+        batch.setBlendFunction(src, dst);
+        batch.setColor(1f, 1f, 1f, 1f);
+        batch.draw(balaSheet[c[0]][c[1]], e.x - s / 2f + p[0], e.y - s / 2f + p[1], s / 2f, s / 2f, s, s, p[2], p[3], p[4]);
+    }
+
     public void draw(SpriteBatch batch, Enemy e, float time) {
+        if (balaSheet != null && e.kind == Enemy.Kind.BALA && !e.vitala) {
+            drawBala(batch, e, time);
+            return;
+        }
         TextureRegion[][] sh = e.vitala && sheetV[e.kind.ordinal()] != null ? sheetV[e.kind.ordinal()] : sheet[e.kind.ordinal()];
         if (sh != null) {
             int[] c = bossSheet && e.vitala && e.kind == Enemy.Kind.BALA ? bossCell(e, time) : sh.length >= ACTION_ROWS ? cellV(e, time) : cell(e, time);
@@ -244,6 +285,7 @@ public class EnemyImages {
     public void dispose() {
         if (glowTex != null) glowTex.dispose();
         for (Texture[] row : tex) for (Texture t : row) if (t != null) t.dispose();
+        if (balaTex != null) balaTex.dispose();
         for (Texture t : sheetTex) if (t != null) t.dispose();
         for (Texture t : sheetVTex) if (t != null) t.dispose();
     }

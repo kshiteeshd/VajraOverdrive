@@ -20,6 +20,8 @@ import java.util.Random;
  *  Writes vx/vy only, like Brain; fires through World with its own shot rows. */
 public class BossBrain {
     static final int VOLLEY = 0, SPIRAL = 1, MORTAR = 2, SHOCK = 3;
+    /** The poses the renderer reads (Enemy.pose, shared with Bhairava's): the tell of an attack, its release, the Maya-astra, the arrival after a blink. */
+    public static final int WINDUP = BhairavaBrain.WINDUP, ROAR = BhairavaBrain.ROAR, CAST = BhairavaBrain.CAST, STAGGER = BhairavaBrain.STAGGER, ARRIVE = 6;
 
     static final WeaponDef VOLLEY_SHOT = WeaponDef.mk("bala volley")
             .speed(330).damage(10).bulletSize(5).life(4).colour(1f, 0.78f, 0.2f);
@@ -41,6 +43,9 @@ public class BossBrain {
         if (!e.bossHidden && e.bossPhase == 1 && frac <= 2f / 3f) beginPhase(e, w, 2);
         else if (!e.bossHidden && e.bossPhase == 2 && frac <= 1f / 3f) beginPhase(e, w, 3);
 
+        e.poseT += dt;
+        if (e.pose == ROAR && e.poseT > 0.5f && e.bossStream <= 0) e.pose = BhairavaBrain.IDLE;
+        if (e.pose == ARRIVE && e.poseT > 0.6f) e.pose = BhairavaBrain.IDLE;
         if (e.bossHidden) { // mid-blink: countdown, then reappear
             e.bossTimer -= dt;
             if (e.bossTimer <= 0) reappear(e, w);
@@ -50,11 +55,16 @@ public class BossBrain {
         boolean hold = w.maya.active && w.maya.boss == e;   // his Maya-astra: he stands where he is, makes no move and no shot, until the glass has mended
         vajra.ship.Ship hull = w.nearestHull(e.x, e.y);
         e.facing = (float) Math.atan2(hull.y - e.y, hull.x - e.x);
+        if (hold) { e.pose = CAST; e.poseT = 0f; }
+        else if (e.pose == CAST) e.pose = BhairavaBrain.IDLE;
         if (e.bossInvuln) {
+            e.pose = STAGGER;
+            e.poseT = Math.max(0f, e.bossTimer);
             e.bossTimer -= dt;
             e.hitFlash = 0.1f; // white strobe reads as the stagger
             if (e.bossTimer <= 0) {
                 e.bossInvuln = false;
+                e.pose = BhairavaBrain.IDLE;
                 e.bossTimer = 0.8f; // grace before his first attack of the phase
                 e.bossTelegraph = false;
             }
@@ -97,6 +107,8 @@ public class BossBrain {
             e.bossDealStart = 0f;
             e.bossPattern = pick(e);
             e.bossTelegraph = true;
+            e.pose = WINDUP;
+            e.poseT = 0f;
             e.bossTimer = e.bossPattern == MORTAR ? 0.9f : e.bossPattern == VOLLEY ? 0.7f : 0.6f;
             if (e.bossPattern == MORTAR) { // the marker shows exactly where the shell lands
                 e.bossMx = hull.x;
@@ -140,6 +152,8 @@ public class BossBrain {
 
     private static void release(Enemy e, World w) {
         e.bossDealStart = w.nearestHull(e.x, e.y).hp; // the deal window opens: the pattern plays
+        e.pose = ROAR;
+        e.poseT = 0f;
         switch (e.bossPattern) {
             case VOLLEY: {
                 vajra.ship.Ship hull = w.nearestHull(e.x, e.y);
@@ -228,6 +242,8 @@ public class BossBrain {
         e.x = p[0];
         e.y = p[1];
         e.bossHidden = false;
+        e.pose = ARRIVE;
+        e.poseT = 0f;
         e.bossTimer = 0.6f; // arrival beat: hittable, but he shoots after it
         e.bossTelegraph = false;
         e.bossBlink = 5f + rng.nextFloat() * 2f;
