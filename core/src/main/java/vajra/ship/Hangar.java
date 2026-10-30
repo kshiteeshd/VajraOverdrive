@@ -235,6 +235,19 @@ public class Hangar {
         return h;
     }
 
+    /** Extra mitigation the owned tiers give, and how much of FIRE they turn aside (Kite's 2.3 is made for the burning loka). */
+    public float armor(ShipDef d) {
+        float a = 0;
+        for (int t = 1; t <= 2; t++) if (owned[d.id][t]) a += d.upgrades[t].armor;
+        return a;
+    }
+
+    public float burnResist(ShipDef d) {
+        float a = 0;
+        for (int t = 1; t <= 2; t++) if (owned[d.id][t]) a = Math.max(a, d.upgrades[t].burnResist);
+        return a;
+    }
+
     public float shieldBonus(ShipDef d) {
         float s = 0;
         for (int t = 1; t <= 2; t++) if (owned[d.id][t]) s += d.upgrades[t].shieldBonus;

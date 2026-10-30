@@ -62,9 +62,16 @@ public class ShipDef {
         public final float turnBonus;
         public final float hullBonus;
         public final float shieldBonus;
+        /** Extra fraction of ALL incoming damage ignored, and of fire (the ash ring, burning ground, fire lines) on top of it. */
+        public final float armor, burnResist;
 
         Upgrade(String label, String name, int cost, float cooldownMult, float damageMult,
                 float speedBonus, float turnBonus, float hullBonus, float shieldBonus) {
+            this(label, name, cost, cooldownMult, damageMult, speedBonus, turnBonus, hullBonus, shieldBonus, 0f, 0f);
+        }
+
+        Upgrade(String label, String name, int cost, float cooldownMult, float damageMult,
+                float speedBonus, float turnBonus, float hullBonus, float shieldBonus, float armor, float burnResist) {
             this.label = label;
             this.name = name;
             this.cost = cost;
@@ -74,6 +81,8 @@ public class ShipDef {
             this.turnBonus = turnBonus;
             this.hullBonus = hullBonus;
             this.shieldBonus = shieldBonus;
+            this.armor = armor;
+            this.burnResist = burnResist;
         }
 
         static Upgrade base(String label, String name) {
@@ -96,6 +105,11 @@ public class ShipDef {
     private static Upgrade up(String label, String name, int cost, float cooldownMult, float damageMult,
                               float speedBonus, float turnBonus, float hullBonus, float shieldBonus) {
         return new Upgrade(label, name, cost, cooldownMult, damageMult, speedBonus, turnBonus, hullBonus, shieldBonus);
+    }
+
+    private static Upgrade up(String label, String name, int cost, float cooldownMult, float damageMult,
+                              float speedBonus, float turnBonus, float hullBonus, float shieldBonus, float armor, float burnResist) {
+        return new Upgrade(label, name, cost, cooldownMult, damageMult, speedBonus, turnBonus, hullBonus, shieldBonus, armor, burnResist);
     }
 
     /** An identity scan for the wire: whose row of the ladder this hull is. */
@@ -121,7 +135,7 @@ public class ShipDef {
                     up("1.3", "Aegis Plate", 300, 1f, 1f, 0f, 0f, 40f, 15f)),
             ship(1, "Kite Mk-2", "fast as rumor", 260, 0, 90, 2250, 435, 200, 2.0f, 0.3f, 0.8f, 1f, 0f,
                     up("2.2", "Light Frames", 140, 1f, 1f, 50f, 10f, 0f, 0f),
-                    up("2.3", "Twin Link", 300, 0.80f, 1.25f, 0f, 0f, 0f, 0f)),
+                    up("2.3", "Twin Link", 300, 0.80f, 1.25f, 0f, 0f, 220f, 0f, 0.25f, 0.85f)),     // the best hull of the ladder (310), a quarter of all damage ignored, and nearly proof against fire
             ship(2, "Aegis Mk-3", "the wall that walks", 520, 1, 170, 1550, 330, 160, 1.6f, 0.4f, 1f, 0.5f, 0.10f,
                     up("3.2", "Reinforced Hull", 260, 1f, 1f, 0f, 0f, 60f, 0f),
                     up("3.3", "Bulwark", 520, 1f, 1f, 0f, 0f, 0f, 55f)),

@@ -110,7 +110,7 @@ public final class Hazards {
         if (ring && hurtT <= 0f) {
             float rx = w.ship.x - ringX, ry = w.ship.y - ringY, d = (float) Math.sqrt(rx * rx + ry * ry);
             if (d > ringR && d < ringR + RING_DEPTH) {
-                w.ship.damage(RING_DAMAGE, w);
+                w.ship.burn(RING_DAMAGE, w);
                 hurtT = 0.4f;
             }
         }
@@ -121,7 +121,7 @@ public final class Hazards {
             Patch p = patches.get(i);
             float dx = hx - p.x, dy = hy - p.y;
             if (dx * dx + dy * dy < (p.r + 8f) * (p.r + 8f)) {
-                w.ship.damage(PATCH_DAMAGE, w);
+                w.ship.burn(PATCH_DAMAGE, w);
                 hurtT = 0.4f;
             }
         }
@@ -129,7 +129,7 @@ public final class Hazards {
             Line l = lines.get(i);
             if (l.state == FIRING && !l.hit && distance(l, hx, hy) < LINE_HALF + 8f) {
                 l.hit = true;
-                w.ship.damage(LINE_DAMAGE, w);
+                w.ship.burn(LINE_DAMAGE, w);
             }
         }
     }

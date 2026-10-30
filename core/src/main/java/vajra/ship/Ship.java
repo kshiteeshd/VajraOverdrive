@@ -195,6 +195,18 @@ public class Ship {
         }
     }
 
+    private float fireK;
+
+    /** Fire (the ash ring, burning ground, a line of fire): a burn-resistant hull takes a small part of it. */
+    public void burn(float amount, World w) {
+        fireK = hangar.burnResist(def);
+        try {
+            damage(amount, w);
+        } finally {
+            fireK = 0f;
+        }
+    }
+
     public void damage(float amount, World w) {
         if (invuln > 0 || iFrames > 0) return;
         if (shieldOn && shieldEnergy > 0) {
@@ -207,7 +219,7 @@ public class Ship {
             if (this == w.ship) w.snd(vajra.audio.Snd.SHIELD_HIT, x, y, 0, amount);
             return;
         }
-        float actual = amount * (1f - def.damageReduction); // tank hulls ignore a fraction
+        float actual = amount * (1f - Math.min(0.8f, def.damageReduction + hangar.armor(def))) * (1f - fireK); // tank hulls ignore a fraction; a burn-proof hull turns most of the fire aside
         hp -= actual;
         if (this == w.ship) w.snd(hp <= 0 ? vajra.audio.Snd.DEATH : vajra.audio.Snd.HULL_HIT, x, y, 0, actual);
         invuln = HIT_GAP;
